@@ -1,7 +1,18 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import {
+  Schema,
+  model,
+  type InferSchemaType,
+} from "mongoose";
 
 const notificationSchema=new Schema({
-  userId:{type:Schema.Types.ObjectId,ref:"User",required:true,index:true},
+
+  userId:{
+    type:Schema.Types.ObjectId,
+    ref:"User",
+    required:true,
+    index:true,
+  },
+
   type:{
     type:String,
     enum:[
@@ -9,15 +20,30 @@ const notificationSchema=new Schema({
       "draft",
       "approval",
       "sent",
-      "error",
       "system",
+      "error",
     ],
     required:true,
   },
-  title:{type:String,required:true},
-  message:{type:String,required:true},
+
+  title:{
+    type:String,
+    required:true,
+    trim:true,
+  },
+
+  message:{
+    type:String,
+    required:true,
+  },
+
   referenceId:String,
-  read:{type:Boolean,default:false},
+
+  read:{
+    type:Boolean,
+    default:false,
+  },
+
 },{
   timestamps:true,
 });
@@ -29,9 +55,14 @@ notificationSchema.index({
 });
 
 export type NotificationDocument=
-  InferSchemaType<typeof notificationSchema>;
+  InferSchemaType<
+    typeof notificationSchema
+  >;
 
-export default model(
-  "Notification",
-  notificationSchema
-);
+export const NotificationModel=
+  model(
+    "Notification",
+    notificationSchema
+  );
+
+export default NotificationModel;

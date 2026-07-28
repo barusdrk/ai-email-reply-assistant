@@ -1,28 +1,35 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import {
+  Schema,
+  model,
+  type InferSchemaType,
+} from "mongoose";
 
 const auditLogSchema=new Schema({
-  userId:{type:Schema.Types.ObjectId,ref:"User",index:true},
+
   action:{
     type:String,
     required:true,
+    index:true,
   },
+
   entity:{
     type:String,
-    enum:[
-      "user",
-      "email",
-      "draft",
-      "approval",
-      "gmail",
-      "outlook",
-      "system",
-    ],
     required:true,
   },
+
   entityId:String,
-  details:{type:Schema.Types.Mixed},
-  ipAddress:String,
-  userAgent:String,
+
+  userId:{
+    type:Schema.Types.ObjectId,
+    ref:"User",
+    index:true,
+  },
+
+  metadata:{
+    type:Schema.Types.Mixed,
+    default:{},
+  },
+
 },{
   timestamps:true,
 });
@@ -32,15 +39,15 @@ auditLogSchema.index({
   createdAt:-1,
 });
 
-auditLogSchema.index({
-  entity:1,
-  entityId:1,
-});
-
 export type AuditLogDocument=
-  InferSchemaType<typeof auditLogSchema>;
+  InferSchemaType<
+    typeof auditLogSchema
+  >;
 
-export default model(
-  "AuditLog",
-  auditLogSchema
-);
+export const AuditLogModel=
+  model(
+    "AuditLog",
+    auditLogSchema
+  );
+
+export default AuditLogModel;

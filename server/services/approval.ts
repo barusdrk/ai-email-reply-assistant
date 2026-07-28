@@ -3,61 +3,75 @@ import { draftRepository } from "../repositories/DraftRepository.js";
 import { notify } from "./notification.js";
 import { audit } from "./audit.js";
 
-export async function submitForApproval(
-  draftId: string,
-  requesterId: string,
-  reviewerId: string
-) {
-  await draftRepository.update(draftId,{status:"pending"});
-
-  return approvalRepository.create({
-    draftId,
-    requesterId,
-    reviewerId,
-    status:"pending",
-    requestedAt:new Date(),
-  });
+export function approvals(
+  userId:string
+){
+  return approvalRepository.findAll(userId);
 }
 
-export function pendingApprovals() {
-  return approvalRepository.findPending();
+export function approval(
+  id:string
+){
+  return approvalRepository.findById(id);
+}
+
+export async function requestApproval(
+  draftId:string,
+  reviewerId:string
+){
+  const approval=
+    await approvalRepository.create({
+      draftId,
+      reviewerId,
+      status:"pending",
+    });
+
+  await notify(
+    reviewerId,
+    "approval",
+    "Approval requested",
+    "A draft is awaiting review.",
+    draftId
+  );
+
+  await audit(
+    "approval_requested",
+    "draft",
+    draftId,
+    reviewerId
+  );
+
+  return approval;
 }
 
 export async function approve(
-  approvalId:string,
-  comment=""
-) {
-  const approval=await approvalRepository.update(
-    approvalId,
-    {
-      status:"approved",
-      comment,
-      reviewedAt:new Date(),
-    }
-  );
+  id:string
+){
+  const approval=
+    await approvalRepository.update(
+      id,
+      {
+        status:"approved",
+        reviewedAt:new Date(),
+      }
+    );
 
-  if(!approval) return null;
+  if(!approval){
+    return null;
+  }
 
   await draftRepository.update(
     approval.draftId.toString(),
     {
       status:"approved",
-      approvedBy:approval.reviewerId,
+      approvedAt:new Date(),
     }
   );
 
-  await notify(
-    approval.requesterId.toString(),
-    "approval",
-    "Draft approved",
-    "Your draft has been approved.",
-    approval.draftId.toString()
-  );
-
   await audit(
-    "approve",
-    "draft",
-    approval.draftId.toString(),
+    "approval_approved",
+    "approval",
+    id,
     approval.reviewerId.toString()
   );
 
@@ -65,41 +79,57 @@ export async function approve(
 }
 
 export async function reject(
-  approvalId:string,
-  comment=""
-) {
-  const approval=await approvalRepository.update(
-    approvalId,
-    {
-      status:"rejected",
-      comment,
-      reviewedAt:new Date(),
-    }
-  );
+  id:string,
+  comment?:string
+){
+  const approval=
+    await approvalRepository.update(
+      id,
+      {
+        status:"rejected",
+        comment,
+        reviewedAt:new Date(),
+      }
+    );
 
-  if(!approval) return null;
+  if(!approval){
+    return null;
+  }
 
   await draftRepository.update(
     approval.draftId.toString(),
     {
       status:"rejected",
+      rejectionReason:comment,
     }
   );
 
-  await notify(
-    approval.requesterId.toString(),
-    "approval",
-    "Draft rejected",
-    "Please revise the draft.",
-    approval.draftId.toString()
-  );
-
   await audit(
-    "reject",
-    "draft",
-    approval.draftId.toString(),
+    "approval_rejected",
+    "approval",
+    id,
     approval.reviewerId.toString()
   );
 
   return approval;
+}
+
+export async function deleteApproval(
+  id:string
+){
+  const approval=
+    await approvalRepository.findById(id);
+
+  if(!approval){
+    return null;
+  }
+
+  await audit(
+    "approval_deleted",
+    "approval",
+    id,
+    approval.reviewerId.toString()
+  );
+
+  return approvalRepository.delete(id);
 }

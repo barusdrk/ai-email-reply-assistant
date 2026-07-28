@@ -1,48 +1,80 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import {
+  Schema,
+  model,
+  type InferSchemaType,
+} from "mongoose";
 
 const draftSchema=new Schema({
-  userId:{type:Schema.Types.ObjectId,ref:"User",required:true,index:true},
-  emailId:{type:Schema.Types.ObjectId,ref:"Email",required:true},
-  reply:{type:String,required:true},
+
+  userId:{
+    type:Schema.Types.ObjectId,
+    ref:"User",
+    required:true,
+    index:true,
+  },
+
+  emailId:{
+    type:Schema.Types.ObjectId,
+    ref:"Email",
+    required:true,
+    index:true,
+  },
+
+  subject:{
+    type:String,
+    required:true,
+    trim:true,
+  },
+
+  reply:{
+    type:String,
+    required:true,
+  },
+
   tone:{
     type:String,
-    enum:[
-      "professional",
-      "friendly",
-      "empathetic",
-      "concise",
-      "formal",
-      "enthusiastic",
-    ],
     default:"professional",
   },
-  length:{
-    type:String,
-    enum:["short","medium","long"],
-    default:"medium",
-  },
+
   status:{
     type:String,
     enum:[
-      "draft",
       "pending",
       "approved",
       "rejected",
-      "scheduled",
       "sent",
     ],
-    default:"draft",
+    default:"pending",
   },
-  approvedBy:{type:Schema.Types.ObjectId,ref:"User"},
-  scheduledFor:Date,
+
+  approvedAt:Date,
+
+  rejectionReason:String,
+
   sentAt:Date,
+
 },{
   timestamps:true,
 });
 
-draftSchema.index({userId:1,status:1});
-draftSchema.index({emailId:1});
+draftSchema.index({
+  userId:1,
+  createdAt:-1,
+});
 
-export type DraftDocument=InferSchemaType<typeof draftSchema>;
+draftSchema.index({
+  status:1,
+});
 
-export default model("Draft",draftSchema);
+export type DraftDocument=
+  InferSchemaType<
+    typeof draftSchema
+  >;
+
+export const DraftModel=
+  model(
+    "Draft",
+    draftSchema
+  );
+
+export default DraftModel;

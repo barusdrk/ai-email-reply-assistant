@@ -1,8 +1,17 @@
 import * as gmail from "./gmail.js";
 import * as outlook from "./outlook.js";
 import { emailRepository } from "../repositories/EmailRepository.js";
+import { draftRepository } from "../repositories/DraftRepository.js";
 import { notify } from "./notification.js";
 import { audit } from "./audit.js";
+
+export function inbox(userId:string){
+  return emailRepository.findAll(userId);
+}
+
+export function email(id:string){
+  return emailRepository.findById(id);
+}
 
 export async function syncInbox(
   provider:"gmail"|"outlook",
@@ -13,36 +22,31 @@ export async function syncInbox(
       ?await gmail.listEmails()
       :await outlook.listEmails();
 
-  for(const email of emails){
-    await emailRepository.create({
+  for(const item of emails){
+    await emailRepository.upsert({
       userId,
       provider,
-      messageId:email.id,
-      threadId:email.threadId,
+      messageId:item.id,
+      threadId:item.threadId,
       from:
-        email.from?.emailAddress?.address ??
+        item.from?.emailAddress?.address ??
+        item.from ??
         "",
-      to:
-        email.to ??
-        "",
-      subject:
-        email.subject ??
-        "",
+      to:item.to ?? "",
+      subject:item.subject ?? "",
       preview:
-        email.snippet ??
-        email.bodyPreview ??
+        item.snippet ??
+        item.bodyPreview ??
         "",
-      body:
-        email.body ??
-        "",
+      body:item.body ?? "",
       unread:
-        email.labelIds?.includes("UNREAD") ??
-        !email.isRead,
+        item.labelIds?.includes("UNREAD") ??
+        !item.isRead,
       receivedAt:
-        email.internalDate
-          ?new Date(Number(email.internalDate))
+        item.internalDate
+          ?new Date(Number(item.internalDate))
           :new Date(
-              email.receivedDateTime ??
+              item.receivedDateTime ??
               Date.now()
             ),
     });
@@ -56,7 +60,7 @@ export async function syncInbox(
   );
 
   await audit(
-    "sync",
+    "email_sync",
     "email",
     "",
     userId,
@@ -66,17 +70,49 @@ export async function syncInbox(
     }
   );
 
-  return emailRepository.findAll(userId);
+  return inbox(userId);
 }
 
-export function inbox(userId:string){
-  return emailRepository.findAll(userId);
+export async function markRead(
+  id:string
+){
+  return emailRepository.update(
+    id,
+    {
+      unread:false,
+    }
+  );
 }
 
-export function email(id:string){
-  return emailRepository.findById(id);
+export async function archiveEmail(
+  id:string
+){
+  return emailRepository.update(
+    id,
+    {
+      archived:true,
+    }
+  );
 }
 
-export function removeEmail(id:string){
+export async function attachDraft(
+  emailId:string,
+  draftId:string
+){
+  await emailRepository.update(
+    emailId,
+    {
+      draftId,
+    }
+  );
+
+  return draftRepository.findById(
+    draftId
+  );
+}
+
+export function removeEmail(
+  id:string
+){
   return emailRepository.delete(id);
 }

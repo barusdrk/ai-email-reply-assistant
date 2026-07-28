@@ -1,73 +1,97 @@
-import { Client } from "@microsoft/microsoft-graph-client";
-import { outlookClient } from "../config/outlook.js";
+import {
+  Client,
+} from "@microsoft/microsoft-graph-client";
 
-let accessToken = "";
+import {
+  ConfidentialClientApplication,
+} from "@azure/msal-node";
 
-export function getMicrosoftAuthUrl() {
-  return {
-    url: outlookClient.getAuthCodeUrl({
-      scopes: [
-        "User.Read",
-        "Mail.Read",
-        "Mail.Send",
-        "offline_access",
-      ],
-      redirectUri: process.env.OUTLOOK_REDIRECT_URI!,
-    }),
-  };
+import { outlookConfig } from "../config/outlook.js";
+
+const msal =
+new ConfidentialClientApplication(
+  outlookConfig
+);
+
+async function accessToken() {
+  const result =
+    await msal.acquireTokenByClientCredential(
+      {
+        scopes: [
+          "https://graph.microsoft.com/.default",
+        ],
+      }
+    );
+
+  if (!result?.accessToken) {
+    throw new Error(
+      "Unable to acquire Outlook token."
+    );
+  }
+
+  return result.accessToken;
 }
 
-export async function exchangeCode(code: string) {
-  const result = await outlookClient.acquireTokenByCode({
-    code,
-    scopes: ["Mail.Read", "Mail.Send"],
-    redirectUri: process.env.OUTLOOK_REDIRECT_URI!,
-  });
+async function graph() {
+  const token =
+    await accessToken();
 
-  accessToken = result?.accessToken ?? "";
-
-  return result;
-}
-
-function graph() {
   return Client.init({
-    authProvider: done => done(null, accessToken),
+    authProvider: {
+      getAccessToken: async () => token,
+    },
   });
 }
 
 export async function listEmails() {
-  const result = await graph().api("/me/messages").top(25).get();
-  return result.value;
+  const client =
+    await graph();
+
+  const response =
+    await client
+      .api("/me/messages")
+      .top(25)
+      .orderby("receivedDateTime DESC")
+      .get();
+
+  return response.value ?? [];
 }
 
-export async function sendEmail(to: string, subject: string, body: string) {
-  await graph().api("/me/sendMail").post({
-    message: {
-      subject,
-      body: {
-        contentType: "HTML",
-        content: body,
-      },
-      toRecipients: [
-        {
-          emailAddress: {
-            address: to,
-          },
-        },
-      ],
-    },
-  });
+export async function getEmail(
+  id: string
+) {
+  const client =
+    await graph();
 
-  return true;
+  return client
+    .api(`/me/messages/${id}`)
+    .get();
 }
 
-export async function connectionStatus() {
-  return {
-    connected: accessToken.length > 0,
-  };
+export async function sendEmail(
+  message: unknown
+) {
+  const client =
+    await graph();
+
+  return client
+    .api("/me/sendMail")
+    .post({
+      message,
+      saveToSentItems: true,
+    });
 }
 
-export async function disconnectAccount() {
-  accessToken = "";
-  return true;
+export async function replyEmail(
+  id: string,
+  comment: string
+) {
+  const client =
+    await graph();
+
+  return client
+    .api(`/me/messages/${id}/reply`)
+    .post({
+      comment,
+    });
 }

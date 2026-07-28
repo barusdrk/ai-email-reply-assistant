@@ -1,46 +1,67 @@
-import Notification from "../models/Notification.js";
+import {
+  NotificationModel,
+  type NotificationDocument,
+} from "../models/Notification.js";
 
 class NotificationRepository {
-  findByUser(userId: string) {
-    return Notification.find({ userId })
-      .sort({ createdAt: -1 })
-      .lean();
+
+  findByUser(
+    userId:string
+  ){
+    return NotificationModel
+      .find({
+        userId,
+      })
+      .sort({
+        createdAt:-1,
+      });
   }
 
-  unread(userId: string) {
-    return Notification.find({
-      userId,
-      read: false,
-    }).lean();
+  findById(id:string){
+    return NotificationModel.findById(id);
   }
 
-  create(data: Partial<import("../models/Notification.js").NotificationDocument>) {
-    return Notification.create(data as any);
+  create(
+    data:Partial<NotificationDocument>
+  ){
+    return NotificationModel.create(data);
   }
 
-  markRead(id: string) {
-    return Notification.findByIdAndUpdate(
+  markRead(id:string){
+    return NotificationModel.findByIdAndUpdate(
       id,
-      { read: true },
       {
-        new: true,
-        lean: true,
+        $set:{
+          read:true,
+        },
+      },
+      {
+        new:true,
       }
     );
   }
 
-  deleteOlderThan(date: Date) {
-    return Notification.deleteMany({
-      createdAt: {
-        $lt: date,
+  markAllRead(
+    userId:string
+  ){
+    return NotificationModel.updateMany(
+      {
+        userId,
+        read:false,
       },
-    });
+      {
+        $set:{
+          read:true,
+        },
+      }
+    );
   }
 
-  delete(id: string) {
-    return Notification.findByIdAndDelete(id);
+  delete(id:string){
+    return NotificationModel.findByIdAndDelete(id);
   }
+
 }
 
-export const notificationRepository =
+export const notificationRepository=
   new NotificationRepository();

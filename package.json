@@ -2,7 +2,7 @@
   "name": "ai-email-reply-assistant",
   "version": "1.0.0",
   "private": true,
-  "description": "AI-powered email reply assistant using React, Express, MongoDB, BullMQ, Redis and OpenAI.",
+  "description": "AI-powered email reply assistant",
   "license": "MIT",
   "author": "Derek Barus",
   "repository": {
@@ -19,8 +19,8 @@
     "build": "npm run build --workspace client && npm run build --workspace server",
     "start": "npm run start --workspace server",
     "lint": "npm run lint --workspace client && npm run lint --workspace server",
-    "format": "prettier --write .",
     "test": "npm run test --workspace client && npm run test --workspace server",
+    "format": "prettier --write .",
     "clean": "rimraf node_modules client/node_modules server/node_modules client/dist server/dist"
   },
   "devDependencies": {
@@ -29,14 +29,7 @@
     "rimraf": "^6.0.1"
   },
   "engines": {
-    "node": ">=22.0.0",
-    "npm": ">=10.0.0"
-  },
-  "dependencies": {
-    "@microsoft/microsoft-graph-client": "^3.0.7",
-    "bullmq": "^5.81.2",
-    "googleapis": "^173.0.0",
-    "ioredis": "^5.11.1",
-    "socket.io-client": "^4.8.3"
+    "node": ">=22",
+    "npm": ">=10"
   }
 }

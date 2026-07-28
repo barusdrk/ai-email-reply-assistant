@@ -1,29 +1,129 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth.js";
+
+import { auth } from "../middleware/auth.js";
+
 import {
-  getPendingApprovals,
-  approveDraft,
-  rejectDraft,
-} from "../services/approvalService.js";
+  approvals,
+  approval,
+  requestApproval,
+  approve,
+  reject,
+} from "../services/approval.js";
 
-const router = Router();
+const router=Router();
 
-router.get("/", authenticate, (_, res) => {
-  res.json(getPendingApprovals());
-});
+router.use(auth);
 
-router.post("/:id/approve", authenticate, (req, res) => {
-  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const draft = approveDraft(id);
-  if (!draft) return res.status(404).json({ message: "Draft not found." });
-  res.json(draft);
-});
+router.get(
+  "/",
+  async(req,res,next)=>{
+    try{
 
-router.post("/:id/reject", authenticate, (req, res) => {
-  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const draft = rejectDraft(id);
-  if (!draft) return res.status(404).json({ message: "Draft not found." });
-  res.json(draft);
-});
+      const list=
+        await approvals(
+          req.user!.id
+        );
+
+      res.json(list);
+
+    }catch(error){
+      next(error);
+    }
+  }
+);
+
+router.get(
+  "/:id",
+  async(req,res,next)=>{
+    try{
+
+      const item=
+        await approval(
+          req.params.id
+        );
+
+      if(!item){
+        return res.status(404).json({
+          message:"Approval not found",
+        });
+      }
+
+      res.json(item);
+
+    }catch(error){
+      next(error);
+    }
+  }
+);
+
+router.post(
+  "/",
+  async(req,res,next)=>{
+    try{
+
+      const item=
+        await requestApproval(
+          req.body.draftId,
+          req.body.reviewerId
+        );
+
+      res
+        .status(201)
+        .json(item);
+
+    }catch(error){
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/:id/approve",
+  async(req,res,next)=>{
+    try{
+
+      const item=
+        await approve(
+          req.params.id
+        );
+
+      if(!item){
+        return res.status(404).json({
+          message:"Approval not found",
+        });
+      }
+
+      res.json(item);
+
+    }catch(error){
+      next(error);
+    }
+  }
+);
+
+router.patch(
+  "/:id/reject",
+  async(req,res,next)=>{
+    try{
+
+      const item=
+        await reject(
+          req.params.id,
+          req.body.comment
+        );
+
+      if(!item){
+        return res.status(404).json({
+          message:"Approval not found",
+        });
+      }
+
+      res.json(item);
+
+    }catch(error){
+      next(error);
+    }
+  }
+);
 
 export default router;

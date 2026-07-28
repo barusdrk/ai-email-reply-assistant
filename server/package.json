@@ -3,29 +3,40 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
+  "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
   },
   "dependencies": {
+    "@azure/msal-node": "^3.8.0",
     "@google/generative-ai": "^0.24.1",
-    "@prisma/client": "^7.9.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "bcryptjs": "^3.0.2",
+    "bullmq": "^5.81.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "googleapis": "^173.0.0",
+    "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.18.0",
     "openai": "^5.12.2",
-    "socket.io": "^4.8.1"
+    "pino": "^9.9.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.2.0",
     "tsx": "^4.20.3",
-    "typescript": "^5.9.2"
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
   }
 }

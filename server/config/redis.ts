@@ -1,20 +1,61 @@
-import IORedis from "ioredis";
-import { env } from "./env.js";
+import { Redis } from "ioredis";
 
-export const redis=new IORedis(
+import { env } from "./env.js";
+import { logger } from "./logger.js";
+
+const redis = new Redis(
   env.REDIS_URL,
   {
-    maxRetriesPerRequest:null,
-    enableReadyCheck:true,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: true,
+    lazyConnect: false,
   }
 );
 
-redis.on("connect",()=>{
-  console.log("Redis connected");
-});
+redis.on(
+  "connect",
+  () => {
+    logger.info(
+      "Redis connected."
+    );
+  }
+);
 
-redis.on("error",(error)=>{
-  console.error(error);
-});
+redis.on(
+  "ready",
+  () => {
+    logger.info(
+      "Redis ready."
+    );
+  }
+);
+
+redis.on(
+  "reconnecting",
+  () => {
+    logger.warn(
+      "Redis reconnecting..."
+    );
+  }
+);
+
+redis.on(
+  "close",
+  () => {
+    logger.warn(
+      "Redis connection closed."
+    );
+  }
+);
+
+redis.on(
+  "error",
+  (error: Error) => {
+    logger.error({
+      message: error.message,
+      stack: error.stack,
+    });
+  }
+);
 
 export default redis;

@@ -17,8 +17,8 @@ export async function createDraft(data:any){
   await notify(
     draft.userId.toString(),
     "draft",
-    "AI draft created",
-    "A new AI reply is ready.",
+    "AI draft ready",
+    "A new AI reply has been generated.",
     draft._id.toString()
   );
 
@@ -39,14 +39,65 @@ export async function updateDraft(
   const draft=
     await draftRepository.update(id,data);
 
-  if(draft){
-    await audit(
-      "draft_updated",
-      "draft",
+  if(!draft) return null;
+
+  await audit(
+    "draft_updated",
+    "draft",
+    id,
+    draft.userId.toString()
+  );
+
+  return draft;
+}
+
+export async function approveDraft(
+  id:string
+){
+  const draft=
+    await draftRepository.update(
       id,
-      draft.userId.toString()
+      {
+        status:"approved",
+        approvedAt:new Date(),
+      }
     );
-  }
+
+  if(!draft) return null;
+
+  await notify(
+    draft.userId.toString(),
+    "approval",
+    "Draft approved",
+    "Draft is ready to send.",
+    id
+  );
+
+  return draft;
+}
+
+export async function rejectDraft(
+  id:string,
+  reason?:string
+){
+  const draft=
+    await draftRepository.update(
+      id,
+      {
+        status:"rejected",
+        rejectionReason:reason,
+      }
+    );
+
+  if(!draft) return null;
+
+  await notify(
+    draft.userId.toString(),
+    "approval",
+    "Draft rejected",
+    reason ?? "Draft requires changes.",
+    id
+  );
 
   return draft;
 }

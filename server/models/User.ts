@@ -1,13 +1,23 @@
-import { Schema, model, type InferSchemaType } from "mongoose";
+import {
+  Schema,
+  model,
+  type InferSchemaType,
+} from "mongoose";
 
-const userSchema = new Schema({
+const userSchema=new Schema({
+
+  name:{
+    type:String,
+    required:true,
+    trim:true,
+  },
+
   email:{
     type:String,
     required:true,
     unique:true,
     lowercase:true,
     trim:true,
-    index:true,
   },
 
   password:{
@@ -15,81 +25,48 @@ const userSchema = new Schema({
     required:true,
   },
 
-  name:{
-    type:String,
-    default:"",
-    trim:true,
-  },
-
-  avatar:{
-    type:String,
-    default:"",
-  },
-
   role:{
     type:String,
     enum:[
       "user",
-      "reviewer",
       "admin",
     ],
     default:"user",
   },
 
-  provider:{
-    type:String,
-    enum:[
-      "local",
-      "google",
-      "microsoft",
-    ],
-    default:"local",
+  avatar:String,
+
+  emailVerified:{
+    type:Boolean,
+    default:false,
   },
 
-  signature:{
-    type:String,
-    default:"Best regards",
-  },
+  lastLoginAt:Date,
 
-  theme:{
-    type:String,
-    enum:[
-      "light",
-      "dark",
-      "system",
-    ],
-    default:"system",
-  },
-
-  timezone:{
-    type:String,
-    default:"UTC",
-  },
-
-  language:{
-    type:String,
-    default:"en",
-  },
-
-  emailNotifications:{
+  active:{
     type:Boolean,
     default:true,
   },
 
-  aiAutoDraft:{
-    type:Boolean,
-    default:true,
-  },
-
-  lastLogin:Date,
 },{
   timestamps:true,
 });
 
-export type UserDocument =
-  InferSchemaType<typeof userSchema>;
+userSchema.index({
+  email:1,
+},{
+  unique:true,
+});
 
-export default model(
-  "User",
-  userSchema
-);
+export type UserDocument=
+  InferSchemaType<
+    typeof userSchema
+  >;
+
+export const UserModel=
+  model(
+    "User",
+    userSchema
+  );
+
+export default UserModel;
