@@ -14,7 +14,7 @@ class NotificationRepository {
     }).lean();
   }
 
-  create(data: Partial<import("../models/Notification").NotificationDocument>) {
+  create(data: Partial<import("../models/Notification.js").NotificationDocument>) {
     return Notification.create(data as any);
   }
 

@@ -1,9 +1,9 @@
-import API from "./api";
+import API from "./api.js";
 
 import type {
   User,
   AuthResponse,
-} from "../types";
+} from "../types.js";
 
 export async function login(
   email: string,

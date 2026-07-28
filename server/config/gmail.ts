@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { env } from "./env";
+import { env } from "./env.js";
 
 export const gmailOAuth = new google.auth.OAuth2(
   env.GOOGLE_CLIENT_ID,

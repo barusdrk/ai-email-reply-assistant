@@ -2,7 +2,7 @@ import {
   emitApproval,
   emitDraft,
   emitInbox,
-} from "./websocket";
+} from "./websocket.js";
 
 export function notifyInbox(userId: string) {
   emitInbox(userId);

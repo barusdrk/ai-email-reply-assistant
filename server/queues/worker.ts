@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
-import { redis } from "../config/redis";
-import { emailSyncJob } from "../jobs/emailSyncJob";
+import { redis } from "../config/redis.js";
+import { emailSyncJob } from "../jobs/emailSyncJob.js";
 
 new Worker(
   "emails",

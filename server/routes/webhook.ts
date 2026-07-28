@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { processWebhook } from "../services/webhookService";
+import { processWebhook } from "../services/webhookService.js";
 
 const router = Router();
 

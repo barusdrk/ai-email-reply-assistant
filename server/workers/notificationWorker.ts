@@ -1,29 +1,32 @@
-import { createWorker }
-from "./createWorker.js";
+import type { Job } from "bullmq";
 
+import { createWorker } from "./createWorker.js";
 import {
-  notify as sendNotification,
+  notify,
+  type NotificationType,
 } from "../services/notification.js";
 
+interface NotificationJob {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  referenceId?: string;
+}
+
 export const notificationWorker =
-createWorker(
+createWorker<NotificationJob>(
   "notifications",
 
-  async job => {
-    const data = job.data as {
-      userId: string;
-      type: string;
-      title: string;
-      message: string;
-      referenceId?: string;
-    };
-
-    await sendNotification(
-      data.userId,
-      data.type as any,
-      data.title,
-      data.message,
-      data.referenceId
+  async (
+    job: Job<NotificationJob>
+  ) => {
+    await notify(
+      job.data.userId,
+      job.data.type,
+      job.data.title,
+      job.data.message,
+      job.data.referenceId
     );
   }
 );

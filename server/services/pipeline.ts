@@ -1,6 +1,6 @@
-import { classifyEmail, generateReply, summarizeEmail } from "./openai";
-import { calculatePriority } from "./priority";
-import { draftRepository } from "../repositories/DraftRepository";
+import { classifyEmail, generateReply, summarizeEmail } from "./openai.js";
+import { calculatePriority } from "./priority.js";
+import { draftRepository } from "../repositories/DraftRepository.js";
 
 export async function processIncomingEmail(
   email: {

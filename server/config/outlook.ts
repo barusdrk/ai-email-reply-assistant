@@ -1,5 +1,5 @@
 import { ConfidentialClientApplication } from "@azure/msal-node";
-import { env } from "./env";
+import { env } from "./env.js";
 
 export const outlookClient =
   new ConfidentialClientApplication({

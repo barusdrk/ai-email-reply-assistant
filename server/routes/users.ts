@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
+import { authenticate } from "../middleware/auth.js";
 import {
   getProfile,
   updateProfile,
   updateSignature,
   updateTheme,
-} from "../services/userService";
+} from "../services/userService.js";
 
 const router = Router();
 

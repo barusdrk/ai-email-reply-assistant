@@ -1,4 +1,4 @@
-import Approval from "../models/Approval";
+import Approval from "../models/Approval.js";
 
 class ApprovalRepository {
   findPending() {

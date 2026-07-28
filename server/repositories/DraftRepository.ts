@@ -1,4 +1,4 @@
-import Draft from "../models/Draft";
+import Draft from "../models/Draft.js";
 
 class DraftRepository {
   async findAll(userId: string) {

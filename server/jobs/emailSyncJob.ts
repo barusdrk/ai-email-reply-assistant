@@ -1,5 +1,5 @@
-import { syncInbox } from "../services/email";
-import { processIncomingEmail } from "../services/pipeline";
+import { syncInbox } from "../services/email.js";
+import { processIncomingEmail } from "../services/pipeline.js";
 
 export async function emailSyncJob(
   userId: string

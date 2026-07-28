@@ -1,23 +1,23 @@
-import { createWorker }
-from "./createWorker.js";
+import type { Job } from "bullmq";
 
-import {
-  syncInbox,
-} from "../services/email.js";
+import { createWorker } from "./createWorker.js";
+import { syncInbox } from "../services/email.js";
+
+interface InboxJob {
+  userId: string;
+  provider: "gmail" | "outlook";
+}
 
 export const inboxWorker =
-createWorker(
+createWorker<InboxJob>(
   "inbox",
 
-  async job => {
-    const data = job.data as {
-      userId: string;
-      provider: "gmail" | "outlook";
-    };
-
+  async (
+    job: Job<InboxJob>
+  ) => {
     await syncInbox(
-      data.provider,
-      data.userId
+      job.data.provider,
+      job.data.userId
     );
   }
 );

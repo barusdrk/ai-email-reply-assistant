@@ -1,4 +1,4 @@
-import { userRepository } from "../repositories/UserRepository";
+import { userRepository } from "../repositories/UserRepository.js";
 
 export async function getProfile(userId: string) {
   return userRepository.findById(userId);

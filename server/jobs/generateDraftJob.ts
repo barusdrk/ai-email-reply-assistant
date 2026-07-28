@@ -1,5 +1,5 @@
-import { generateReply } from "../services/openai";
-import { draftRepository } from "../repositories/DraftRepository";
+import { generateReply } from "../services/openai.js";
+import { draftRepository } from "../repositories/DraftRepository.js";
 
 export async function generateDraftJob(
   draftId: string,

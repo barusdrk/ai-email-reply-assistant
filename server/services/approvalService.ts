@@ -1,10 +1,10 @@
 import {
   approvalRepository,
-} from "../repositories/ApprovalRepository";
+} from "../repositories/ApprovalRepository.js";
 
 import {
   draftRepository,
-} from "../repositories/DraftRepository";
+} from "../repositories/DraftRepository.js";
 
 export function getPendingApprovals() {
   return approvalRepository.findPending();

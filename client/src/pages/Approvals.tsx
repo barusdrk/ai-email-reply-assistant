@@ -1,6 +1,6 @@
-import ApprovalCard from "../components/ApprovalCard";
+import ApprovalCard from "../components/ApprovalCard.js";
 
-import { useApprovals } from "../hooks/useApprovals";
+import { useApprovals } from "../hooks/useApprovals.js";
 
 export default function Approvals() {
   const {

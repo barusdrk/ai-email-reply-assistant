@@ -1,5 +1,5 @@
-import { notificationRepository } from "../repositories/NotificationRepository";
-import { emitInbox } from "./websocket";
+import { notificationRepository } from "../repositories/NotificationRepository.js";
+import { emitInbox } from "./websocket.js";
 
 export type NotificationType =
   | "email"

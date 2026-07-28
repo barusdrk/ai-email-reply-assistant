@@ -1,11 +1,11 @@
-import API from "./api";
+import API from "./api.js";
 
 import type {
   Email,
   Draft,
   ReplyRequest,
   ReplyResponse,
-} from "../types";
+} from "../types.js";
 
 export async function getInbox(): Promise<Email[]> {
   const { data } =

@@ -1,4 +1,4 @@
-import { emailQueue } from "../config/emailQueue";
+import { emailQueue } from "../config/emailQueue.js";
 
 export async function processWebhook(
   provider: "gmail" | "outlook",

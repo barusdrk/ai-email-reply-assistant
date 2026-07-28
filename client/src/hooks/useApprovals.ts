@@ -4,13 +4,13 @@ import {
   useState,
 } from "react";
 
-import type { Draft } from "../types";
+import type { Draft } from "../types.js";
 
 import {
   getDrafts,
   approveDraft,
   rejectDraft,
-} from "../services/email";
+} from "../services/email.js";
 
 export function useApprovals() {
   const [approvals, setApprovals] =

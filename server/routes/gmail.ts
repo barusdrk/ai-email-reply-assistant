@@ -4,7 +4,7 @@ import {
   exchangeCode,
   disconnectAccount,
   connectionStatus,
-} from "../services/gmailService";
+} from "../services/gmailService.js";
 
 const router = Router();
 

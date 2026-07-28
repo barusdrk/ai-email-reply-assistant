@@ -31,5 +31,12 @@
   "engines": {
     "node": ">=22.0.0",
     "npm": ">=10.0.0"
+  },
+  "dependencies": {
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "bullmq": "^5.81.2",
+    "googleapis": "^173.0.0",
+    "ioredis": "^5.11.1",
+    "socket.io-client": "^4.8.3"
   }
 }

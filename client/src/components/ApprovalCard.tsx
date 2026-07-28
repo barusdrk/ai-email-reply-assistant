@@ -1,4 +1,4 @@
-import type { Draft } from "../types";
+import type { Draft } from "../types/draft";
 
 interface ApprovalCardProps {
   draft: Draft;

@@ -1,5 +1,5 @@
 import { Client } from "@microsoft/microsoft-graph-client";
-import { outlookClient } from "../config/outlook";
+import { outlookClient } from "../config/outlook.js";
 
 let accessToken = "";
 

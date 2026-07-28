@@ -4,7 +4,7 @@ import {
   useState,
 } from "react";
 
-import type { Draft } from "../types";
+import type { Draft } from "../types.js";
 
 import {
   getDrafts,
@@ -12,7 +12,7 @@ import {
   updateDraft,
   deleteDraft,
   submitForApproval,
-} from "../services/email";
+} from "../services/email.js";
 
 export function useDrafts() {
   const [drafts, setDrafts] =

@@ -1,7 +1,7 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { env } from "../config/env";
-import { userRepository } from "../repositories/UserRepository";
+import { env } from "../config/env.js";
+import { userRepository } from "../repositories/UserRepository.js";
 
 export async function register(
   email: string,

@@ -1,4 +1,4 @@
-import { auditLogRepository } from "../repositories/AuditLogRepository";
+import { auditLogRepository } from "../repositories/AuditLogRepository.js";
 
 export function audit(
   action: string,

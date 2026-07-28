@@ -2,19 +2,19 @@ import { useState } from "react";
 
 import "./App.css";
 
-import EmailInput from "./components/EmailInput";
+import EmailInput from "./components/EmailInput.js";
 import LengthSelector, {
   type ReplyLength,
-} from "./components/LengthSelector";
-import LoadingSpinner from "./components/LoadingSpinner";
-import ReplyCard from "./components/ReplyCard";
-import SignatureInput from "./components/SignatureInput";
+} from "./components/LengthSelector.js";
+import LoadingSpinner from "./components/LoadingSpinner.js";
+import ReplyCard from "./components/ReplyCard.js";
+import SignatureInput from "./components/SignatureInput.js";
 import ToneSelector, {
   type Tone,
-} from "./components/ToneSelector";
+} from "./components/ToneSelector.js";
 
-import { generateReply } from "./services/email";
-import { logout } from "./services/auth";
+import { generateReply } from "./services/email.js";
+import { logout } from "./services/auth.js";
 
 export default function App() {
   const [email, setEmail] = useState("");

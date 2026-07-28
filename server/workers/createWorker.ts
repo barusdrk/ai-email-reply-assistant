@@ -1,8 +1,4 @@
-import {
-  Worker,
-  type Processor,
-  type Job,
-} from "bullmq";
+import { Worker, type Job, type Processor } from "bullmq";
 
 import redis from "../config/redis.js";
 import { logger } from "../config/logger.js";
@@ -43,11 +39,15 @@ export function createWorker<T>(
 
   worker.on(
     "failed",
-    (job, error) => {
+    (
+      job: Job<T> | undefined,
+      error: Error
+    ) => {
       logger.error({
         worker: queueName,
         jobId: job?.id,
-        error,
+        error: error.message,
+        stack: error.stack,
       });
     }
   );

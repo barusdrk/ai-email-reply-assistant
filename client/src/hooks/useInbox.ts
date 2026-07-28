@@ -4,8 +4,8 @@ import {
   useState,
 } from "react";
 
-import { getInbox, getEmail, generateReply } from "../services/email";
-import type { Email, ReplyRequest } from "../types";
+import { getInbox, getEmail, generateReply } from "../services/email.js";
+import type { Email, ReplyRequest } from "../types.js";
 
 export function useInbox() {
   const [emails, setEmails] =

@@ -1,6 +1,6 @@
 import {
   draftRepository,
-} from "../repositories/DraftRepository";
+} from "../repositories/DraftRepository.js";
 
 export const getDrafts = (userId: string) =>
   draftRepository.findAll(userId);

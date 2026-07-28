@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
-import { buildEmailPrompt } from "../prompts/emailPrompt";
-import { generateReply } from "../services/openai";
-import { TONES, type Tone, type ReplyLength } from "../templates/tones";
+import { authenticate } from "../middleware/auth.js";
+import { buildEmailPrompt } from "../prompts/emailPrompt.js";
+import { generateReply } from "../services/openai.js";
+import { TONES, type Tone, type ReplyLength } from "../templates/tones.js";
 
 const router = Router();
 

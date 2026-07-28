@@ -1,6 +1,6 @@
-import DraftCard from "../components/DraftCard";
+import DraftCard from "../components/DraftCard.js";
 
-import { useDrafts } from "../hooks/useDrafts";
+import { useDrafts } from "../hooks/useDrafts.js";
 
 export default function Drafts() {
   const {

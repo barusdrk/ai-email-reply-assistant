@@ -12,9 +12,9 @@ import {
   register as registerService,
   logout as logoutService,
   getCurrentUser,
-} from "../services/auth";
+} from "../services/auth.js";
 
-import type { User } from "../types";
+import type { User } from "../types.js";
 
 interface AuthContextValue {
   user: User | null;

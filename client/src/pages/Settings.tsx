@@ -1,11 +1,11 @@
 import { useState } from "react";
 
-import GmailConnectButton from "../components/GmailConnectButton";
-import OutlookConnectButton from "../components/OutlookConnectButton";
-import SignatureInput from "../components/SignatureInput";
+import GmailConnectButton from "../components/GmailConnectButton.js";
+import OutlookConnectButton from "../components/OutlookConnectButton.js";
+import SignatureInput from "../components/SignatureInput.js";
 
-import { useTheme } from "../context/ThemeContext";
-import { connectGmail, connectOutlook } from "../services/email";
+import { useTheme } from "../context/ThemeContext.js";
+import { connectGmail, connectOutlook } from "../services/email.js";
 
 export default function Settings() {
   const { theme } = useTheme();

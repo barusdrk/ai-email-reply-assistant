@@ -1,4 +1,4 @@
-import type { Draft } from "./draft";
+import type { Draft } from "./draft.js";
 
 export interface Approval {
   id: string;

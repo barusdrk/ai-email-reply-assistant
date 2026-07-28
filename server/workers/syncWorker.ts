@@ -1,18 +1,27 @@
-import { createWorker }
-from "./createWorker.js";
+import type { Job } from "bullmq";
 
-import {
-  syncInbox as synchronizeAllAccountsFromService,
-} from "../services/emailSyncService.js";
+import { createWorker } from "./createWorker.js";
+import { syncInbox } from "../services/email.js";
+
+interface SyncJob {
+  userId: string;
+}
 
 export const syncWorker =
-createWorker(
+createWorker<SyncJob>(
   "sync",
 
-  async job => {
-    const data = job.data as { userId: string };
-    await synchronizeAllAccountsFromService(
-      data.userId
+  async (
+    job: Job<SyncJob>
+  ) => {
+    await syncInbox(
+      "gmail",
+      job.data.userId
+    );
+
+    await syncInbox(
+      "outlook",
+      job.data.userId
     );
   }
 );

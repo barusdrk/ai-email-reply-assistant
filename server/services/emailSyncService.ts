@@ -1,5 +1,5 @@
-import { gmail } from "../config/gmail";
-import { emailRepository } from "../repositories/EmailRepository";
+import { gmail } from "../config/gmail.js";
+import { emailRepository } from "../repositories/EmailRepository.js";
 
 export async function syncInbox(
   userId: string

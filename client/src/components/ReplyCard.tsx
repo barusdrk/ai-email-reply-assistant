@@ -1,5 +1,5 @@
-import { downloadPdf } from "../utils/downloadPdf";
-import { downloadDocx } from "../utils/downloadDocx";
+import { downloadPdf } from "../utils/downloadPdf.js";
+import { downloadDocx } from "../utils/downloadDocx.js";
 
 interface ReplyCardProps {
   reply: string;

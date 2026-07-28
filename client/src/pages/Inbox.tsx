@@ -2,21 +2,21 @@ import { useState } from "react";
 
 import InboxList, {
   type InboxEmail,
-} from "../components/InboxList";
+} from "../components/InboxList.js";
 
 import EmailViewer, {
   type EmailData,
-} from "../components/EmailViewer";
+} from "../components/EmailViewer.js";
 
-import ReplyCard from "../components/ReplyCard";
+import ReplyCard from "../components/ReplyCard.js";
 
 import ToneSelector, {
   type Tone,
-} from "../components/ToneSelector";
+} from "../components/ToneSelector.js";
 
 import LengthSelector, {
   type ReplyLength,
-} from "../components/LengthSelector";
+} from "../components/LengthSelector.js";
 
 const sampleEmails: InboxEmail[] = [
   {

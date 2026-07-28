@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth";
+import { authenticate } from "../middleware/auth.js";
 import {
   getDrafts,
   createDraft,
   updateDraft,
   deleteDraft,
   submitDraft,
-} from "../services/draftService";
+} from "../services/draftService.js";
 
 const router = Router();
 

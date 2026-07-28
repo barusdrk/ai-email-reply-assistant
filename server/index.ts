@@ -5,13 +5,13 @@ import http from "http";
 
 import { Server } from "socket.io";
 
-import authRoutes from "./routes/auth";
-import replyRoutes from "./routes/reply";
-import emailRoutes from "./routes/email";
-import draftRoutes from "./routes/drafts";
-import approvalRoutes from "./routes/approvals";
+import authRoutes from "./routes/auth.js";
+import replyRoutes from "./routes/reply.js";
+import emailRoutes from "./routes/email.js";
+import draftRoutes from "./routes/drafts.js";
+import approvalRoutes from "./routes/approvals.js";
 
-import { initializeWebSocket } from "./services/websocket";
+import { initializeWebSocket } from "./services/websocket.js";
 
 dotenv.config();
 

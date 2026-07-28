@@ -2,7 +2,7 @@
 export type {
   User,
   AuthResponse,
-} from "./user";
+} from "./user.js";
 
 // Email & AI reply
 export type {
@@ -11,15 +11,15 @@ export type {
   ReplyResponse,
   Tone,
   ReplyLength,
-} from "./email";
+} from "./email.js";
 
 // Draft workflow
 export type {
   Draft,
   DraftStatus,
-} from "./draft";
+} from "./draft.js";
 
 // Approval workflow
 export type {
   Approval,
-} from "./approval";
+} from "./approval.js";
