@@ -1,0 +1,26 @@
+* text=auto eol=lf
+
+*.ts text
+*.tsx text
+*.js text
+*.jsx text
+*.json text
+*.md text
+*.css text
+*.scss text
+*.html text
+*.yml text
+*.yaml text
+*.env text
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.docx binary
+*.zip binary
+
+package-lock.json text eol=lf

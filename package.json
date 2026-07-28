@@ -1,0 +1,35 @@
+{
+  "name": "ai-email-reply-assistant",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AI-powered email reply assistant using React, Express, MongoDB, BullMQ, Redis and OpenAI.",
+  "license": "MIT",
+  "author": "Derek Barus",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/barusdrk/ai-email-reply-assistant"
+  },
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "install:all": "npm install --workspaces",
+    "dev": "concurrently \"npm run dev --workspace client\" \"npm run dev --workspace server\"",
+    "build": "npm run build --workspace client && npm run build --workspace server",
+    "start": "npm run start --workspace server",
+    "lint": "npm run lint --workspace client && npm run lint --workspace server",
+    "format": "prettier --write .",
+    "test": "npm run test --workspace client && npm run test --workspace server",
+    "clean": "rimraf node_modules client/node_modules server/node_modules client/dist server/dist"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.1",
+    "prettier": "^3.6.2",
+    "rimraf": "^6.0.1"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  }
+}
