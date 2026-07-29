@@ -1,43 +1,48 @@
 import { Router } from "express";
-import { authenticate } from "../middleware/auth.js";
+import { auth } from "../middleware/auth.js";
 import {
-  getDrafts,
-  createDraft,
-  updateDraft,
-  deleteDraft,
-  submitDraft,
-} from "../services/draftService.js";
+drafts,
+draft,
+createDraft,
+updateDraft,
+deleteDraft,
+}from "../services/drafts.js";
 
-const router = Router();
+const router=Router();
 
-router.get("/", authenticate, (req, res) => res.json(getDrafts((req as any).user.id)));
+router.use(auth);
 
-router.post("/", authenticate, (req, res) => {
-  res.status(201).json(
-    createDraft((req as any).user.id, req.body.emailId, req.body.reply)
-  );
+router.get("/",async(req:any,res)=>{
+res.json(
+await drafts(req.user.id)
+);
 });
 
-router.put("/:id", authenticate, (req, res) => {
-  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const draft = updateDraft(id, req.body.reply);
-  if (!draft) return res.status(404).json({ message: "Draft not found." });
-  res.json(draft);
+router.get("/:id",async(req,res)=>{
+res.json(
+await draft(req.params.id)
+);
 });
 
-router.delete("/:id", authenticate, (req, res) => {
-  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  if (!deleteDraft(id))
-    return res.status(404).json({ message: "Draft not found." });
-
-  res.sendStatus(204);
+router.post("/",async(req,res)=>{
+res.status(201).json(
+await createDraft(req.body)
+);
 });
 
-router.post("/:id/submit", authenticate, (req, res) => {
-  const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
-  const draft = submitDraft(id);
-  if (!draft) return res.status(404).json({ message: "Draft not found." });
-  res.json(draft);
+router.put("/:id",async(req,res)=>{
+res.json(
+await updateDraft(
+req.params.id,
+req.body
+)
+);
+});
+
+router.delete("/:id",async(req,res)=>{
+await deleteDraft(req.params.id);
+
+res.status(204).end();
 });
 
 export default router;

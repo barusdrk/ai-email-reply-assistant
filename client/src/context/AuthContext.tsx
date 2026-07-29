@@ -14,7 +14,7 @@ import {
   getCurrentUser,
 } from "../services/auth.js";
 
-import type { User } from "../types.js";
+import type { User } from "../types/user.js";
 
 interface AuthContextValue {
   user: User | null;

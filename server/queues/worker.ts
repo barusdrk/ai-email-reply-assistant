@@ -1,4 +1,7 @@
-import { Worker, type Job } from "bullmq";
+import {
+  Worker,
+  type Job,
+} from "bullmq";
 
 import redis from "../config/redis.js";
 import { logger } from "../config/logger.js";
@@ -8,29 +11,35 @@ interface DraftJob {
   userId: string;
   emailId: string;
   subject: string;
-  reply: string;
+  customer: string;
+  email: string;
+  tone?: "professional" | "friendly" | "formal" | "empathetic";
+  length?: "short" | "medium" | "long";
 }
 
 export const worker =
-new Worker<DraftJob>(
-  "drafts",
+  new Worker<DraftJob>(
+    "drafts",
 
-  async (
-    job: Job<DraftJob>
-  ) => {
-    await createDraft({
-      userId: job.data.userId,
-      emailId: job.data.emailId,
-      subject: job.data.subject,
-      reply: job.data.reply,
-    });
-  },
+    async (
+      job: Job<DraftJob>
+    ) => {
+      await createDraft({
+        userId: job.data.userId,
+        emailId: job.data.emailId,
+        subject: job.data.subject,
+        customer: job.data.customer,
+        email: job.data.email,
+        tone: job.data.tone,
+        length: job.data.length,
+      });
+    },
 
-  {
-    connection: redis,
-    concurrency: 5,
-  }
-);
+    {
+      connection: redis,
+      concurrency: 5,
+    }
+  );
 
 worker.on(
   "completed",

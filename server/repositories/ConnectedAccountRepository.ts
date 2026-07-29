@@ -1,81 +1,142 @@
-import ConnectedAccount from "../models/ConnectedAccount.js";
+import { Types } from "mongoose";
+import ConnectedAccount, {
+  type ConnectedAccountDocument,
+} from "../models/ConnectedAccount.js";
 
 class ConnectedAccountRepository {
-  findByUser(userId: string) {
-    return ConnectedAccount.find({
-      userId,
-      connected: true,
-    }).lean();
+  findAll() {
+    return ConnectedAccount
+      .find()
+      .sort({ createdAt: -1 });
   }
 
   findById(id: string) {
-    return ConnectedAccount.findById(id).lean();
+    return ConnectedAccount
+      .findById(id);
+  }
+
+  findByUser(
+    userId: string
+  ) {
+    return ConnectedAccount
+      .find({
+        userId:
+          new Types.ObjectId(userId),
+      })
+      .sort({ createdAt: -1 });
+  }
+
+  findByProvider(
+    userId: string,
+    provider:
+      | "gmail"
+      | "outlook"
+  ) {
+    return ConnectedAccount
+      .findOne({
+        userId:
+          new Types.ObjectId(userId),
+        provider,
+      });
+  }
+
+  findOne(
+    userId: string,
+    provider:
+      | "gmail"
+      | "outlook"
+  ) {
+    return ConnectedAccount
+      .findOne({
+        userId:
+          new Types.ObjectId(userId),
+        provider,
+      });
   }
 
   findConnected() {
-    return ConnectedAccount.find({
-      connected: true,
-    }).lean();
-  }
-
-  findByProviderUserId(
-    provider: "gmail" | "outlook",
-    providerUserId: string
-  ) {
-    return ConnectedAccount.findOne({
-      provider,
-      providerUserId,
-    }).lean();
-  }
-
-  create(data: any) {
-    return ConnectedAccount.create(data);
-  }
-
-
-  update(id: string, data: any) {
-    return ConnectedAccount.findByIdAndUpdate(
-      id,
-      data,
-      {
-        new: true,
-        lean: true,
-      }
-    );
-  }
-
-  disconnect(id: string) {
-    return ConnectedAccount.findByIdAndUpdate(
-      id,
-      {
-        connected: false,
-      },
-      {
-        new: true,
-        lean: true,
-      }
-    );
-  }
-
-  async clearExpiredTokens() {
-    const now = new Date();
-
-    return ConnectedAccount.updateMany(
-      {
-        expiryDate: { $lt: now },
+    return ConnectedAccount
+      .find({
         connected: true,
-      },
-      {
-        $set: {
-          syncStatus: "error",
-          lastError: "Access token expired",
-        },
-      }
-    );
+      })
+      .sort({
+        lastSyncAt: 1,
+      });
   }
 
-  delete(id: string) {
-    return ConnectedAccount.findByIdAndDelete(id);
+  create(
+    data: Partial<ConnectedAccountDocument>
+  ) {
+    return ConnectedAccount
+      .create(data);
+  }
+
+  upsert(
+    data: Partial<ConnectedAccountDocument>
+  ) {
+    return ConnectedAccount
+      .findOneAndUpdate(
+        {
+          userId: data.userId,
+          provider: data.provider,
+        },
+        {
+          $set: data,
+        },
+        {
+          new: true,
+          upsert: true,
+          runValidators: true,
+        }
+      );
+  }
+
+  update(
+    id: string,
+    data: Partial<ConnectedAccountDocument>
+  ) {
+    return ConnectedAccount
+      .findByIdAndUpdate(
+        id,
+        {
+          $set: data,
+        },
+        {
+          new: true,
+          runValidators: true,
+        }
+      );
+  }
+
+  delete(
+    id: string
+  ) {
+    return ConnectedAccount
+      .findByIdAndDelete(id);
+  }
+
+  remove(
+    userId: string,
+    provider:
+      | "gmail"
+      | "outlook"
+  ) {
+    return ConnectedAccount
+      .findOneAndDelete({
+        userId:
+          new Types.ObjectId(userId),
+        provider,
+      });
+  }
+
+  countByUser(
+    userId: string
+  ) {
+    return ConnectedAccount
+      .countDocuments({
+        userId:
+          new Types.ObjectId(userId),
+      });
   }
 }
 

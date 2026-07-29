@@ -1,36 +1,42 @@
-import Draft from "../models/Draft.js";
+import DraftModel,{
+type DraftDocument,
+}from "../models/Draft.js";
 
-class DraftRepository {
-  async findAll(userId: string) {
-    return Draft.find({ userId })
-      .sort({ updatedAt: -1 })
-      .lean();
-  }
+class DraftRepository{
 
-  async findById(id: string) {
-    return Draft.findById(id).lean();
-  }
-
-  async create(data: any) {
-    const draft = await Draft.create(data);
-    return draft.toObject();
-  }
-
-  async update(id: string, data: any) {
-    return Draft.findByIdAndUpdate(
-      id,
-      data,
-      {
-        new: true,
-        lean: true,
-      }
-    );
-  }
-
-  async delete(id: string) {
-    return Draft.findByIdAndDelete(id);
-  }
+findAll(userId:string){
+return DraftModel.find({userId}).sort({createdAt:-1});
 }
 
-export const draftRepository =
-  new DraftRepository();
+findById(id:string){
+return DraftModel.findById(id);
+}
+
+create(data:Partial<DraftDocument>){
+return DraftModel.create(data);
+}
+
+update(id:string,data:Partial<DraftDocument>){
+return DraftModel.findByIdAndUpdate(
+id,
+{$set:data},
+{new:true}
+);
+}
+
+delete(id:string){
+return DraftModel.findByIdAndDelete(id);
+}
+
+deleteOlderThan(date:Date){
+return DraftModel.deleteMany({
+createdAt:{
+$lt:date,
+},
+});
+}
+
+}
+
+export const draftRepository=
+new DraftRepository();

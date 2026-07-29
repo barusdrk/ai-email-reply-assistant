@@ -1,39 +1,33 @@
-import type {
-  Request,
-  Response,
-  NextFunction,
-} from "express";
-
-import { approvalRepository }
-from "../repositories/ApprovalRepository.js";
+import { Request, Response, NextFunction } from "express";
+import { approvalRepository } from "../repositories/ApprovalRepository.js";
 
 export async function requireApproval(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
+  const draftId =
+    (req.params.draftId ??
+      req.body.draftId) as string | undefined;
+
+  if (!draftId) {
+    return res.status(400).json({
+      message: "Draft ID is required",
+    });
+  }
+
   const approval =
-    await approvalRepository.findByDraft(
-      Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id
+    await approvalRepository.findPendingByDraft(
+      draftId
     );
 
   if (!approval) {
     return res.status(404).json({
-      success: false,
-      message:
-        "Approval not found",
+      message: "Pending approval not found",
     });
   }
 
-  if (approval.status !== "approved") {
-    return res.status(403).json({
-      success: false,
-      message:
-        "Draft has not been approved",
-    });
-  }
+  (req as any).approval = approval;
 
   next();
 }

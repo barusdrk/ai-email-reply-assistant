@@ -1,20 +1,15 @@
 export interface User {
   id: string;
-
   email: string;
-
   name?: string;
-
-  role:
+  role?:
     | "user"
-    | "reviewer"
     | "admin";
-
   createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AuthResponse {
-  token: string;
-
   user: User;
+  token: string;
 }

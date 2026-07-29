@@ -6,7 +6,11 @@ export async function generateDraftJob(
   prompt: string
 ) {
   const reply =
-    await generateReply(prompt);
+    await generateReply({
+      email: prompt,
+      tone: "professional",
+      length: "medium",
+    });
 
   await draftRepository.update(
     draftId,

@@ -1,80 +1,75 @@
 import {
   Schema,
   model,
+  Types,
   type InferSchemaType,
+  type HydratedDocument,
 } from "mongoose";
 
-const draftSchema=new Schema({
-
-  userId:{
-    type:Schema.Types.ObjectId,
-    ref:"User",
-    required:true,
-    index:true,
+const draftSchema = new Schema(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    emailId: {
+      type: Schema.Types.ObjectId,
+      ref: "Email",
+      required: true,
+    },
+    subject: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    customer: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    reply: {
+      type: String,
+      required: true,
+    },
+    tone: {
+      type: String,
+      enum: [
+        "professional",
+        "friendly",
+        "formal",
+        "empathetic",
+      ],
+      default: "professional",
+    },
+    status: {
+      type: String,
+      enum: [
+        "pending",
+        "approved",
+        "rejected",
+        "sent",
+      ],
+      default: "pending",
+    },
+    approvedAt: Date,
+    rejectionReason: String,
+    sentAt: Date,
   },
+  {
+    timestamps: true,
+  }
+);
 
-  emailId:{
-    type:Schema.Types.ObjectId,
-    ref:"Email",
-    required:true,
-    index:true,
-  },
-
-  subject:{
-    type:String,
-    required:true,
-    trim:true,
-  },
-
-  reply:{
-    type:String,
-    required:true,
-  },
-
-  tone:{
-    type:String,
-    default:"professional",
-  },
-
-  status:{
-    type:String,
-    enum:[
-      "pending",
-      "approved",
-      "rejected",
-      "sent",
-    ],
-    default:"pending",
-  },
-
-  approvedAt:Date,
-
-  rejectionReason:String,
-
-  sentAt:Date,
-
-},{
-  timestamps:true,
-});
-
-draftSchema.index({
-  userId:1,
-  createdAt:-1,
-});
-
-draftSchema.index({
-  status:1,
-});
-
-export type DraftDocument=
+export type Draft =
   InferSchemaType<
     typeof draftSchema
   >;
 
-export const DraftModel=
-  model(
-    "Draft",
-    draftSchema
-  );
+export type DraftDocument =
+  HydratedDocument<Draft>;
 
-export default DraftModel;
+export default model<Draft>(
+  "Draft",
+  draftSchema
+);

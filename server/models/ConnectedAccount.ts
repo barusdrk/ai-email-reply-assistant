@@ -4,60 +4,86 @@ import {
   type InferSchemaType,
 } from "mongoose";
 
-const connectedAccountSchema=new Schema({
+const connectedAccountSchema =
+  new Schema(
+    {
+      userId: {
+        type: Schema.Types.ObjectId,
+        ref: "User",
+        required: true,
+        index: true,
+      },
 
-  userId:{
-    type:Schema.Types.ObjectId,
-    ref:"User",
-    required:true,
-    index:true,
-  },
+      provider: {
+        type: String,
+        enum: ["gmail", "outlook"],
+        required: true,
+      },
 
-  provider:{
-    type:String,
-    enum:[
-      "gmail",
-      "outlook",
-    ],
-    required:true,
-  },
+      email: {
+        type: String,
+        required: true,
+        trim: true,
+      },
 
-  email:{
-    type:String,
-    required:true,
-  },
+      connected: {
+        type: Boolean,
+        default: true,
+      },
 
-  accessToken:String,
+      accessToken: {
+        type: String,
+        default: null,
+      },
 
-  refreshToken:String,
+      refreshToken: {
+        type: String,
+        default: null,
+      },
 
-  expiresAt:Date,
+      expiresAt: {
+        type: Date,
+      },
 
-  connected:{
-    type:Boolean,
-    default:true,
-  },
+      lastSyncAt: {
+        type: Date,
+      },
 
-},{
-  timestamps:true,
-});
+      syncStatus: {
+        type: String,
+        enum: [
+          "idle",
+          "syncing",
+          "error",
+        ],
+        default: "idle",
+      },
+
+      lastError: {
+        type: String,
+        default: "",
+      },
+    },
+    {
+      timestamps: true,
+    }
+  );
 
 connectedAccountSchema.index({
-  userId:1,
-  provider:1,
-},{
-  unique:true,
+  userId: 1,
+  provider: 1,
 });
 
-export type ConnectedAccountDocument=
+export type ConnectedAccountDocument =
   InferSchemaType<
     typeof connectedAccountSchema
   >;
 
-export const ConnectedAccountModel=
+const ConnectedAccountModel =
   model(
     "ConnectedAccount",
     connectedAccountSchema
   );
 
 export default ConnectedAccountModel;
+export { ConnectedAccountModel };

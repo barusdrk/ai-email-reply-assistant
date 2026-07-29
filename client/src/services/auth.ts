@@ -3,7 +3,7 @@ import API from "./api.js";
 import type {
   User,
   AuthResponse,
-} from "../types.js";
+} from "../types/user.js";
 
 export async function login(
   email: string,
@@ -57,7 +57,9 @@ export async function getCurrentUser(): Promise<User> {
 }
 
 export function getToken() {
-  return localStorage.getItem("token");
+  return localStorage.getItem(
+    "token"
+  );
 }
 
 export function isAuthenticated() {
@@ -65,5 +67,7 @@ export function isAuthenticated() {
 }
 
 export function logout() {
-  localStorage.removeItem("token");
+  localStorage.removeItem(
+    "token"
+  );
 }

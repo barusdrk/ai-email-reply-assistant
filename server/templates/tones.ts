@@ -1,73 +1,49 @@
 export const TONES = {
   professional: {
-    label: "Professional",
     instruction:
-      "Use a professional, respectful and business-like tone.",
+      "Use a professional and clear tone.",
   },
-
   friendly: {
-    label: "Friendly",
     instruction:
-      "Use a warm, conversational and approachable tone.",
+      "Use a warm and friendly tone.",
   },
-
-  empathetic: {
-    label: "Empathetic",
-    instruction:
-      "Show empathy, understanding and reassurance.",
-  },
-
-  concise: {
-    label: "Concise",
-    instruction:
-      "Be brief, direct and easy to read.",
-  },
-
   formal: {
-    label: "Formal",
     instruction:
-      "Use formal language suitable for business communication.",
+      "Use a formal business tone.",
   },
-
-  enthusiastic: {
-    label: "Enthusiastic",
+  empathetic: {
     instruction:
-      "Sound positive and encouraging while remaining professional.",
+      "Use an understanding and empathetic tone.",
   },
 } as const;
 
-export type Tone = keyof typeof TONES;
+export type Tone =
+  keyof typeof TONES;
 
 export const LENGTHS = {
   short: {
-    label: "Short",
     instruction:
-      "Keep the reply under 100 words.",
+      "Keep the reply concise.",
   },
-
   medium: {
-    label: "Medium",
     instruction:
-      "Keep the reply between 100 and 200 words.",
+      "Write a balanced length reply.",
   },
-
   long: {
-    label: "Long",
     instruction:
-      "Keep the reply between 200 and 350 words.",
+      "Write a detailed reply.",
   },
 } as const;
 
-export type ReplyLength = keyof typeof LENGTHS;
+export type Length =
+  keyof typeof LENGTHS;
 
-export const DEFAULT_TONE: Tone = "professional";
+export type ReplyLength =
+  Length;
 
-export const DEFAULT_LENGTH: ReplyLength = "medium";
+export const DEFAULT_TONE: Tone =
+  "professional";
 
-export const TONE_OPTIONS = Object.keys(
-  TONES
-) as Tone[];
-
-export const LENGTH_OPTIONS = Object.keys(
-  LENGTHS
-) as ReplyLength[];
+export const DEFAULT_LENGTH: Length =
+  "medium";
+  

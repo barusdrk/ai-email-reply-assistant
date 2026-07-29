@@ -1,17 +1,57 @@
-import { syncInbox } from "../services/email.js";
-import { processIncomingEmail } from "../services/pipeline.js";
+import ConnectedAccountModel,{
+  type ConnectedAccountDocument,
+} from "../models/ConnectedAccount.js";
 
-export async function emailSyncJob(
-  userId: string
-) {
-  const emails =
-    await syncInbox("gmail", userId);
+class ConnectedAccountRepository{
 
-  for (const email of emails) {
-    await processIncomingEmail({
-      id: email._id.toString(),
-      subject: email.subject,
-      body: email.body,
+  findAll(){
+    return ConnectedAccountModel.find({
+      connected:true,
     });
   }
+
+  findByUser(
+    userId:string
+  ){
+    return ConnectedAccountModel.find({
+      userId,
+    });
+  }
+
+  findById(
+    id:string
+  ){
+    return ConnectedAccountModel.findById(id);
+  }
+
+  create(
+    data:Partial<ConnectedAccountDocument>
+  ){
+    return ConnectedAccountModel.create(data);
+  }
+
+  update(
+    id:string,
+    data:Partial<ConnectedAccountDocument>
+  ){
+    return ConnectedAccountModel.findByIdAndUpdate(
+      id,
+      {
+        $set:data,
+      },
+      {
+        new:true,
+      }
+    );
+  }
+
+  delete(
+    id:string
+  ){
+    return ConnectedAccountModel.findByIdAndDelete(id);
+  }
+
 }
+
+export const connectedAccountRepository=
+  new ConnectedAccountRepository();

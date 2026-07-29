@@ -1,3 +1,4 @@
+import { Types } from "mongoose";
 import { approvalRepository } from "../repositories/ApprovalRepository.js";
 import { draftRepository } from "../repositories/DraftRepository.js";
 import { notify } from "./notification.js";
@@ -19,10 +20,10 @@ export async function requestApproval(
   draftId:string,
   reviewerId:string
 ){
-  const approval=
+  const approval =
     await approvalRepository.create({
-      draftId,
-      reviewerId,
+      draftId: new Types.ObjectId(draftId),
+      reviewerId: new Types.ObjectId(reviewerId),
       status:"pending",
     });
 
@@ -47,7 +48,7 @@ export async function requestApproval(
 export async function approve(
   id:string
 ){
-  const approval=
+  const approval =
     await approvalRepository.update(
       id,
       {
@@ -82,7 +83,7 @@ export async function reject(
   id:string,
   comment?:string
 ){
-  const approval=
+  const approval =
     await approvalRepository.update(
       id,
       {
@@ -117,7 +118,7 @@ export async function reject(
 export async function deleteApproval(
   id:string
 ){
-  const approval=
+  const approval =
     await approvalRepository.findById(id);
 
   if(!approval){

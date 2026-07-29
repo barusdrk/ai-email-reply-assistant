@@ -1,97 +1,62 @@
-import {
-  Client,
-} from "@microsoft/microsoft-graph-client";
+import { Types } from "mongoose";
+import { connectedAccountRepository } from "../repositories/ConnectedAccountRepository.js";
+import { syncInbox } from "./email.js";
+import type { InboxEmail } from "./gmail.js";
 
-import {
-  ConfidentialClientApplication,
-} from "@azure/msal-node";
-
-import { outlookConfig } from "../config/outlook.js";
-
-const msal =
-new ConfidentialClientApplication(
-  outlookConfig
-);
-
-async function accessToken() {
-  const result =
-    await msal.acquireTokenByClientCredential(
-      {
-        scopes: [
-          "https://graph.microsoft.com/.default",
-        ],
-      }
-    );
-
-  if (!result?.accessToken) {
-    throw new Error(
-      "Unable to acquire Outlook token."
-    );
-  }
-
-  return result.accessToken;
-}
-
-async function graph() {
-  const token =
-    await accessToken();
-
-  return Client.init({
-    authProvider: {
-      getAccessToken: async () => token,
-    },
+export async function connectOutlook(
+  userId: string
+) {
+  await connectedAccountRepository.upsert({
+    userId:
+      new Types.ObjectId(userId),
+    provider: "outlook",
+    connected: true,
   });
+
+  return {
+    connected: true,
+  };
 }
 
-export async function listEmails() {
-  const client =
-    await graph();
-
-  const response =
-    await client
-      .api("/me/messages")
-      .top(25)
-      .orderby("receivedDateTime DESC")
-      .get();
-
-  return response.value ?? [];
-}
-
-export async function getEmail(
-  id: string
+export async function disconnectOutlook(
+  userId: string
 ) {
-  const client =
-    await graph();
+  await connectedAccountRepository.remove(
+    userId,
+    "outlook"
+  );
 
-  return client
-    .api(`/me/messages/${id}`)
-    .get();
+  return {
+    connected: false,
+  };
 }
 
-export async function sendEmail(
-  message: unknown
+export async function outlookStatus(
+  userId: string
 ) {
-  const client =
-    await graph();
+  const account =
+    await connectedAccountRepository.findOne(
+      userId,
+      "outlook"
+    );
 
-  return client
-    .api("/me/sendMail")
-    .post({
-      message,
-      saveToSentItems: true,
-    });
+  return {
+    connected:
+      !!account,
+  };
 }
 
-export async function replyEmail(
-  id: string,
-  comment: string
+export async function syncOutlook(
+  userId: string
 ) {
-  const client =
-    await graph();
+  return syncInbox(
+    "outlook",
+    userId
+  );
+}
 
-  return client
-    .api(`/me/messages/${id}/reply`)
-    .post({
-      comment,
-    });
+export async function listEmails(): Promise<
+  InboxEmail[]
+> {
+  return [];
 }

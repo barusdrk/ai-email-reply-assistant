@@ -1,28 +1,35 @@
+import { draftRepository } from "../repositories/DraftRepository.js";
 import { notificationRepository } from "../repositories/NotificationRepository.js";
-import { auditLogRepository } from "../repositories/AuditLogRepository.js";
-import { connectedAccountRepository } from "../repositories/ConnectedAccountRepository.js";
 
-const DAYS = 30;
+export async function cleanupJob(){
 
-export async function cleanupJob() {
-  const cutoff =
-    new Date(
-      Date.now() -
-      DAYS * 24 * 60 * 60 * 1000
-    );
+const cutoff=new Date();
 
-  await notificationRepository.deleteOlderThan(
-    cutoff
-  );
+cutoff.setDate(
+cutoff.getDate()-30
+);
 
-  await auditLogRepository.deleteOlderThan(
-    cutoff
-  );
+const[
+draftsDeleted,
+notificationsDeleted,
+]=await Promise.all([
 
-  await connectedAccountRepository.clearExpiredTokens();
+draftRepository.deleteOlderThan(
+cutoff
+),
 
-  console.log(
-    "Cleanup completed",
-    cutoff.toISOString()
-  );
+notificationRepository.deleteOlderThan(
+cutoff
+),
+
+]);
+
+return{
+success:true,
+deletedDrafts:
+draftsDeleted.deletedCount??0,
+deletedNotifications:
+notificationsDeleted.deletedCount??0,
+};
+
 }

@@ -1,24 +1,36 @@
 import { emailRepository } from "../repositories/EmailRepository.js";
-import { buildEmailPrompt } from "../prompts/emailPrompt.js";
-import { queueDraft } from "../queues/queueDraft.js";
+import { createDraft } from "../services/drafts.js";
 
 export async function autoDraftJob() {
   const emails =
-    await emailRepository.findWithoutDraft();
+    await emailRepository.findAllWithoutDraft();
 
   for (const email of emails) {
-    const prompt =
-      buildEmailPrompt({
-        email: email.body,
-        tone: "professional",
-        length: "medium",
-      });
+    if (!email.userId) {
+      continue;
+    }
 
-    if (!email.draftId) continue;
+    await createDraft({
+      userId:
+        email.userId.toString(),
 
-    await queueDraft({
-      draftId: email.draftId.toString(),
-      prompt,
+      emailId:
+        email._id.toString(),
+
+      subject:
+        email.subject ?? "(No subject)",
+
+      customer:
+        email.from ?? "Unknown sender",
+
+      email:
+        email.body ?? "",
+
+      tone:
+        "professional",
+
+      length:
+        "medium",
     });
   }
 }

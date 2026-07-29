@@ -1,5 +1,4 @@
-import {
-  EmailModel,
+import EmailModel,{
   type EmailDocument,
 } from "../models/Email.js";
 
@@ -7,16 +6,21 @@ class EmailRepository {
 
   findAll(userId:string){
     return EmailModel
-      .find({
-        userId,
-      })
-      .sort({
-        receivedAt:-1,
-      });
+      .find({userId})
+      .sort({receivedAt:-1});
   }
 
   findById(id:string){
     return EmailModel.findById(id);
+  }
+
+  findAllWithoutDraft(){
+    return EmailModel.find({
+      $or:[
+        {draftId:null},
+        {draftId:{$exists:false}},
+      ],
+    });
   }
 
   create(
@@ -26,20 +30,15 @@ class EmailRepository {
   }
 
   upsert(
+    messageId:string,
     data:Partial<EmailDocument>
   ){
     return EmailModel.findOneAndUpdate(
-      {
-        userId:data.userId,
-        messageId:data.messageId,
-      },
-      {
-        $set:data,
-      },
+      {messageId},
+      {$set:data},
       {
         new:true,
         upsert:true,
-        setDefaultsOnInsert:true,
       }
     );
   }
@@ -50,12 +49,8 @@ class EmailRepository {
   ){
     return EmailModel.findByIdAndUpdate(
       id,
-      {
-        $set:data,
-      },
-      {
-        new:true,
-      }
+      {$set:data},
+      {new:true}
     );
   }
 
@@ -63,22 +58,7 @@ class EmailRepository {
     return EmailModel.findByIdAndDelete(id);
   }
 
-  findWithoutDraft(){
-    return EmailModel.find({
-      $or:[
-        {
-          draftId:null,
-        },
-        {
-          draftId:{
-            $exists:false,
-          },
-        },
-      ],
-    });
-  }
-
 }
 
-export const emailRepository=
+export const emailRepository =
   new EmailRepository();

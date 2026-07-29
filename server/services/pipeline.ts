@@ -1,53 +1,64 @@
-import { classifyEmail, generateReply, summarizeEmail } from "./openai.js";
-import { calculatePriority } from "./priority.js";
+import { Types } from "mongoose";
+import {
+  generateReply,
+  summarizeEmail,
+  classifyEmail,
+} from "./openai.js";
 import { draftRepository } from "../repositories/DraftRepository.js";
+import { emailRepository } from "../repositories/EmailRepository.js";
 
-export async function processIncomingEmail(
-  email: {
-    id: string;
-    subject: string;
-    body: string;
-  }
+export async function processEmail(
+  emailId: string
 ) {
-  const summary =
-    await summarizeEmail(email.body);
-
-  const category =
-    await classifyEmail(email.body);
-
-  const priority =
-    calculatePriority(
-      email.subject,
-      email.body
+  const email =
+    await emailRepository.findById(
+      emailId
     );
 
-  const prompt = `
-Category: ${category}
+  if (!email) {
+    return null;
+  }
 
-Priority: ${priority}
+  const summary =
+    await summarizeEmail(
+      email.body ?? ""
+    );
 
-Summary:
-${summary}
-
-Customer Email:
-${email.body}
-`;
+  const category =
+    await classifyEmail(
+      email.body ?? ""
+    );
 
   const reply =
-    await generateReply(prompt);
+    await generateReply({
+      email:
+        email.body ?? "",
+      tone: "professional",
+      length: "medium",
+    });
 
-  await draftRepository.create({
-    emailId: email.id,
-    reply,
-    tone: "professional",
-    length: "medium",
-    status: "draft",
-  });
+  const draft =
+    await draftRepository.create({
+      userId:
+        email.userId,
+      emailId:
+        new Types.ObjectId(
+          emailId
+        ),
+      subject:
+        email.subject,
+      customer:
+        email.from,
+      reply,
+      tone:
+        "professional",
+      status:
+        "pending",
+    });
 
   return {
+    draft,
     summary,
     category,
-    priority,
-    reply,
   };
 }

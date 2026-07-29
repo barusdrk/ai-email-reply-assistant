@@ -1,9 +1,10 @@
 export type Tone =
   | "professional"
   | "friendly"
-  | "empathetic"
   | "formal"
-  | "concise";
+  | "empathetic"
+  | "concise"
+  | "enthusiastic";
 
 export type ReplyLength =
   | "short"
@@ -12,34 +13,25 @@ export type ReplyLength =
 
 export interface Email {
   id: string;
-
-  from: string;
-
-  to?: string;
-
+  userId: string;
+  provider:
+    | "gmail"
+    | "outlook";
+  messageId: string;
+  threadId?: string;
   subject: string;
-
-  body: string;
-
+  customer: string;
   preview?: string;
-
-  receivedAt: string;
-
-  unread: boolean;
-
-  labels?: string[];
-
-  attachments?: number;
+  body?: string;
+  unread?: boolean;
+  receivedAt?: string;
 }
 
 export interface ReplyRequest {
   email: string;
-
-  tone: Tone;
-
-  length: ReplyLength;
-
-  signature: string;
+  tone?: Tone;
+  length?: ReplyLength;
+  signature?: string;
 }
 
 export interface ReplyResponse {

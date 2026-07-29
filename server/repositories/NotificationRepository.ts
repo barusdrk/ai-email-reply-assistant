@@ -1,67 +1,58 @@
-import {
-  NotificationModel,
-  type NotificationDocument,
-} from "../models/Notification.js";
+import NotificationModel,{
+type NotificationDocument,
+}from "../models/Notification.js";
 
-class NotificationRepository {
+class NotificationRepository{
 
-  findByUser(
-    userId:string
-  ){
-    return NotificationModel
-      .find({
-        userId,
-      })
-      .sort({
-        createdAt:-1,
-      });
-  }
+findByUser(userId:string){
+return NotificationModel
+.find({userId})
+.sort({createdAt:-1});
+}
 
-  findById(id:string){
-    return NotificationModel.findById(id);
-  }
+findById(id:string){
+return NotificationModel.findById(id);
+}
 
-  create(
-    data:Partial<NotificationDocument>
-  ){
-    return NotificationModel.create(data);
-  }
+create(data:Partial<NotificationDocument>){
+return NotificationModel.create(data);
+}
 
-  markRead(id:string){
-    return NotificationModel.findByIdAndUpdate(
-      id,
-      {
-        $set:{
-          read:true,
-        },
-      },
-      {
-        new:true,
-      }
-    );
-  }
+markRead(id:string){
+return NotificationModel.findByIdAndUpdate(
+id,
+{$set:{read:true}},
+{new:true}
+);
+}
 
-  markAllRead(
-    userId:string
-  ){
-    return NotificationModel.updateMany(
-      {
-        userId,
-        read:false,
-      },
-      {
-        $set:{
-          read:true,
-        },
-      }
-    );
-  }
+markAllRead(userId:string){
+return NotificationModel.updateMany(
+{
+userId,
+read:false,
+},
+{
+$set:{
+read:true,
+},
+}
+);
+}
 
-  delete(id:string){
-    return NotificationModel.findByIdAndDelete(id);
-  }
+delete(id:string){
+return NotificationModel.findByIdAndDelete(id);
+}
+
+deleteOlderThan(date:Date){
+return NotificationModel.deleteMany({
+createdAt:{
+$lt:date,
+},
+});
+}
 
 }
 
 export const notificationRepository=
-  new NotificationRepository();
+new NotificationRepository();
