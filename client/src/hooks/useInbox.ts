@@ -5,7 +5,7 @@ import {
 } from "react";
 
 import { getInbox, getEmail, generateReply } from "../services/email.js";
-import type { Email, ReplyRequest } from "../types.js";
+import type { Email, ReplyRequest } from "../types/index.js";
 
 export function useInbox() {
   const [emails, setEmails] =

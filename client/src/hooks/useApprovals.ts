@@ -4,7 +4,7 @@ import {
   useState,
 } from "react";
 
-import type { Draft } from "../types.js";
+import type { Draft } from "../types/index.js";
 
 import {
   getDrafts,
