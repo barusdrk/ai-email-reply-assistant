@@ -1,71 +1,71 @@
-import type { Server } from "socket.io";
+import {
+  io,
+  type Socket,
+} from "socket.io-client";
 
-let io: Server | null = null;
+let socket: Socket | null =
+  null;
 
-export function initializeWebSocket(
-  socketServer: Server
+export function connectWebSocket(
+  token?: string
 ) {
-  io = socketServer;
+  if (socket) {
+    return socket;
+  }
 
-  io.on("connection", (socket) => {
-    console.log(
-      "Client connected:",
-      socket.id
-    );
+  socket = io(
+    import.meta.env.VITE_API_URL ??
+      "http://localhost:3001",
+    {
+      path: "/socket.io",
+      transports: [
+        "websocket",
+      ],
+      auth: {
+        token,
+      },
+    }
+  );
 
-    socket.on(
-      "disconnect",
-      () => {
-        console.log(
-          "Client disconnected:",
-          socket.id
-        );
-      }
-    );
-  });
+  socket.on(
+    "connect",
+    () => {
+      console.log(
+        "WebSocket connected:",
+        socket?.id
+      );
+    }
+  );
+
+  socket.on(
+    "disconnect",
+    reason => {
+      console.log(
+        "WebSocket disconnected:",
+        reason
+      );
+    }
+  );
+
+  socket.on(
+    "connect_error",
+    error => {
+      console.error(
+        "WebSocket error:",
+        error.message
+      );
+    }
+  );
+
+  return socket;
 }
 
-export function notifyDraftCreated(
-  draft: unknown
-) {
-  io?.emit(
-    "draft-created",
-    draft
-  );
+export function getSocket() {
+  return socket;
 }
 
-export function notifyDraftUpdated(
-  draft: unknown
-) {
-  io?.emit(
-    "draft-updated",
-    draft
-  );
-}
+export function disconnectWebSocket() {
+  socket?.disconnect();
 
-export function notifyApproval(
-  draft: unknown
-) {
-  io?.emit(
-    "draft-approved",
-    draft
-  );
-}
-
-export function notifyRejection(
-  draft: unknown
-) {
-  io?.emit(
-    "draft-rejected",
-    draft
-  );
-}
-
-export function notifySent(
-  draft: unknown
-) {
-  io?.emit(
-    "email-sent",
-    draft
-  );
+  socket = null;
 }
