@@ -5,14 +5,14 @@ import { env } from "../config/env.js";
 export const stripe =
   env.STRIPE_SECRET_KEY
     ? new Stripe(
-        env.STRIPE_SECRET_KEY
+        env.STRIPE_SECRET_KEY,
       )
     : null;
 
 export function requireStripe() {
   if (!stripe) {
     throw new Error(
-      "Stripe is not configured. Set STRIPE_SECRET_KEY."
+      "Stripe billing is disabled."
     );
   }
 
@@ -20,5 +20,5 @@ export function requireStripe() {
 }
 
 export function isStripeEnabled() {
-  return stripe !== null;
+  return Boolean(stripe);
 }

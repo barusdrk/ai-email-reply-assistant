@@ -1,10 +1,7 @@
 import "dotenv/config";
 
-function required(
-  name: string
-) {
-  const value =
-    process.env[name];
+function required(name:string) {
+  const value = process.env[name];
 
   if (!value) {
     throw new Error(
@@ -37,6 +34,9 @@ export const env = {
 
   JWT_SECRET:
     required("JWT_SECRET"),
+
+  USE_MOCK_AI:
+    process.env.USE_MOCK_AI === "true",
 
   OPENAI_API_KEY:
     process.env.OPENAI_API_KEY,

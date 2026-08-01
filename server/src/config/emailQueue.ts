@@ -2,33 +2,41 @@ import { Queue } from "bullmq";
 import redis from "./redis.js";
 
 export const emailQueue =
-  new Queue(
-    "email",
-    {
-      connection: redis,
-    }
-  );
+  redis
+    ? new Queue(
+        "email",
+        {
+          connection: redis,
+        }
+      )
+    : null;
 
 export const draftQueue =
-  new Queue(
-    "draft",
-    {
-      connection: redis,
-    }
-  );
+  redis
+    ? new Queue(
+        "draft",
+        {
+          connection: redis,
+        }
+      )
+    : null;
 
 export const syncQueue =
-  new Queue(
-    "sync",
-    {
-      connection: redis,
-    }
-  );
+  redis
+    ? new Queue(
+        "sync",
+        {
+          connection: redis,
+        }
+      )
+    : null;
 
 export const notificationQueue =
-  new Queue(
-    "notification",
-    {
-      connection: redis,
-    }
-  );
+  redis
+    ? new Queue(
+        "notification",
+        {
+          connection: redis,
+        }
+      )
+    : null;

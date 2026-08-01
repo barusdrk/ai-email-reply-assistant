@@ -1,24 +1,21 @@
-import Stripe from "stripe";
+import { requireStripe } from "./stripe.js";
 
 import { env } from "../config/env.js";
-import { requireStripe } from "./stripe.js";
 
 import {
   subscriptionRepository,
 } from "../repositories/SubscriptionRepository.js";
 
 export async function handleStripeWebhook(
-  payload: Buffer,
-  signature: string
+  payload:Buffer,
+  signature:string
 ) {
   const stripe =
     requireStripe();
 
-  if (
-    !env.STRIPE_WEBHOOK_SECRET
-  ) {
+  if (!env.STRIPE_WEBHOOK_SECRET) {
     throw new Error(
-      "Missing STRIPE_WEBHOOK_SECRET."
+      "Stripe webhook disabled."
     );
   }
 
@@ -50,7 +47,6 @@ export async function handleStripeWebhook(
       break;
     }
 
-
     case "customer.subscription.deleted": {
       const subscription =
         event.data.object;
@@ -67,29 +63,7 @@ export async function handleStripeWebhook(
       break;
     }
 
-
     case "invoice.payment_failed": {
-      const invoice =
-        event.data.object;
-
-      const subscriptionId =
-        invoice.parent
-          ?.subscription_details
-          ?.subscription;
-
-      if (
-        typeof subscriptionId === "string"
-      ) {
-        await subscriptionRepository
-          .updateBySubscriptionId(
-            subscriptionId,
-            {
-              status:
-                "expired",
-            }
-          );
-      }
-
       break;
     }
   }

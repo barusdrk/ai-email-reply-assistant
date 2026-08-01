@@ -2,8 +2,8 @@ import { requireStripe } from "./stripe.js";
 import { env } from "../config/env.js";
 
 export async function createCheckoutSession(
-  plan: "starter" | "pro",
-  customerId?: string
+  plan:"starter" | "pro",
+  customerId?:string
 ) {
   const stripe =
     requireStripe();
@@ -15,7 +15,7 @@ export async function createCheckoutSession(
 
   if (!priceId) {
     throw new Error(
-      "Stripe price ID is not configured."
+      "Stripe billing is disabled."
     );
   }
 
@@ -26,7 +26,7 @@ export async function createCheckoutSession(
     customer:
       customerId,
 
-    line_items: [
+    line_items:[
       {
         price:
           priceId,
