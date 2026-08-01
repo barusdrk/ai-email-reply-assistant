@@ -4,30 +4,39 @@ import {
   useState,
 } from "react";
 
-import type { Draft } from "../types/index.js";
+import type {
+  Draft,
+} from "../types/index.js";
 
 import {
   getDrafts,
-  saveDraft,
+  createDraft,
   updateDraft,
   deleteDraft,
   submitForApproval,
-} from "../services/email.js";
+} from "../services/drafts.js";
 
 export function useDrafts() {
-  const [drafts, setDrafts] =
-    useState<Draft[]>([]);
+  const [
+    drafts,
+    setDrafts,
+  ] = useState<Draft[]>([]);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   const loadDrafts =
     useCallback(async () => {
       try {
         setLoading(true);
+        setError("");
 
         const data =
           await getDrafts();
@@ -49,20 +58,25 @@ export function useDrafts() {
   }, [loadDrafts]);
 
   async function addDraft(
-    emailId: string,
-    reply: string
+    emailId:string,
+    reply:string
   ) {
-    await saveDraft(
+    await createDraft({
       emailId,
-      reply
-    );
+      customer:"",
+      subject:"",
+      reply,
+      status:"draft",
+      createdAt:
+        new Date().toISOString(),
+    });
 
     await loadDrafts();
   }
 
   async function editDraft(
-    draftId: string,
-    reply: string
+    draftId:string,
+    reply:string
   ) {
     await updateDraft(
       draftId,
@@ -73,7 +87,7 @@ export function useDrafts() {
   }
 
   async function removeDraft(
-    draftId: string
+    draftId:string
   ) {
     await deleteDraft(
       draftId
@@ -83,7 +97,7 @@ export function useDrafts() {
   }
 
   async function submit(
-    draftId: string
+    draftId:string
   ) {
     await submitForApproval(
       draftId
@@ -97,7 +111,8 @@ export function useDrafts() {
     loading,
     error,
 
-    refresh: loadDrafts,
+    refresh:
+      loadDrafts,
 
     addDraft,
 

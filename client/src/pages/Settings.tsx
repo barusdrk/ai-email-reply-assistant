@@ -5,7 +5,7 @@ import OutlookConnectButton from "../components/OutlookConnectButton.js";
 import SignatureInput from "../components/SignatureInput.js";
 
 import { useTheme } from "../context/ThemeContext.js";
-import { connectGmail, connectOutlook } from "../services/email.js";
+import { connectGmail, connectOutlook } from "../services/accounts.js";
 
 export default function Settings() {
   const { theme } = useTheme();

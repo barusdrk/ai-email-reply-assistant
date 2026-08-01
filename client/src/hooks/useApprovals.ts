@@ -4,28 +4,37 @@ import {
   useState,
 } from "react";
 
-import type { Draft } from "../types/index.js";
+import type {
+  Draft,
+} from "../types/index.js";
 
 import {
   getDrafts,
   approveDraft,
   rejectDraft,
-} from "../services/email.js";
+} from "../services/drafts.js";
 
 export function useApprovals() {
-  const [approvals, setApprovals] =
-    useState<Draft[]>([]);
+  const [
+    approvals,
+    setApprovals,
+  ] = useState<Draft[]>([]);
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading,
+  ] = useState(false);
 
-  const [error, setError] =
-    useState("");
+  const [
+    error,
+    setError,
+  ] = useState("");
 
   const loadApprovals =
     useCallback(async () => {
       try {
         setLoading(true);
+        setError("");
 
         const drafts =
           await getDrafts();
@@ -37,10 +46,10 @@ export function useApprovals() {
               "pending"
           )
         );
-      } catch (err) {
+      } catch (error) {
         setError(
-          err instanceof Error
-            ? err.message
+          error instanceof Error
+            ? error.message
             : "Unable to load approvals."
         );
       } finally {
@@ -53,7 +62,7 @@ export function useApprovals() {
   }, [loadApprovals]);
 
   async function approve(
-    id: string
+    id:string
   ) {
     await approveDraft(id);
 
@@ -61,7 +70,7 @@ export function useApprovals() {
   }
 
   async function reject(
-    id: string
+    id:string
   ) {
     await rejectDraft(id);
 
@@ -70,15 +79,11 @@ export function useApprovals() {
 
   return {
     approvals,
-
     loading,
-
     error,
-
     approve,
-
     reject,
-
-    refresh: loadApprovals,
+    refresh:
+      loadApprovals,
   };
 }

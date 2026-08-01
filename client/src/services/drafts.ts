@@ -1,68 +1,93 @@
-export type DraftStatus =
-  | "draft"
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "sent";
+import api from "./api.js";
 
-export interface Draft {
-  id: string;
-  emailId: string;
-  customer: string;
-  subject: string;
-  reply: string;
-  createdAt: string;
-  status: DraftStatus;
+import type {
+  Draft,
+} from "../types/draft.js";
+
+export async function getDrafts() {
+  const response =
+    await api.get<Draft[]>(
+      "/drafts"
+    );
+
+  return response.data;
 }
 
-const drafts: Draft[] = [];
-
-export function getDrafts(): Draft[] {
-  return drafts;
-}
-
-export function getDraft(id: string) {
-  return drafts.find((draft) => draft.id === id);
-}
-
-export function createDraft(
-  draft: Omit<Draft, "id">
-): Draft {
-  const newDraft: Draft = {
-    id: crypto.randomUUID(),
-    ...draft,
-  };
-
-  drafts.push(newDraft);
-
-  return newDraft;
-}
-
-export function updateDraft(
-  id: string,
-  reply: string
+export async function getDraft(
+  id:string
 ) {
-  const draft = getDraft(id);
+  const response =
+    await api.get<Draft>(
+      `/drafts/${id}`
+    );
 
-  if (!draft) {
-    return undefined;
-  }
-
-  draft.reply = reply;
-
-  return draft;
+  return response.data;
 }
 
-export function deleteDraft(id: string) {
-  const index = drafts.findIndex(
-    (draft) => draft.id === id
+export async function createDraft(
+  draft:Omit<Draft, "id">
+) {
+  const response =
+    await api.post<Draft>(
+      "/drafts",
+      draft
+    );
+
+  return response.data;
+}
+
+export async function updateDraft(
+  id:string,
+  reply:string
+) {
+  const response =
+    await api.put<Draft>(
+      `/drafts/${id}`,
+      {
+        reply,
+      }
+    );
+
+  return response.data;
+}
+
+export async function deleteDraft(
+  id:string
+) {
+  await api.delete(
+    `/drafts/${id}`
   );
+}
 
-  if (index === -1) {
-    return false;
-  }
+export async function submitForApproval(
+  id:string
+) {
+  const response =
+    await api.post<Draft>(
+      `/drafts/${id}/submit`
+    );
 
-  drafts.splice(index, 1);
+  return response.data;
+}
 
-  return true;
+export async function approveDraft(
+  id:string
+) {
+  const response =
+    await api.post<Draft>(
+      `/drafts/${id}/approve`
+    );
+
+  return response.data;
+}
+
+export async function rejectDraft(
+  id:string
+) {
+  const response =
+    await api.post<Draft>(
+      `/drafts/${id}/reject`
+    );
+
+  return response.data;
 }

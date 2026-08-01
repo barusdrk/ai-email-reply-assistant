@@ -1,118 +1,181 @@
 # AI Email Reply Assistant
 
-An AI-powered email assistant built with React, Express, TypeScript, MongoDB, BullMQ, Redis, Socket.IO, and the OpenAI API.
-
-The application connects to Gmail and Outlook, synchronizes inboxes, generates AI-powered replies, supports approval workflows, and sends emails after approval.
+AI Email Reply Assistant is a full-stack AI SaaS application that generates professional customer email replies using either OpenAI or Google Gemini. Users can connect email providers, manage drafts, submit replies for approval, and upgrade subscription plans.
 
 ---
 
-## Features
+# Features
 
-### Authentication
+## AI
 
+- AI-generated customer email replies
+- OpenAI support
+- Google Gemini support
+- Custom tone selection
+- Reply length selection
+- Email summarization
+- Email classification
+- User-provided API keys
+- Switch AI provider
+
+---
+
+## Authentication
+
+- Register
+- Login
 - JWT authentication
-- User registration
-- User login
-- Protected routes
+- Password hashing
+- User profile
+- Logout
 
-### Email
+---
+
+## Email
 
 - Gmail OAuth
 - Outlook OAuth
-- Inbox synchronization
-- Read emails
-- Search emails
-
-### AI
-
-- GPT-5 reply generation
-- Multiple reply tones
-- Multiple reply lengths
-- Custom signatures
-- Prompt templates
-
-### Drafts
-
-- AI draft generation
-- Draft editing
-- Save drafts
-- Delete drafts
-
-### Approval Workflow
-
-- Request approval
-- Approve drafts
-- Reject drafts
-- Reviewer comments
-
-### Notifications
-
-- Socket.IO
-- Real-time updates
-- Inbox synchronization
-- Approval notifications
-
-### Background Jobs
-
-- BullMQ
-- Redis
-- Scheduled inbox synchronization
-- Automatic draft generation
-- Cleanup jobs
-
-### Export
-
-- PDF
-- Microsoft Word (.docx)
+- Inbox
+- Read email
+- Sent emails
+- Drafts
+- Reply generation
 
 ---
 
-## Tech Stack
+## Draft Workflow
 
-### Frontend
+- Save draft
+- Edit draft
+- Delete draft
+- Submit for approval
+- Approve draft
+- Reject draft
+
+---
+
+## Billing
+
+- Free plan
+- Starter plan
+- Pro plan
+- Subscription management
+- Plan limits
+- Bring Your Own API Key support
+
+---
+
+## Settings
+
+- AI provider selection
+- OpenAI API Key
+- Gemini API Key
+- Default tone
+- Default reply length
+- Temperature
+- Signature
+
+---
+
+## Realtime
+
+- Socket.IO
+- Live draft updates
+- Approval notifications
+
+---
+
+## UI
 
 - React
 - TypeScript
 - Vite
 - Tailwind CSS
+- Dark mode
+- Responsive layout
+
+---
+
+# Tech Stack
+
+## Frontend
+
+- React 19
+- TypeScript
+- Vite
 - Axios
 - React Router
+- Tailwind CSS
+- Socket.IO Client
 
-### Backend
+---
+
+## Backend
 
 - Node.js
 - Express
 - TypeScript
 - MongoDB
 - Mongoose
-- Redis
-- BullMQ
+- JWT
 - Socket.IO
-
-### AI
-
-- OpenAI API
-- GPT-5
+- BullMQ
+- Redis
 
 ---
 
-## Project Structure
+## AI
+
+- OpenAI Responses API
+- Google Gemini API
+
+---
+
+# Project Structure
 
 ```
-client/
-server/
-README.md
-LICENSE
+ai-email-reply-assistant/
+│
+├── client/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── contexts/
+│   │   ├── hooks/
+│   │   ├── pages/
+│   │   ├── services/
+│   │   ├── types/
+│   │   └── App.tsx
+│   │
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── server/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── middleware/
+│   │   ├── models/
+│   │   ├── repositories/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── templates/
+│   │   └── index.ts
+│   │
+│   ├── .env.example
+│   └── package.json
+│
+└── README.md
 ```
 
 ---
 
-## Installation
+# Installation
 
 Clone the repository.
 
 ```bash
-git clone https://github.com/barusdrk/ai-email-reply-assistant
+git clone https://github.com/YOUR_USERNAME/ai-email-reply-assistant.git
+
+cd ai-email-reply-assistant
 ```
 
 Install dependencies.
@@ -121,58 +184,47 @@ Install dependencies.
 npm install
 ```
 
-Install client.
+Install frontend dependencies.
 
 ```bash
 cd client
+
 npm install
 ```
 
-Install server.
+Install backend dependencies.
 
 ```bash
 cd ../server
+
 npm install
 ```
 
 ---
 
-## Environment Variables
+# Environment Variables
 
-Create a `.env` file inside the `server` directory.
+Create:
 
-```env
-PORT=3001
+```
+server/.env
+```
 
-CLIENT_URL=http://localhost:5173
+using:
 
-MONGODB_URI=
-
-JWT_SECRET=
-
-OPENAI_API_KEY=
-
-OPENAI_MODEL=gpt-5
-
-REDIS_URL=
-
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=
-
-MICROSOFT_CLIENT_ID=
-MICROSOFT_CLIENT_SECRET=
-MICROSOFT_CALLBACK_URL=
+```
+server/.env.example
 ```
 
 ---
 
-## Running
+# Run Locally
 
 Backend
 
 ```bash
 cd server
+
 npm run dev
 ```
 
@@ -180,17 +232,31 @@ Frontend
 
 ```bash
 cd client
+
 npm run dev
+```
+
+Frontend:
+
+```
+http://localhost:5173
+```
+
+Backend:
+
+```
+http://localhost:3001
 ```
 
 ---
 
-## Build
+# Build
 
 Frontend
 
 ```bash
 cd client
+
 npm run build
 ```
 
@@ -198,85 +264,203 @@ Backend
 
 ```bash
 cd server
+
 npm run build
 ```
 
 ---
 
-## API
+# Production Deployment
 
-| Method | Endpoint | Description |
-|---------|----------|-------------|
-| POST | /api/auth/register | Register |
-| POST | /api/auth/login | Login |
-| GET | /api/users/me | Current user |
-| GET | /api/email | Inbox |
-| POST | /api/reply | Generate AI reply |
-| GET | /api/drafts | Drafts |
-| GET | /api/approval | Approvals |
+## Frontend
 
----
-
-## WebSocket Events
-
-### Server
-
-- notification
-- draft:ready
-- approval:update
-- inbox:sync
-
-### Client
-
-- draft:generate
-- draft:approve
-- inbox:sync
-
----
-
-## Documentation
-
-See:
-
-- `server/docs/API.md`
-- `server/docs/ARCHITECTURE.md`
-- `server/docs/DEPLOYMENT.md`
-- `server/docs/SECURITY.md`
-- `server/docs/TESTING.md`
-- `server/docs/PERFORMANCE.md`
-- `server/docs/TROUBLESHOOTING.md`
-- `server/docs/ROADMAP.md`
-- `server/docs/CHANGELOG.md`
-- `server/docs/CONTRIBUTING.md`
-
----
-
-## Deployment
-
-Frontend
+Deploy to:
 
 - Vercel
+- Netlify
 
-Backend
+Required environment variables:
+
+```
+VITE_API_URL
+```
+
+Example:
+
+```
+VITE_API_URL=https://your-api.onrender.com/api
+```
+
+---
+
+## Backend
+
+Deploy to:
 
 - Render
 - Railway
+- Fly.io
 
-Database
+Required environment variables include:
 
-- MongoDB Atlas
+```
+NODE_ENV
+PORT
+CLIENT_URL
+MONGODB_URI
+REDIS_URL
+JWT_SECRET
 
-Queue
+OPENAI_API_KEY
+OPENAI_MODEL
 
-- Redis
+GOOGLE_AI_API_KEY
+
+GOOGLE_CLIENT_ID
+GOOGLE_CLIENT_SECRET
+GOOGLE_CALLBACK_URL
+
+MICROSOFT_CLIENT_ID
+MICROSOFT_CLIENT_SECRET
+MICROSOFT_CALLBACK_URL
+
+ENCRYPTION_KEY
+```
 
 ---
 
-## License
+# API
 
-This project is licensed under the MIT License.
+## Authentication
 
-See the `LICENSE` file for details.
+```
+POST /api/auth/register
+```
+
+```
+POST /api/auth/login
+```
+
+```
+GET /api/auth/me
+```
+
+---
+
+## Reply
+
+```
+POST /api/reply
+```
+
+---
+
+## Emails
+
+```
+GET /api/emails
+```
+
+```
+GET /api/emails/:id
+```
+
+```
+POST /api/emails/send/:draftId
+```
+
+---
+
+## Drafts
+
+```
+GET /api/drafts
+```
+
+```
+POST /api/drafts
+```
+
+```
+PUT /api/drafts/:id
+```
+
+```
+DELETE /api/drafts/:id
+```
+
+---
+
+## Approvals
+
+```
+POST /api/drafts/:id/submit
+```
+
+```
+POST /api/drafts/:id/approve
+```
+
+```
+POST /api/drafts/:id/reject
+```
+
+---
+
+## Settings
+
+```
+GET /api/settings
+```
+
+```
+PUT /api/settings
+```
+
+---
+
+## Billing
+
+```
+GET /api/billing
+```
+
+```
+POST /api/billing/upgrade
+```
+
+---
+
+# Plans
+
+## Free
+
+- Bring your own OpenAI key
+- Bring your own Gemini key
+- Unlimited AI usage using your own keys
+
+---
+
+## Starter
+
+- Platform-managed API keys
+- Higher usage limits
+- Faster responses
+
+---
+
+## Pro
+
+- Unlimited platform AI
+- Priority processing
+- Premium support
+- Advanced analytics
+
+---
+
+# License
+
+MIT License
 
 ---
 

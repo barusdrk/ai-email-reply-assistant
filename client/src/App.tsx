@@ -1,23 +1,56 @@
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import { useState } from "react";
 
 import "./App.css";
 
 import EmailInput from "./components/EmailInput.js";
-import LengthSelector, {
-  type ReplyLength,
-} from "./components/LengthSelector.js";
-import LoadingSpinner from "./components/LoadingSpinner.js";
-import ReplyCard from "./components/ReplyCard.js";
-import SignatureInput from "./components/SignatureInput.js";
 import ToneSelector, {
   type Tone,
 } from "./components/ToneSelector.js";
+import LengthSelector, {
+  type ReplyLength,
+} from "./components/LengthSelector.js";
+import SignatureInput from "./components/SignatureInput.js";
+import ReplyCard from "./components/ReplyCard.js";
+import LoadingSpinner from "./components/LoadingSpinner.js";
 
-import { generateReply } from "./services/email.js";
-import { logout } from "./services/auth.js";
+import SettingsPage from "./pages/SettingsPage.js";
+import BillingPage from "./pages/BillingPage.js";
+
+import {
+  generateReply,
+} from "./services/email.js";
+
+import {
+  logout,
+} from "./services/auth.js";
 
 export default function App() {
-  const [email, setEmail] = useState("");
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route
+          path="/"
+          element={<Dashboard />}
+        />
+
+        <Route
+          path="/settings"
+          element={<SettingsPage />}
+        />
+
+        <Route
+          path="/billing"
+          element={<BillingPage />}
+        />
+      </Routes>
+    </BrowserRouter>
+  );
+}
+
+function Dashboard() {
+  const [email, setEmail] =
+    useState("");
 
   const [tone, setTone] =
     useState<Tone>("friendly");
@@ -31,10 +64,10 @@ export default function App() {
   const [reply, setReply] =
     useState("");
 
-  const [darkMode, setDarkMode] =
+  const [loading, setLoading] =
     useState(false);
 
-  const [loading, setLoading] =
+  const [darkMode, setDarkMode] =
     useState(false);
 
   const [error, setError] =
@@ -53,12 +86,13 @@ export default function App() {
     setReply("");
 
     try {
-      const result = await generateReply({
-        email,
-        tone,
-        length,
-        signature,
-      });
+      const result =
+        await generateReply({
+          email,
+          tone,
+          length,
+          signature,
+        });
 
       setReply(result.reply);
     } catch (error) {
@@ -74,7 +108,6 @@ export default function App() {
 
   function handleLogout() {
     logout();
-
     window.location.reload();
   }
 
@@ -86,78 +119,63 @@ export default function App() {
           : "min-h-screen bg-gray-100 text-gray-900"
       }
     >
-      <main className="mx-auto flex max-w-5xl flex-col gap-8 p-6">
+      <main className="mx-auto max-w-5xl p-6 space-y-8">
 
-        <header className="flex flex-col gap-4">
+        <header className="flex items-center justify-between">
 
-          <div className="flex items-center justify-between">
+          <div>
 
             <h1 className="text-3xl font-bold">
               AI Email Reply Assistant
             </h1>
 
-            <div className="flex gap-2">
-
-              <button
-                type="button"
-                onClick={() =>
-                  setDarkMode(
-                    (previous) =>
-                      !previous
-                  )
-                }
-                className="
-                rounded-lg
-                border
-                px-4
-                py-2
-                dark:border-gray-600
-                "
-              >
-                {darkMode
-                  ? "☀ Light"
-                  : "🌙 Dark"}
-              </button>
-
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="
-                rounded-lg
-                bg-red-600
-                px-4
-                py-2
-                text-white
-                hover:bg-red-700
-                "
-              >
-                Logout
-              </button>
-
-            </div>
+            <p className="text-gray-600 dark:text-gray-300">
+              Generate professional AI email replies.
+            </p>
 
           </div>
 
-          <p className="text-gray-600 dark:text-gray-300">
-            Generate professional customer email replies using AI.
-          </p>
+          <div className="flex gap-2">
+
+            <Link
+              to="/settings"
+              className="rounded-lg border px-4 py-2"
+            >
+              Settings
+            </Link>
+
+            <Link
+              to="/billing"
+              className="rounded-lg border px-4 py-2"
+            >
+              Billing
+            </Link>
+
+            <button
+              onClick={() =>
+                setDarkMode(v => !v)
+              }
+              className="rounded-lg border px-4 py-2"
+            >
+              {darkMode
+                ? "☀ Light"
+                : "🌙 Dark"}
+            </button>
+
+            <button
+              onClick={handleLogout}
+              className="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+            >
+              Logout
+            </button>
+
+          </div>
 
         </header>
 
+        <section className="rounded-lg border bg-white p-6 shadow dark:border-gray-700 dark:bg-gray-800">
 
-        <section
-          className="
-          rounded-lg
-          border
-          bg-white
-          p-6
-          shadow-md
-          dark:border-gray-700
-          dark:bg-gray-800
-          "
-        >
-
-          <div className="flex flex-col gap-6">
+          <div className="space-y-6">
 
             <EmailInput
               value={email}
@@ -165,13 +183,11 @@ export default function App() {
               disabled={loading}
             />
 
-
             <ToneSelector
               value={tone}
               onChange={setTone}
               disabled={loading}
             />
-
 
             <LengthSelector
               value={length}
@@ -179,46 +195,26 @@ export default function App() {
               disabled={loading}
             />
 
-
             <SignatureInput
               value={signature}
               onChange={setSignature}
               disabled={loading}
             />
 
-
             <button
-              type="button"
-              onClick={handleGenerateReply}
+              onClick={
+                handleGenerateReply
+              }
               disabled={loading}
-              className="
-              rounded-lg
-              bg-blue-600
-              px-6
-              py-3
-              font-semibold
-              text-white
-              hover:bg-blue-700
-              disabled:bg-blue-300
-              "
+              className="w-full rounded-lg bg-blue-600 px-6 py-3 font-semibold text-white hover:bg-blue-700 disabled:bg-blue-300"
             >
               {loading
                 ? "Generating..."
                 : "Generate Reply"}
             </button>
 
-
             {error && (
-              <p
-                className="
-                rounded-lg
-                bg-red-100
-                p-3
-                text-red-700
-                dark:bg-red-900
-                dark:text-red-300
-                "
-              >
+              <p className="rounded-lg bg-red-100 p-3 text-red-700 dark:bg-red-900 dark:text-red-300">
                 {error}
               </p>
             )}
@@ -226,7 +222,6 @@ export default function App() {
           </div>
 
         </section>
-
 
         {loading ? (
           <LoadingSpinner

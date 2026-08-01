@@ -1,33 +1,43 @@
 import API from "./api.js";
 
-import type {
-  Email,
-  ReplyRequest,
-  ReplyResponse,
-} from "../types/email.js";
+export type Tone =
+  | "professional"
+  | "friendly"
+  | "formal"
+  | "empathetic"
+  | "concise"
+  | "enthusiastic";
 
-import type {
-  Draft,
-} from "../types/draft.js";
+export type ReplyLength =
+  | "short"
+  | "medium"
+  | "long";
 
-export async function getInbox(): Promise<Email[]> {
-  const { data } =
-    await API.get<Email[]>(
-      "/emails"
-    );
-
-  return data;
+export interface Email {
+  id: string;
+  userId: string;
+  provider:
+    | "gmail"
+    | "outlook";
+  messageId: string;
+  threadId?: string;
+  subject: string;
+  customer: string;
+  preview?: string;
+  body?: string;
+  unread?: boolean;
+  receivedAt?: string;
 }
 
-export async function getEmail(
-  id: string
-): Promise<Email> {
-  const { data } =
-    await API.get<Email>(
-      `/emails/${id}`
-    );
+export interface ReplyRequest {
+  email: string;
+  tone?: Tone;
+  length?: ReplyLength;
+  signature?: string;
+}
 
-  return data;
+export interface ReplyResponse {
+  reply: string;
 }
 
 export async function generateReply(
@@ -42,119 +52,22 @@ export async function generateReply(
   return data;
 }
 
-export async function saveDraft(
-  emailId: string,
-  reply: string
-): Promise<Draft> {
+export async function getInbox() {
   const { data } =
-    await API.post<Draft>(
-      "/drafts",
-      {
-        emailId,
-        reply,
-      }
+    await API.get<Email[]>(
+      "/emails"
     );
 
   return data;
 }
 
-export async function updateDraft(
-  draftId: string,
-  reply: string
-): Promise<Draft> {
+export async function getEmail(
+  id: string
+) {
   const { data } =
-    await API.put<Draft>(
-      `/drafts/${draftId}`,
-      {
-        reply,
-      }
+    await API.get<Email>(
+      `/emails/${id}`
     );
 
   return data;
-}
-
-export async function deleteDraft(
-  draftId: string
-): Promise<void> {
-  await API.delete(
-    `/drafts/${draftId}`
-  );
-}
-
-export async function getDrafts(): Promise<Draft[]> {
-  const { data } =
-    await API.get<Draft[]>(
-      "/drafts"
-    );
-
-  return data;
-}
-
-export async function submitForApproval(
-  draftId: string
-): Promise<Draft> {
-  const { data } =
-    await API.post<Draft>(
-      `/drafts/${draftId}/submit`
-    );
-
-  return data;
-}
-
-export async function approveDraft(
-  draftId: string
-): Promise<Draft> {
-  const { data } =
-    await API.post<Draft>(
-      `/drafts/${draftId}/approve`
-    );
-
-  return data;
-}
-
-export async function rejectDraft(
-  draftId: string
-): Promise<Draft> {
-  const { data } =
-    await API.post<Draft>(
-      `/drafts/${draftId}/reject`
-    );
-
-  return data;
-}
-
-export async function sendEmail(
-  draftId: string
-): Promise<Draft> {
-  const { data } =
-    await API.post<Draft>(
-      `/emails/send/${draftId}`
-    );
-
-  return data;
-}
-
-export async function getSentEmails(): Promise<Draft[]> {
-  const { data } =
-    await API.get<Draft[]>(
-      "/emails/sent"
-    );
-
-  return data;
-}
-
-export function connectGmail() {
-  window.location.href =
-    `${
-      import.meta.env.VITE_API_URL ??
-      "http://localhost:3001/api"
-    }/gmail/login`;
-}
-
-export function connectOutlook() {
-  window.location.href =
-    `${
-      import.meta.env.VITE_API_URL ??
-      "http://localhost:3001/api"
-    }/outlook/login`;
 }

@@ -3,6 +3,12 @@ import { Redis } from "ioredis";
 import { env } from "./env.js";
 import { logger } from "./logger.js";
 
+if (!env.REDIS_URL) {
+  throw new Error(
+    "REDIS_URL is required when using BullMQ."
+  );
+}
+
 const redis = new Redis(
   env.REDIS_URL,
   {

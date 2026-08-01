@@ -2,58 +2,66 @@ import {
   getDraft,
 } from "./drafts.js";
 
-export function approveDraft(
+export async function approveDraft(
   id: string
 ) {
-  const draft = getDraft(id);
+  const draft =
+    await getDraft(id);
 
   if (!draft) {
     return undefined;
   }
 
-  draft.status = "approved";
+  draft.status =
+    "approved";
 
   return draft;
 }
 
-export function rejectDraft(
+export async function rejectDraft(
   id: string
 ) {
-  const draft = getDraft(id);
+  const draft =
+    await getDraft(id);
 
   if (!draft) {
     return undefined;
   }
 
-  draft.status = "rejected";
+  draft.status =
+    "rejected";
 
   return draft;
 }
 
-export function submitForApproval(
+export async function submitForApproval(
   id: string
 ) {
-  const draft = getDraft(id);
+  const draft =
+    await getDraft(id);
 
   if (!draft) {
     return undefined;
   }
 
-  draft.status = "pending";
+  draft.status =
+    "pending";
 
   return draft;
 }
 
-export function markSent(
+export async function markSent(
   id: string
 ) {
-  const draft = getDraft(id);
+  const draft =
+    await getDraft(id);
 
   if (!draft) {
     return undefined;
   }
 
-  draft.status = "sent";
+  draft.status =
+    "sent";
 
   return draft;
 }

@@ -2,12 +2,15 @@ import { Router } from "express";
 import { authenticate } from "../middleware/auth.js";
 import {
   generateReply,
-} from "../services/openai.js";
+} from "../services/ai.js";
 import {
   TONES,
   type Tone,
   type ReplyLength,
 } from "../templates/tones.js";
+import {
+  canGenerateReply,
+} from "../services/billing.js";
 
 const router =
   Router();
@@ -16,7 +19,7 @@ router.post(
   "/",
   authenticate,
   async (
-    req,
+    req:any,
     res
   ) => {
     try {
@@ -47,6 +50,20 @@ router.post(
           });
       }
 
+      const allowed =
+        await canGenerateReply(
+          req.user.id
+        );
+
+      if (!allowed) {
+        return res
+          .status(403)
+          .json({
+            message:
+              "Subscription inactive.",
+          });
+      }
+
       const reply =
         await generateReply({
           email,
@@ -59,6 +76,7 @@ router.post(
       return res.json({
         reply,
       });
+
     } catch (error) {
       return res
         .status(500)

@@ -11,21 +11,21 @@ const client =
   });
 
 export interface GenerateReplyInput {
-  email: string;
-  tone: Tone;
-  length: Length;
+  email:string;
+  tone:Tone;
+  length:Length;
 }
 
 export async function generateReply(
-  input: GenerateReplyInput
+  input:GenerateReplyInput
 ) {
   const response =
     await client.responses.create({
-      model: "gpt-5",
-      input: `
-You are an expert AI email assistant.
+      model:"gpt-5",
+      input:`
+You are an AI email assistant.
 
-Write a professional customer email reply.
+Write a professional customer reply.
 
 Tone:
 ${input.tone}
@@ -34,13 +34,11 @@ Length:
 ${input.length}
 
 Customer email:
-
 ${input.email}
 
 Rules:
 - Reply only with the email.
 - Be polite.
-- Be accurate.
 - Do not invent information.
 - Do not explain reasoning.
 `,
@@ -50,12 +48,12 @@ Rules:
 }
 
 export async function summarizeEmail(
-  email: string
+  email:string
 ) {
   const response =
     await client.responses.create({
-      model: "gpt-5",
-      input: `
+      model:"gpt-5",
+      input:`
 Summarize this customer email.
 
 Return:
@@ -64,7 +62,6 @@ Return:
 - Required action
 
 Email:
-
 ${email}
 `,
     });
@@ -73,23 +70,24 @@ ${email}
 }
 
 export async function classifyEmail(
-  email: string
+  email:string
 ) {
   const response =
     await client.responses.create({
-      model: "gpt-5",
-      input: `
+      model:"gpt-5",
+      input:`
 Classify this customer email.
 
-Return one category only:
-- billing
-- technical
-- complaint
-- request
-- general
+Categories:
+billing
+technical
+complaint
+request
+general
+
+Return only the category.
 
 Email:
-
 ${email}
 `,
     });

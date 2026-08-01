@@ -1,24 +1,16 @@
 export type DraftStatus =
+  | "draft"
   | "pending"
   | "approved"
   | "rejected"
   | "sent";
 
 export interface Draft {
-  id: string;
-  emailId: string;
-  subject: string;
-  customer?: string;
-  reply: string;
-  status: DraftStatus;
-  tone?:
-    | "professional"
-    | "friendly"
-    | "formal"
-    | "empathetic";
-  approvedAt?: string;
-  rejectionReason?: string;
-  sentAt?: string;
-  createdAt?: string;
-  updatedAt?: string;
+  id:string;
+  emailId:string;
+  customer:string;
+  subject:string;
+  reply:string;
+  createdAt:string;
+  status:DraftStatus;
 }
