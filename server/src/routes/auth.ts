@@ -1,4 +1,8 @@
-import { Router } from "express";
+import {
+  Router,
+  type Request,
+  type Response,
+} from "express";
 
 import {
   login,
@@ -14,7 +18,10 @@ const router = Router();
 
 router.post(
   "/register",
-  async (req, res) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
       const {
         name,
@@ -29,25 +36,24 @@ router.post(
           password
         );
 
-      res
-        .status(201)
-        .json(result);
+      res.status(201).json(result);
     } catch (error) {
-      res
-        .status(400)
-        .json({
-          message:
-            error instanceof Error
-              ? error.message
-              : "Registration failed.",
-        });
+      res.status(400).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Registration failed.",
+      });
     }
   }
 );
 
 router.post(
   "/login",
-  async (req, res) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
       const {
         email,
@@ -62,14 +68,12 @@ router.post(
 
       res.json(result);
     } catch (error) {
-      res
-        .status(401)
-        .json({
-          message:
-            error instanceof Error
-              ? error.message
-              : "Invalid credentials.",
-        });
+      res.status(401).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid credentials.",
+      });
     }
   }
 );
@@ -77,21 +81,29 @@ router.post(
 router.get(
   "/me",
   authenticate,
-  async (req, res) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
     try {
+      if (!req.user) {
+        res.status(401).json({
+          message: "Unauthorized",
+        });
+        return;
+      }
+
       const user =
         await getCurrentUser(
-          (req as any).user.id
+          req.user.id
         );
 
       res.json(user);
     } catch {
-      res
-        .status(404)
-        .json({
-          message:
-            "User not found.",
-        });
+      res.status(404).json({
+        message:
+          "User not found.",
+      });
     }
   }
 );

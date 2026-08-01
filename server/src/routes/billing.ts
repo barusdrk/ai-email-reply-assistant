@@ -1,5 +1,13 @@
-import { Router } from "express";
-import { auth } from "../middleware/auth.js";
+import {
+  Router,
+  type Request,
+  type Response,
+} from "express";
+
+import {
+  auth,
+} from "../middleware/auth.js";
+
 import {
   getSubscription,
   getPlan,
@@ -14,7 +22,17 @@ router.use(auth);
 
 router.get(
   "/subscription",
-  async (req:any,res) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
     const subscription =
       await getSubscription(
         req.user.id
@@ -26,7 +44,17 @@ router.get(
 
 router.get(
   "/plan",
-  async (req:any,res) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
     const plan =
       await getPlan(
         req.user.id
@@ -40,7 +68,17 @@ router.get(
 
 router.get(
   "/provider",
-  async (req:any,res) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
     const provider =
       await getAIProvider(
         req.user.id
@@ -54,7 +92,17 @@ router.get(
 
 router.get(
   "/limits",
-  async (req:any,res) => {
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    if (!req.user) {
+      res.status(401).json({
+        message: "Unauthorized",
+      });
+      return;
+    }
+
     const plan =
       await getPlan(
         req.user.id

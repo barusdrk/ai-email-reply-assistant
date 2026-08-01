@@ -1,4 +1,9 @@
-import { Router } from "express";
+import {
+  Router,
+  type Request,
+  type Response,
+} from "express";
+
 import {
   getGoogleAuthUrl,
   exchangeCode,
@@ -6,30 +11,70 @@ import {
   connectionStatus,
 } from "../services/gmailService.js";
 
-const router = Router();
+const router =
+  Router();
 
-router.get("/login", (_, res) => {
-  res.json(getGoogleAuthUrl());
-});
+router.get(
+  "/login",
+  (
+    _req: Request,
+    res: Response
+  ) => {
+    res.json(
+      getGoogleAuthUrl()
+    );
+  }
+);
 
-router.get("/callback", async (req, res) => {
-  const code = req.query.code as string;
+router.get(
+  "/callback",
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    const code =
+      typeof req.query.code === "string"
+        ? req.query.code
+        : undefined;
 
-  if (!code)
-    return res.status(400).json({
-      message: "Authorization code missing.",
+    if (!code) {
+      res.status(400).json({
+        message:
+          "Authorization code missing.",
+      });
+      return;
+    }
+
+    res.json(
+      await exchangeCode(code)
+    );
+  }
+);
+
+router.post(
+  "/disconnect",
+  async (
+    _req: Request,
+    res: Response
+  ) => {
+    await disconnectAccount();
+
+    res.json({
+      success:true,
     });
+  }
+);
 
-  res.json(await exchangeCode(code));
-});
-
-router.post("/disconnect", async (_, res) => {
-  await disconnectAccount();
-  res.json({ success: true });
-});
-
-router.get("/status", async (_, res) => {
-  res.json(await connectionStatus());
-});
+router.get(
+  "/status",
+  async (
+    _req: Request,
+    res: Response
+  ) => {
+    res.json(
+      await connectionStatus()
+    );
+  }
+);
 
 export default router;

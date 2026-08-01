@@ -1,6 +1,13 @@
-import { Router } from "express";
+import {
+  Router,
+  type Request,
+  type Response,
+  type NextFunction,
+} from "express";
 
-import { auth } from "../middleware/auth.js";
+import {
+  auth,
+} from "../middleware/auth.js";
 
 import {
   approvals,
@@ -10,23 +17,32 @@ import {
   reject,
 } from "../services/approval.js";
 
-const router=Router();
+const router = Router();
 
 router.use(auth);
 
 router.get(
   "/",
-  async(req,res,next)=>{
-    try{
+  async (
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          message: "Unauthorized",
+        });
+        return;
+      }
 
-      const list=
+      const list =
         await approvals(
-          req.user!.id
+          req.user.id
         );
 
       res.json(list);
-
-    }catch(error){
+    } catch (error) {
       next(error);
     }
   }
@@ -34,23 +50,26 @@ router.get(
 
 router.get(
   "/:id",
-  async(req,res,next)=>{
-    try{
-
-      const item=
+  async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const item =
         await approval(
           req.params.id
         );
 
-      if(!item){
-        return res.status(404).json({
-          message:"Approval not found",
+      if (!item) {
+        res.status(404).json({
+          message: "Approval not found",
         });
+        return;
       }
 
       res.json(item);
-
-    }catch(error){
+    } catch (error) {
       next(error);
     }
   }
@@ -58,10 +77,20 @@ router.get(
 
 router.post(
   "/",
-  async(req,res,next)=>{
-    try{
-
-      const item=
+  async (
+    req: Request<
+      {},
+      {},
+      {
+        draftId: string;
+        reviewerId: string;
+      }
+    >,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const item =
         await requestApproval(
           req.body.draftId,
           req.body.reviewerId
@@ -70,8 +99,7 @@ router.post(
       res
         .status(201)
         .json(item);
-
-    }catch(error){
+    } catch (error) {
       next(error);
     }
   }
@@ -79,23 +107,26 @@ router.post(
 
 router.patch(
   "/:id/approve",
-  async(req,res,next)=>{
-    try{
-
-      const item=
+  async (
+    req: Request<{ id: string }>,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const item =
         await approve(
           req.params.id
         );
 
-      if(!item){
-        return res.status(404).json({
-          message:"Approval not found",
+      if (!item) {
+        res.status(404).json({
+          message: "Approval not found",
         });
+        return;
       }
 
       res.json(item);
-
-    }catch(error){
+    } catch (error) {
       next(error);
     }
   }
@@ -103,24 +134,31 @@ router.patch(
 
 router.patch(
   "/:id/reject",
-  async(req,res,next)=>{
-    try{
-
-      const item=
+  async (
+    req: Request<
+      { id: string },
+      {},
+      { comment?: string }
+    >,
+    res: Response,
+    next: NextFunction
+  ) => {
+    try {
+      const item =
         await reject(
           req.params.id,
           req.body.comment
         );
 
-      if(!item){
-        return res.status(404).json({
-          message:"Approval not found",
+      if (!item) {
+        res.status(404).json({
+          message: "Approval not found",
         });
+        return;
       }
 
       res.json(item);
-
-    }catch(error){
+    } catch (error) {
       next(error);
     }
   }

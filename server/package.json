@@ -31,9 +31,9 @@
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.3",
+    "@types/express": "^5.0.6",
     "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.2.0",
+    "@types/node": "^24.13.3",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3"
   },
