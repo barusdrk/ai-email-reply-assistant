@@ -5,62 +5,66 @@ import {
 
 import redis from "../config/redis.js";
 import { logger } from "../config/logger.js";
-import { createDraft } from "../services/drafts.js";
 
 interface DraftJob {
-  userId: string;
-  emailId: string;
-  subject: string;
-  customer: string;
-  email: string;
-  tone?: "professional" | "friendly" | "formal" | "empathetic";
-  length?: "short" | "medium" | "long";
+  userId:string;
+  draftId:string;
 }
 
-export const worker =
-  new Worker<DraftJob>(
-    "drafts",
+export function createDraftWorker() {
+  if (!redis) {
+    logger.warn(
+      "Redis disabled. Worker not started."
+    );
 
-    async (
-      job: Job<DraftJob>
-    ) => {
-      await createDraft({
-        userId: job.data.userId,
-        emailId: job.data.emailId,
-        subject: job.data.subject,
-        customer: job.data.customer,
-        email: job.data.email,
-        tone: job.data.tone,
-        length: job.data.length,
+    return null;
+  }
+
+  const worker =
+    new Worker<DraftJob>(
+      "draft",
+      async (
+        job: Job<DraftJob>
+      ) => {
+        logger.info({
+          jobId:
+            job.id,
+          data:
+            job.data,
+        });
+      },
+      {
+        connection:
+          redis,
+      }
+    );
+
+  worker.on(
+    "completed",
+    job => {
+      logger.info({
+        jobId:
+          job.id,
+        status:
+          "completed",
       });
-    },
-
-    {
-      connection: redis,
-      concurrency: 5,
     }
   );
 
-worker.on(
-  "completed",
-  job => {
-    logger.info(
-      `Draft ${job.id} completed`
-    );
-  }
-);
+  worker.on(
+    "failed",
+    (
+      job,
+      error
+    ) => {
+      logger.error({
+        jobId:
+          job?.id,
+        error:
+          error.message,
+      });
+    }
+  );
 
-worker.on(
-  "failed",
-  (
-    job,
-    error
-  ) => {
-    logger.error({
-      jobId: job?.id,
-      error: error.message,
-    });
-  }
-);
-
-export default worker;
+  return worker;
+}

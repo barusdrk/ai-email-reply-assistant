@@ -2,104 +2,140 @@ import type {
   Request,
   Response,
   NextFunction,
-  RequestHandler,
 } from "express";
-import type {
-  ZodTypeAny,
-  ZodError,
-} from "zod";
+
+import type { ZodSchema } from "zod";
 
 export function validate(
-  schema: ZodTypeAny
-): RequestHandler {
+  schema: ZodSchema
+) {
   return (
     req: Request,
     res: Response,
     next: NextFunction
   ) => {
-    try {
-      const result = schema.parse({
+    const result =
+      schema.safeParse({
         body: req.body,
         params: req.params,
         query: req.query,
       });
 
-      req.body = result.body;
-      req.params = result.params;
-      req.query = result.query;
-
-      next();
-    } catch (error) {
-      const zodError = error as ZodError;
-
-      return res.status(400).json({
-        success: false,
-        message: "Validation failed.",
-        errors: zodError.flatten(),
-      });
+    if (!result.success) {
+      return res
+        .status(400)
+        .json({
+          message: "Validation failed.",
+          errors:
+            result.error.errors,
+        });
     }
+
+    req.body =
+      result.data.body ??
+      req.body;
+
+    req.params =
+      result.data.params ??
+      req.params;
+
+    req.query =
+      result.data.query ??
+      req.query;
+
+    next();
   };
 }
 
 export function validateBody(
-  schema: ZodTypeAny
-): RequestHandler {
+  schema: ZodSchema
+) {
   return (
-    req,
-    res,
-    next
+    req: Request,
+    res: Response,
+    next: NextFunction
   ) => {
-    try {
-      req.body = schema.parse(req.body);
-      next();
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid request body.",
-        errors: (error as ZodError).flatten(),
-      });
+    const result =
+      schema.safeParse(
+        req.body
+      );
+
+    if (!result.success) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Invalid request body.",
+          errors:
+            result.error.errors,
+        });
     }
+
+    req.body =
+      result.data;
+
+    next();
   };
 }
 
 export function validateParams(
-  schema: ZodTypeAny
-): RequestHandler {
+  schema: ZodSchema
+) {
   return (
-    req,
-    res,
-    next
+    req: Request,
+    res: Response,
+    next: NextFunction
   ) => {
-    try {
-      req.params = schema.parse(req.params);
-      next();
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid route parameters.",
-        errors: (error as ZodError).flatten(),
-      });
+    const result =
+      schema.safeParse(
+        req.params
+      );
+
+    if (!result.success) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Invalid parameters.",
+          errors:
+            result.error.errors,
+        });
     }
+
+    req.params =
+      result.data;
+
+    next();
   };
 }
 
 export function validateQuery(
-  schema: ZodTypeAny
-): RequestHandler {
+  schema: ZodSchema
+) {
   return (
-    req,
-    res,
-    next
+    req: Request,
+    res: Response,
+    next: NextFunction
   ) => {
-    try {
-      req.query = schema.parse(req.query);
-      next();
-    } catch (error) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid query parameters.",
-        errors: (error as ZodError).flatten(),
-      });
+    const result =
+      schema.safeParse(
+        req.query
+      );
+
+    if (!result.success) {
+      return res
+        .status(400)
+        .json({
+          message:
+            "Invalid query.",
+          errors:
+            result.error.errors,
+        });
     }
+
+    req.query =
+      result.data;
+
+    next();
   };
 }

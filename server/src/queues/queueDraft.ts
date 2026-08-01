@@ -2,32 +2,31 @@ import { Queue } from "bullmq";
 
 import redis from "../config/redis.js";
 
-export interface QueueDraftData {
-  draftId: string;
-  prompt: string;
+interface DraftJob {
+  userId:string;
+  draftId:string;
 }
 
-export const draftQueue = new Queue<QueueDraftData>(
-  "drafts",
-  {
-    connection: redis,
-  }
-);
+export const draftQueue =
+  redis
+    ? new Queue<DraftJob>(
+        "draft",
+        {
+          connection:
+            redis,
+        }
+      )
+    : null;
 
-export async function queueDraft(
-  data: QueueDraftData
+export async function addDraftJob(
+  data: DraftJob
 ) {
+  if (!draftQueue) {
+    return null;
+  }
+
   return draftQueue.add(
-    "generate-draft",
-    data,
-    {
-      attempts: 3,
-      removeOnComplete: 100,
-      removeOnFail: 500,
-      backoff: {
-        type: "exponential",
-        delay: 5000,
-      },
-    }
+    "generate",
+    data
   );
 }
