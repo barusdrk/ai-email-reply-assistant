@@ -1,13 +1,12 @@
 import API from "./api.js";
 
+export type AIProvider =
+  | "openai"
+  | "groq"
+  | "gemini";
+
 export interface AISettings {
-  provider:
-    | "openai"
-    | "gemini";
-
-  openAiApiKey?: string;
-
-  geminiApiKey?: string;
+  provider: AIProvider;
 
   defaultTone: string;
 
@@ -16,6 +15,14 @@ export interface AISettings {
   temperature: number;
 
   maxDailyReplies: number;
+
+  autoDraft: boolean;
+
+  openAiApiKey?: string;
+
+  groqApiKey?: string;
+
+  geminiApiKey?: string;
 }
 
 export async function getSettings() {
@@ -39,21 +46,54 @@ export async function updateSettings(
   return data;
 }
 
-export async function updateProvider(
-  provider:
-    | "openai"
-    | "gemini"
+export function updateProvider(
+  provider: AIProvider
 ) {
   return updateSettings({
     provider,
   });
 }
 
-export async function updateApiKeys(
+export function updateApiKeys(
   keys: {
     openAiApiKey?: string;
+    groqApiKey?: string;
     geminiApiKey?: string;
   }
 ) {
   return updateSettings(keys);
+}
+
+export function updateDefaults(
+  defaultTone: string,
+  defaultLength: string
+) {
+  return updateSettings({
+    defaultTone,
+    defaultLength,
+  });
+}
+
+export function updateTemperature(
+  temperature: number
+) {
+  return updateSettings({
+    temperature,
+  });
+}
+
+export function updateAutoDraft(
+  autoDraft: boolean
+) {
+  return updateSettings({
+    autoDraft,
+  });
+}
+
+export function updateDailyLimit(
+  maxDailyReplies: number
+) {
+  return updateSettings({
+    maxDailyReplies,
+  });
 }

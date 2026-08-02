@@ -9,18 +9,14 @@ import {
 
 export type Theme =
   | "light"
-  | "dark";
+  | "dark"
+  | "system";
 
 interface ThemeContextValue {
   theme: Theme;
-
   isDark: boolean;
-
+  setTheme: (theme: Theme) => void;
   toggleTheme: () => void;
-
-  setTheme: (
-    theme: Theme
-  ) => void;
 }
 
 const ThemeContext =
@@ -28,13 +24,21 @@ const ThemeContext =
     null
   );
 
-interface Props {
+interface ThemeProviderProps {
   children: ReactNode;
+}
+
+function getSystemTheme(): "light" | "dark" {
+  return window.matchMedia(
+    "(prefers-color-scheme: dark)"
+  ).matches
+    ? "dark"
+    : "light";
 }
 
 export function ThemeProvider({
   children,
-}: Props) {
+}: ThemeProviderProps) {
   const [theme, setTheme] =
     useState<Theme>(() => {
       const saved =
@@ -44,50 +48,91 @@ export function ThemeProvider({
 
       if (
         saved === "light" ||
-        saved === "dark"
+        saved === "dark" ||
+        saved === "system"
       ) {
         return saved;
       }
 
-      return window.matchMedia(
-        "(prefers-color-scheme: dark)"
-      ).matches
-        ? "dark"
-        : "light";
+      return "system";
     });
+
+  const [systemTheme, setSystemTheme] =
+    useState<"light" | "dark">(
+      getSystemTheme
+    );
+
+  useEffect(() => {
+    const media =
+      window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      );
+
+    const update = () =>
+      setSystemTheme(
+        media.matches
+          ? "dark"
+          : "light"
+      );
+
+    update();
+
+    media.addEventListener(
+      "change",
+      update
+    );
+
+    return () =>
+      media.removeEventListener(
+        "change",
+        update
+      );
+  }, []);
+
+  const isDark =
+    theme === "system"
+      ? systemTheme === "dark"
+      : theme === "dark";
 
   useEffect(() => {
     document.documentElement.classList.toggle(
       "dark",
-      theme === "dark"
+      isDark
     );
 
     localStorage.setItem(
       "theme",
       theme
     );
-  }, [theme]);
+  }, [
+    theme,
+    isDark,
+  ]);
 
   function toggleTheme() {
-    setTheme((current) =>
-      current === "dark"
+    setTheme((current) => {
+      const actual =
+        current === "system"
+          ? systemTheme
+          : current;
+
+      return actual === "dark"
         ? "light"
-        : "dark"
-    );
+        : "dark";
+    });
   }
 
   const value = useMemo(
     () => ({
       theme,
-
-      isDark:
-        theme === "dark",
-
-      toggleTheme,
-
+      isDark,
       setTheme,
+      toggleTheme,
     }),
-    [theme]
+    [
+      theme,
+      isDark,
+    ]
   );
 
   return (
@@ -101,7 +146,9 @@ export function ThemeProvider({
 
 export function useTheme() {
   const context =
-    useContext(ThemeContext);
+    useContext(
+      ThemeContext
+    );
 
   if (!context) {
     throw new Error(
