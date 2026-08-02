@@ -4,9 +4,7 @@ function required(name: string) {
   const value = process.env[name];
 
   if (!value) {
-    throw new Error(
-      `Missing environment variable: ${name}`
-    );
+    throw new Error(`Missing environment variable: ${name}`);
   }
 
   return value;
@@ -18,7 +16,7 @@ function optional(name: string) {
 
 const AI_PROVIDER =
   process.env.AI_PROVIDER ??
-  "openai";
+  "mock";
 
 export const env = {
   NODE_ENV:
@@ -44,7 +42,8 @@ export const env = {
 
   USE_MOCK_AI:
     process.env.USE_MOCK_AI ===
-    "true",
+    "true" ||
+    AI_PROVIDER === "mock",
 
   AI_PROVIDER,
 
