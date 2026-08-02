@@ -1,14 +1,21 @@
 import OpenAI from "openai";
+import { env } from "../config/env.js";
 import {
   type Tone,
   type Length,
 } from "../templates/tones.js";
 
-const client =
-  new OpenAI({
-    apiKey:
-      process.env.OPENAI_API_KEY,
+function getClient() {
+  if (!env.OPENAI_API_KEY) {
+    throw new Error(
+      "OPENAI_API_KEY is missing"
+    );
+  }
+
+  return new OpenAI({
+    apiKey: env.OPENAI_API_KEY,
   });
+}
 
 export interface GenerateReplyInput {
   email:string;
@@ -19,9 +26,13 @@ export interface GenerateReplyInput {
 export async function generateReply(
   input:GenerateReplyInput
 ) {
+  const client = getClient();
+
   const response =
     await client.responses.create({
-      model:"gpt-5",
+      model:
+        env.OPENAI_MODEL,
+
       input:`
 You are an AI email assistant.
 
@@ -50,9 +61,13 @@ Rules:
 export async function summarizeEmail(
   email:string
 ) {
+  const client = getClient();
+
   const response =
     await client.responses.create({
-      model:"gpt-5",
+      model:
+        env.OPENAI_MODEL,
+
       input:`
 Summarize this customer email.
 
@@ -72,9 +87,13 @@ ${email}
 export async function classifyEmail(
   email:string
 ) {
+  const client = getClient();
+
   const response =
     await client.responses.create({
-      model:"gpt-5",
+      model:
+        env.OPENAI_MODEL,
+
       input:`
 Classify this customer email.
 
