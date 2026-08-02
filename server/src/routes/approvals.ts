@@ -4,11 +4,7 @@ import {
   type Response,
   type NextFunction,
 } from "express";
-
-import {
-  auth,
-} from "../middleware/auth.js";
-
+import { auth } from "../middleware/auth.js";
 import {
   approvals,
   approval,
@@ -29,16 +25,9 @@ router.get(
     next: NextFunction
   ) => {
     try {
-      if (!req.user) {
-        res.status(401).json({
-          message: "Unauthorized",
-        });
-        return;
-      }
-
       const list =
         await approvals(
-          req.user.id
+          req.user!.id
         );
 
       res.json(list);
@@ -96,9 +85,7 @@ router.post(
           req.body.reviewerId
         );
 
-      res
-        .status(201)
-        .json(item);
+      res.status(201).json(item);
     } catch (error) {
       next(error);
     }

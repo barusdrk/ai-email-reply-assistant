@@ -8,14 +8,6 @@ import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import type { JwtPayload } from "../types/user.js";
 
-declare global {
-  namespace Express {
-    interface Request {
-      user?: JwtPayload;
-    }
-  }
-}
-
 export function auth(
   req: Request,
   res: Response,

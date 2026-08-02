@@ -3,13 +3,11 @@ import {
   type Request,
   type Response,
 } from "express";
-
 import {
   login,
   register,
   getCurrentUser,
 } from "../services/auth.js";
-
 import {
   authenticate,
 } from "../middleware/auth.js";
@@ -19,21 +17,23 @@ const router = Router();
 router.post(
   "/register",
   async (
-    req: Request,
+    req: Request<
+      {},
+      {},
+      {
+        name: string;
+        email: string;
+        password: string;
+      }
+    >,
     res: Response
   ) => {
     try {
-      const {
-        name,
-        email,
-        password,
-      } = req.body;
-
       const result =
         await register(
-          name,
-          email,
-          password
+          req.body.name,
+          req.body.email,
+          req.body.password
         );
 
       res.status(201).json(result);
@@ -51,19 +51,21 @@ router.post(
 router.post(
   "/login",
   async (
-    req: Request,
+    req: Request<
+      {},
+      {},
+      {
+        email: string;
+        password: string;
+      }
+    >,
     res: Response
   ) => {
     try {
-      const {
-        email,
-        password,
-      } = req.body;
-
       const result =
         await login(
-          email,
-          password
+          req.body.email,
+          req.body.password
         );
 
       res.json(result);
@@ -86,23 +88,15 @@ router.get(
     res: Response
   ) => {
     try {
-      if (!req.user) {
-        res.status(401).json({
-          message: "Unauthorized",
-        });
-        return;
-      }
-
       const user =
         await getCurrentUser(
-          req.user.id
+          req.user!.id
         );
 
       res.json(user);
     } catch {
       res.status(404).json({
-        message:
-          "User not found.",
+        message: "User not found.",
       });
     }
   }
