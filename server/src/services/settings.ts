@@ -1,62 +1,62 @@
-import {
-  Types,
-} from "mongoose";
+import { Types } from "mongoose";
+import { aiSettingsRepository } from "../repositories/AISettingsRepository.js";
 
-import {
-  aiSettingsRepository,
-} from "../repositories/AISettingsRepository.js";
+export type AIProvider = "mock" | "openai" | "gemini" | "groq" | "claude";
+export type ReplyTone = "professional" | "friendly" | "formal" | "empathetic" | "concise" | "enthusiastic";
+export type ReplyLength = "short" | "medium" | "long";
 
-export async function getSettings(
-  userId:string
-) {
-  let settings =
-    await aiSettingsRepository.findByUser(
-      userId
-    );
+export interface SettingsUpdate {
+  provider?: AIProvider;
+  maxDailyReplies?: number;
+  temperature?: number;
+  defaultReplyTone?: ReplyTone;
+  defaultLength?: ReplyLength;
+  signature?: string;
+  autoDraft?: boolean;
+  emailNotifications?: boolean;
+  desktopNotifications?: boolean;
+  openAiApiKey?: string;
+  groqApiKey?: string;
+  geminiApiKey?: string;
+  anthropicApiKey?: string;
+}
 
+export async function getSettings(userId: string) {
+  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
+  let settings = await aiSettingsRepository.findByUser(userId);
   if (!settings) {
-    settings =
-      await aiSettingsRepository.create({
-        userId:
-          new Types.ObjectId(userId),
-        provider:"gemini",
-        maxDailyReplies:20,
-        temperature:0.7,
-      });
+    settings = await aiSettingsRepository.create({
+      userId: new Types.ObjectId(userId),
+      provider: "gemini",
+      defaultReplyTone: "formal",
+      defaultLength: "medium",
+      maxDailyReplies: 20,
+      temperature: 0.7,
+      signature: "Customer Support",
+      autoDraft: false,
+      emailNotifications: true,
+      desktopNotifications: false,
+    });
   }
-
   return settings;
 }
 
-export async function updateSettings(
-  userId:string,
-  data:{
-    provider?:
-      | "openai"
-      | "gemini";
-    maxDailyReplies?:number;
-    temperature?:number;
-    defaultTone?:string;
-    defaultLength?:string;
-  }
-) {
-  return aiSettingsRepository.update(
-    userId,
-    data
-  );
+export async function updateSettings(userId: string, data: SettingsUpdate) {
+  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
+  return aiSettingsRepository.update(userId, data);
 }
 
-export async function resetSettings(
-  userId:string
-) {
-  return aiSettingsRepository.update(
-    userId,
-    {
-      provider:"gemini",
-      maxDailyReplies:20,
-      temperature:0.7,
-      defaultTone:"professional",
-      defaultLength:"medium",
-    }
-  );
+export async function resetSettings(userId: string) {
+  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
+  return aiSettingsRepository.update(userId, {
+    provider: "gemini",
+    defaultReplyTone: "formal",
+    defaultLength: "medium",
+    maxDailyReplies: 20,
+    temperature: 0.7,
+    signature: "Customer Support",
+    autoDraft: false,
+    emailNotifications: true,
+    desktopNotifications: false,
+  });
 }

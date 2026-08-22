@@ -1,31 +1,33 @@
 import { useState } from "react";
 import { Navigate } from "react-router-dom";
-
 import LoginForm from "../components/LoginForm.js";
 import RegisterForm from "../components/RegisterForm.js";
-
 import { useAuth } from "../context/AuthContext.js";
 
 export default function Login() {
   const {
     user,
+    loading: authLoading,
     login,
     register,
   } = useAuth();
 
-  const [showRegister, setShowRegister] =
-    useState(false);
+  const [showRegister, setShowRegister] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center dark:text-white">
+        Loading...
+      </div>
+    );
+  }
 
   if (user) {
     return (
       <Navigate
-        to="/dashboard"
+        to="/"
         replace
       />
     );
@@ -38,12 +40,11 @@ export default function Login() {
     try {
       setLoading(true);
       setError("");
-
       await login(email, password);
-    } catch (err) {
+    } catch (error) {
       setError(
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Unable to sign in."
       );
     } finally {
@@ -52,6 +53,7 @@ export default function Login() {
   }
 
   async function handleRegister(
+    name: string,
     email: string,
     password: string,
     confirmPassword: string
@@ -64,14 +66,12 @@ export default function Login() {
     try {
       setLoading(true);
       setError("");
-
-      await register(email, password);
-
+      await register(name, email, password);
       setShowRegister(false);
-    } catch (err) {
+    } catch (error) {
       setError(
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Unable to register."
       );
     } finally {
@@ -99,9 +99,7 @@ export default function Login() {
         <div className="mt-6 text-center">
           <button
             onClick={() =>
-              setShowRegister(
-                !showRegister
-              )
+              setShowRegister(!showRegister)
             }
             className="text-blue-600 hover:underline dark:text-blue-400"
           >

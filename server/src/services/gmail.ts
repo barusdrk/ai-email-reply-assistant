@@ -1,11 +1,8 @@
 import { google } from "googleapis";
+import { Types } from "mongoose";
 import { env } from "../config/env.js";
-
-const oauth = new google.auth.OAuth2(
-  env.GOOGLE_CLIENT_ID,
-  env.GOOGLE_CLIENT_SECRET,
-  env.GOOGLE_CALLBACK_URL
-);
+import ConnectedAccountModel from "../models/ConnectedAccount.js";
+import { htmlToText } from "../utils/emailBody.js";
 
 export interface InboxEmail {
   id: string;
@@ -14,107 +11,350 @@ export interface InboxEmail {
   from: string;
   preview: string;
   body: string;
+  receivedAt?: Date;
 }
 
-export function getGoogleAuthUrl() {
-  return {
-    url: oauth.generateAuthUrl({
-      access_type: "offline",
-      scope: [
-        "https://www.googleapis.com/auth/gmail.readonly",
-        "https://www.googleapis.com/auth/gmail.compose",
-        "https://www.googleapis.com/auth/userinfo.email",
-      ],
-      prompt: "consent",
-    }),
-  };
+function createOAuthClient() {
+  return new google.auth.OAuth2(
+    env.GOOGLE_CLIENT_ID,
+    env.GOOGLE_CLIENT_SECRET,
+    env.GOOGLE_CALLBACK_URL
+  );
 }
 
-export async function exchangeCode(
-  code: string
-) {
-  const { tokens } =
-    await oauth.getToken(code);
+function getUserObjectId(userId: string) {
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID.");
+  }
+  return new Types.ObjectId(userId);
+}
 
-  oauth.setCredentials(tokens);
+export function getGoogleAuthUrl(userId: string) {
+  const oauth = createOAuthClient();
+  return oauth.generateAuthUrl({
+    access_type: "offline",
+    scope: [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.compose",
+      "https://www.googleapis.com/auth/gmail.send",
+      "https://www.googleapis.com/auth/userinfo.email",
+    ],
+    prompt: "consent",
+    state: getUserObjectId(userId).toString(),
+  });
+}
+
+export async function exchangeCode(code: string, state: string) {
+  const userObjectId = getUserObjectId(state);
+  const oauth = createOAuthClient();
+  const { tokens } = await oauth.getToken(code);
+
+  if (!tokens.access_token && !tokens.refresh_token) {
+    throw new Error("Google did not return OAuth tokens.");
+  }
+
+  const existing = await ConnectedAccountModel.findOne({
+    userId: userObjectId,
+    provider: "gmail",
+  });
+
+  await ConnectedAccountModel.findOneAndUpdate(
+    { userId: userObjectId, provider: "gmail" },
+    {
+      userId: userObjectId,
+      provider: "gmail",
+      accessToken: tokens.access_token ?? existing?.accessToken,
+      refreshToken: tokens.refresh_token ?? existing?.refreshToken,
+      expiresAt: tokens.expiry_date
+        ? new Date(tokens.expiry_date)
+        : existing?.expiresAt,
+      connectedAt: new Date(),
+    },
+    {
+      new: true,
+      upsert: true,
+      runValidators: true,
+      setDefaultsOnInsert: true,
+    }
+  );
 
   return tokens;
 }
 
-export async function connectionStatus() {
-  return {
-    connected:
-      !!oauth.credentials.access_token,
-  };
+export async function connectionStatus(userId: string) {
+  const account = await ConnectedAccountModel.findOne({
+    userId: getUserObjectId(userId),
+    provider: "gmail",
+  });
+
+  return Boolean(account?.refreshToken || account?.accessToken);
 }
 
-export async function disconnectAccount() {
-  oauth.setCredentials({});
+export async function disconnectAccount(userId: string) {
+  const account = await ConnectedAccountModel.findOne({
+    userId: getUserObjectId(userId),
+    provider: "gmail",
+  });
+
+  if (!account) {
+    return false;
+  }
+
+  const oauth = createOAuthClient();
+
+  if (account.accessToken) {
+    oauth.setCredentials({
+      access_token: account.accessToken,
+      refresh_token: account.refreshToken ?? undefined,
+    });
+
+    try {
+      await oauth.revokeCredentials();
+    } catch {}
+  }
+
+  await ConnectedAccountModel.deleteOne({
+    _id: account._id,
+  });
+
   return true;
 }
 
-export async function listEmails(
-  maxResults = 20
-): Promise<InboxEmail[]> {
-  const gmail = google.gmail({
+async function getGmailClient(userId: string) {
+  const account = await ConnectedAccountModel.findOne({
+    userId: getUserObjectId(userId),
+    provider: "gmail",
+  });
+
+  if (!account) {
+    throw new Error("Gmail account is not connected.");
+  }
+
+  const oauth = createOAuthClient();
+
+  oauth.setCredentials({
+    access_token: account.accessToken ?? undefined,
+    refresh_token: account.refreshToken ?? undefined,
+    expiry_date: account.expiresAt?.getTime(),
+  });
+
+  return google.gmail({
     version: "v1",
     auth: oauth,
   });
+}
 
-  const { data } =
-    await gmail.users.messages.list({
-      userId: "me",
-      maxResults,
-    });
+function decodeBase64(data: string) {
+  return Buffer.from(
+    data.replace(/-/g, "+").replace(/_/g, "/"),
+    "base64"
+  ).toString("utf8");
+}
 
-  const messages =
-    data.messages ?? [];
+function getMessageBody(payload: any): string {
+  if (!payload) {
+    return "";
+  }
 
+  if (payload.mimeType === "text/plain" && payload.body?.data) {
+    return decodeBase64(payload.body.data);
+  }
+
+  if (payload.mimeType === "text/html" && payload.body?.data) {
+    return htmlToText(decodeBase64(payload.body.data));
+  }
+
+  const parts = payload.parts ?? [];
+
+  for (const part of parts) {
+    if (part.mimeType === "text/plain" && part.body?.data) {
+      return decodeBase64(part.body.data);
+    }
+  }
+
+  for (const part of parts) {
+    if (part.mimeType === "text/html" && part.body?.data) {
+      return htmlToText(decodeBase64(part.body.data));
+    }
+  }
+
+  for (const part of parts) {
+    const body = getMessageBody(part);
+
+    if (body) {
+      return body;
+    }
+  }
+
+  return "";
+}
+
+async function getEmailDetails(
+  gmail: ReturnType<typeof google.gmail>,
+  messageId: string
+): Promise<InboxEmail | null> {
+  const full = await gmail.users.messages.get({
+    userId: "me",
+    id: messageId,
+    format: "full",
+  });
+
+  const headers = full.data.payload?.headers ?? [];
+
+  const subject = headers.find(
+    (header) => header.name?.toLowerCase() === "subject"
+  )?.value ?? "";
+
+  const from = headers.find(
+    (header) => header.name?.toLowerCase() === "from"
+  )?.value ?? "";
+
+  const dateHeader = headers.find(
+    (header) => header.name?.toLowerCase() === "date"
+  )?.value;
+
+  const receivedAt = dateHeader
+    ? new Date(dateHeader)
+    : full.data.internalDate
+      ? new Date(Number(full.data.internalDate))
+      : new Date();
+
+  return {
+    id: full.data.id ?? messageId,
+    threadId: full.data.threadId ?? "",
+    subject,
+    from,
+    preview: full.data.snippet ?? "",
+    body: getMessageBody(full.data.payload),
+    receivedAt: Number.isNaN(receivedAt.getTime())
+      ? new Date()
+      : receivedAt,
+  };
+}
+
+async function getEmailDetailsBatch(
+  gmail: ReturnType<typeof google.gmail>,
+  messageIds: string[],
+  concurrency = 10
+): Promise<InboxEmail[]> {
   const emails: InboxEmail[] = [];
 
-  for (const message of messages) {
-    if (!message.id) continue;
+  for (let index = 0; index < messageIds.length; index += concurrency) {
+    const batch = messageIds.slice(
+      index,
+      index + concurrency
+    );
 
-    const full =
-      await gmail.users.messages.get({
-        userId: "me",
-        id: message.id,
-        format: "full",
-      });
+    const results = await Promise.all(
+      batch.map(async (messageId) => {
+        try {
+          return await getEmailDetails(
+            gmail,
+            messageId
+          );
+        } catch (error) {
+          console.error(
+            `Failed to fetch Gmail message ${messageId}:`,
+            error
+          );
+          return null;
+        }
+      })
+    );
 
-    const headers =
-      full.data.payload?.headers ?? [];
-
-    const subject =
-      headers.find(
-        h => h.name === "Subject"
-      )?.value ?? "";
-
-    const from =
-      headers.find(
-        h => h.name === "From"
-      )?.value ?? "";
-
-    let body = "";
-
-    if (full.data.payload?.body?.data) {
-      body = Buffer.from(
-        full.data.payload.body.data,
-        "base64"
-      ).toString("utf8");
-    }
-
-    emails.push({
-      id: full.data.id ?? "",
-      threadId:
-        full.data.threadId ?? "",
-      subject,
-      from,
-      preview:
-        full.data.snippet ?? "",
-      body,
-    });
+    emails.push(
+      ...results.filter(
+        (email): email is InboxEmail =>
+          email !== null
+      )
+    );
   }
 
   return emails;
+}
+
+export async function listEmails(
+  userId: string,
+  maxResults = 100
+): Promise<InboxEmail[]> {
+  const gmail = await getGmailClient(userId);
+  const pageSize = Math.min(
+    100,
+    Math.max(1, maxResults)
+  );
+
+  const { data } = await gmail.users.messages.list({
+    userId: "me",
+    maxResults: pageSize,
+    labelIds: ["INBOX"],
+  });
+
+  const messageIds = (data.messages ?? [])
+    .map((message) => message.id)
+    .filter(
+      (id): id is string =>
+        Boolean(id)
+    )
+    .slice(0, maxResults);
+
+  if (messageIds.length === 0) {
+    return [];
+  }
+
+  const emails = await getEmailDetailsBatch(
+    gmail,
+    messageIds,
+    10
+  );
+
+  return emails.sort(
+    (a, b) =>
+      (b.receivedAt?.getTime() ?? 0) -
+      (a.receivedAt?.getTime() ?? 0)
+  );
+}
+
+function encodeBase64Url(value: string) {
+  return Buffer.from(value)
+    .toString("base64")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/, "");
+}
+
+export async function sendEmail(
+  userId: string,
+  options: {
+    to: string;
+    subject: string;
+    reply: string;
+    threadId?: string;
+  }
+) {
+  if (!options.to.trim()) {
+    throw new Error("Recipient is required.");
+  }
+
+  const gmail = await getGmailClient(userId);
+
+  const message = [
+    `To: ${options.to}`,
+    `Subject: ${options.subject}`,
+    "Content-Type: text/plain; charset=UTF-8",
+    "",
+    options.reply,
+  ].join("\r\n");
+
+  const result = await gmail.users.messages.send({
+    userId: "me",
+    requestBody: {
+      raw: encodeBase64Url(message),
+      threadId: options.threadId,
+    },
+  });
+
+  return {
+    id: result.data.id ?? "",
+    threadId: result.data.threadId ?? options.threadId ?? "",
+  };
 }

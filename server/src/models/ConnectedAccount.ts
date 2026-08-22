@@ -13,42 +13,34 @@ const connectedAccountSchema =
         required: true,
         index: true,
       },
-
       provider: {
         type: String,
         enum: ["gmail", "outlook"],
         required: true,
       },
-
       email: {
         type: String,
         required: true,
         trim: true,
       },
-
       connected: {
         type: Boolean,
         default: true,
       },
-
       accessToken: {
         type: String,
         default: null,
       },
-
       refreshToken: {
         type: String,
         default: null,
       },
-
       expiresAt: {
         type: Date,
       },
-
       lastSyncAt: {
         type: Date,
       },
-
       syncStatus: {
         type: String,
         enum: [
@@ -58,7 +50,6 @@ const connectedAccountSchema =
         ],
         default: "idle",
       },
-
       lastError: {
         type: String,
         default: "",

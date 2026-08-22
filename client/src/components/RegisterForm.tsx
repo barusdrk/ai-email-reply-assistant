@@ -1,7 +1,11 @@
-import { FormEvent, useState } from "react";
+import {
+  FormEvent,
+  useState,
+} from "react";
 
 interface RegisterFormProps {
   onSubmit: (
+    name: string,
     email: string,
     password: string,
     confirmPassword: string
@@ -17,7 +21,11 @@ export default function RegisterForm({
   loading = false,
   error,
 }: RegisterFormProps) {
-  const [email, setEmail] = useState("");
+  const [name, setName] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
 
   const [password, setPassword] =
     useState("");
@@ -31,6 +39,7 @@ export default function RegisterForm({
     event.preventDefault();
 
     await onSubmit(
+      name,
       email,
       password,
       confirmPassword
@@ -51,6 +60,28 @@ export default function RegisterForm({
         onSubmit={handleSubmit}
         className="space-y-5"
       >
+        <div>
+          <label
+            htmlFor="register-name"
+            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200"
+          >
+            Name
+          </label>
+
+          <input
+            id="register-name"
+            type="text"
+            required
+            autoComplete="name"
+            disabled={loading}
+            value={name}
+            onChange={(e) =>
+              setName(e.target.value)
+            }
+            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
+          />
+        </div>
+
         <div>
           <label
             htmlFor="register-email"

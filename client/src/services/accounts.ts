@@ -1,37 +1,32 @@
-import api from "./api.js";
+import API from "./api.js";
 
-export async function connectGmail() {
-  const response =
-    await api.get<{
-      url:string;
-    }>(
-      "/auth/google"
-    );
-
-  window.location.href =
-    response.data.url;
+export interface ConnectedAccounts {
+  gmail: boolean;
+  outlook: boolean;
 }
 
-export async function connectOutlook() {
-  const response =
-    await api.get<{
-      url:string;
-    }>(
-      "/auth/microsoft"
-    );
-
-  window.location.href =
-    response.data.url;
+export async function getConnections(): Promise<ConnectedAccounts> {
+  const { data } = await API.get<ConnectedAccounts>("/accounts");
+  return {
+    gmail: Boolean(data.gmail),
+    outlook: Boolean(data.outlook),
+  };
 }
 
-export async function disconnectGmail() {
-  await api.post(
-    "/auth/google/disconnect"
-  );
+export async function connectGmail(): Promise<void> {
+  const { data } = await API.get<{ url: string }>("/accounts/gmail/connect");
+  window.location.href = data.url;
 }
 
-export async function disconnectOutlook() {
-  await api.post(
-    "/auth/microsoft/disconnect"
-  );
+export async function connectOutlook(): Promise<void> {
+  const { data } = await API.get<{ url: string }>("/accounts/outlook/connect");
+  window.location.href = data.url;
+}
+
+export async function disconnectGmail(): Promise<void> {
+  await API.delete("/accounts/gmail");
+}
+
+export async function disconnectOutlook(): Promise<void> {
+  await API.delete("/accounts/outlook");
 }

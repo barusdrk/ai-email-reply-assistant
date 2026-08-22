@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { env } from "../../config/env.js";
+import { env } from "../config/env.js";
 import type {
   AIProvider,
   GenerateReplyInput,
@@ -11,7 +11,11 @@ const client = new OpenAI({
 });
 
 export class OpenAIProvider implements AIProvider {
-  async generateReply(input: GenerateReplyInput): Promise<string> {
+  readonly name = "openai" as const;
+
+  async generateReply(
+    input: GenerateReplyInput
+  ): Promise<string> {
     const response = await client.responses.create({
       model: env.OPENAI_MODEL,
       input: `Write a ${input.tone}, ${input.length} email reply.\n\n${input.email}`,
@@ -20,7 +24,9 @@ export class OpenAIProvider implements AIProvider {
     return response.output_text;
   }
 
-  async summarize(input: SummarizeInput): Promise<string> {
+  async summarize(
+    input: SummarizeInput
+  ): Promise<string> {
     const response = await client.responses.create({
       model: env.OPENAI_MODEL,
       input: `Summarize:\n\n${input.text}`,

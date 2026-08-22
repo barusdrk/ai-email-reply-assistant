@@ -56,14 +56,19 @@ const userSchema =
         default: "trial",
       },
 
-      avatar: String,
+      avatar: {
+        type: String,
+        default: "",
+      },
 
       emailVerified: {
         type: Boolean,
         default: false,
       },
 
-      lastLoginAt: Date,
+      lastLoginAt: {
+        type: Date,
+      },
 
       active: {
         type: Boolean,

@@ -27,7 +27,7 @@ export default function SettingsPage() {
       );
 
       setTone(
-        data.defaultTone
+        data.defaultReplyTone
       );
     }
 
@@ -39,7 +39,7 @@ export default function SettingsPage() {
       "/settings",
       {
         provider,
-        defaultTone:
+        defaultReplyTone:
           tone,
       }
     );
@@ -78,7 +78,7 @@ export default function SettingsPage() {
         </label>
 
         <label className="block">
-          Default Tone
+          Default Reply Tone
           <select
             value={tone}
             onChange={(e) =>

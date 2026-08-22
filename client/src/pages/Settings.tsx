@@ -1,62 +1,184 @@
-import { useState } from "react";
-
-import ProfileCard from "../components/settings/ProfileCard";
-import AppearanceCard from "../components/settings/AppearanceCard";
-import SignatureCard from "../components/settings/SignatureCard";
-import AISettingsCard from "../components/settings/AISettingsCard";
-import ConnectedAccountsCard from "../components/settings/ConnectedAccountsCard";
-import NotificationsCard from "../components/settings/NotificationsCard";
-import SecurityCard from "../components/settings/SecurityCard";
-import DangerZoneCard from "../components/settings/DangerZoneCard";
+import { useEffect, useState } from "react";
+import ProfileCard from "../components/settings/ProfileCard.js";
+import AppearanceCard from "../components/settings/AppearanceCard.js";
+import SignatureCard from "../components/settings/SignatureCard.js";
+import ConnectedAccountsCard from "../components/settings/ConnectedAccountsCard.js";
+import NotificationsCard from "../components/settings/NotificationsCard.js";
+import SecurityCard from "../components/settings/SecurityCard.js";
+import DangerZoneCard from "../components/settings/DangerZoneCard.js";
+import ToneSelector from "../components/ToneSelector.js";
+import LengthSelector from "../components/LengthSelector.js";
+import {
+  getSettings,
+  updateSettings,
+  type AISettings,
+} from "../services/settings.js";
+import {
+  getConnections,
+  connectGmail,
+  connectOutlook,
+  disconnectGmail,
+  disconnectOutlook,
+} from "../services/accounts.js";
+import {
+  getMe,
+  updateProfile,
+  changePassword,
+  deleteAccount,
+  type UserProfile,
+} from "../services/users.js";
+import type { ReplyLength } from "../components/LengthSelector.js";
 
 export default function Settings() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [avatar, setAvatar] = useState("");
-  const [signature, setSignature] = useState("Customer Support");
-
-  const [provider, setProvider] = useState<
-    "openai" | "groq" | "gemini"
-  >("groq");
-
-  const [autoDraft, setAutoDraft] =
+  const [settings, setSettings] =
+    useState<AISettings | null>(null);
+  const [user, setUser] =
+    useState<UserProfile | null>(null);
+  const [gmailConnected, setGmailConnected] =
     useState(false);
-
-  const [gmailConnected] =
+  const [outlookConnected, setOutlookConnected] =
     useState(false);
+  const [error, setError] = useState("");
 
-  const [outlookConnected] =
-    useState(false);
+  useEffect(() => {
+    async function load() {
+      try {
+        setError("");
+        const [
+          loadedSettings,
+          connections,
+          loadedUser,
+        ] = await Promise.all([
+          getSettings(),
+          getConnections(),
+          getMe(),
+        ]);
 
-  const [emailNotifications,
-    setEmailNotifications] =
-    useState(true);
+        setSettings(loadedSettings);
+        setUser(loadedUser);
+        setGmailConnected(connections.gmail);
+        setOutlookConnected(connections.outlook);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load settings."
+        );
+      }
+    }
 
-  const [desktopNotifications,
-    setDesktopNotifications] =
-    useState(false);
+    void load();
+  }, []);
 
-  async function connectGmail() {
-    console.log("Connect Gmail");
+  async function save(data: Partial<AISettings>) {
+    if (!settings) {
+      return;
+    }
+
+    const previousSettings = settings;
+    setSettings({
+      ...settings,
+      ...data,
+    });
+
+    try {
+      const updated = await updateSettings(data);
+      setSettings(updated);
+    } catch (error) {
+      setSettings(previousSettings);
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to update settings."
+      );
+    }
   }
 
-  async function connectOutlook() {
-    console.log("Connect Outlook");
+  async function saveProfile(
+    data: Partial<
+      Pick<UserProfile, "name" | "email" | "avatar">
+    >
+  ) {
+    try {
+      const updated = await updateProfile(data);
+      setUser(updated);
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to update profile."
+      );
+    }
   }
 
-  async function changePassword(
-    currentPassword: string,
-    newPassword: string
-  ): Promise<void> {
-    console.log(
-      currentPassword,
-      newPassword
+  async function handleGmail() {
+    try {
+      if (gmailConnected) {
+        await disconnectGmail();
+        setGmailConnected(false);
+        return;
+      }
+
+      await connectGmail();
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect Gmail."
+      );
+    }
+  }
+
+  async function handleOutlook() {
+    try {
+      if (outlookConnected) {
+        await disconnectOutlook();
+        setOutlookConnected(false);
+        return;
+      }
+
+      await connectOutlook();
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to connect Outlook."
+      );
+    }
+  }
+
+  async function handleDeleteAccount() {
+    try {
+      await deleteAccount();
+      localStorage.removeItem("token");
+      window.location.href = "/login";
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Failed to delete account."
+      );
+    }
+  }
+
+  if (error) {
+    return (
+      <div className="p-6 text-red-600 dark:text-red-400">
+        {error}
+      </div>
     );
   }
 
-  async function deleteAccount(): Promise<void> {
-    console.log("Delete account");
+  if (!settings || !user) {
+    return (
+      <div className="p-6 dark:text-white">
+        Loading settings...
+      </div>
+    );
   }
+
+  const lengthValue: ReplyLength =
+    settings.defaultLength;
 
   return (
     <div className="space-y-6">
@@ -65,60 +187,87 @@ export default function Settings() {
       </h1>
 
       <ProfileCard
-        name={name}
-        email={email}
-        avatar={avatar}
-        onNameChange={setName}
-        onEmailChange={setEmail}
-        onAvatarChange={setAvatar}
+        name={user.name}
+        email={user.email}
+        avatar={user.avatar ?? ""}
+        onSave={saveProfile}
       />
 
       <AppearanceCard />
 
-      <SignatureCard
-        value={signature}
-        onChange={setSignature}
-      />
+      <div className="grid gap-4 md:grid-cols-2">
+        <ToneSelector
+          value={settings.defaultReplyTone}
+          onChange={(value) => {
+            if (value !== "default") {
+              void save({
+                defaultReplyTone: value,
+              });
+            }
+          }}
+          label="Default Reply Tone"
+        />
 
-      <AISettingsCard
-        provider={provider}
-        onProviderChange={setProvider}
-        autoDraft={autoDraft}
-        onAutoDraftChange={setAutoDraft}
+        <LengthSelector
+          value={lengthValue}
+          onChange={(value) => {
+            if (value !== "default") {
+              void save({
+                defaultLength: value,
+              });
+            }
+          }}
+          label="Default Reply Length"
+        />
+      </div>
+
+      <SignatureCard
+        value={settings.signature ?? ""}
+        onChange={(signature) => {
+          void save({ signature });
+        }}
       />
 
       <ConnectedAccountsCard
         gmailConnected={gmailConnected}
         outlookConnected={outlookConnected}
-        onConnectGmail={connectGmail}
-        onConnectOutlook={connectOutlook}
+        onConnectGmail={handleGmail}
+        onConnectOutlook={handleOutlook}
       />
 
       <NotificationsCard
         emailNotifications={
+          settings.emailNotifications
+        }
+        onEmailNotificationsChange={(
           emailNotifications
-        }
-        onEmailNotificationsChange={
-          setEmailNotifications
-        }
+        ) => {
+          void save({ emailNotifications });
+        }}
         desktopNotifications={
+          settings.desktopNotifications
+        }
+        onDesktopNotificationsChange={(
           desktopNotifications
-        }
-        onDesktopNotificationsChange={
-          setDesktopNotifications
-        }
+        ) => {
+          void save({ desktopNotifications });
+        }}
       />
 
       <SecurityCard
-        onChangePassword={
-          changePassword
-        }
+        onChangePassword={async (
+          currentPassword,
+          newPassword
+        ) => {
+          await changePassword(
+            currentPassword,
+            newPassword
+          );
+        }}
       />
 
       <DangerZoneCard
-        onDeleteAccount={
-          deleteAccount
-        }
+        onDeleteAccount={handleDeleteAccount}
       />
     </div>
   );

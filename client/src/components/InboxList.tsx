@@ -3,8 +3,10 @@ export interface InboxEmail {
   from: string;
   subject: string;
   preview: string;
+  body: string;
   receivedAt: string;
   unread: boolean;
+  provider?: "gmail" | "outlook" | "sample";
 }
 
 interface InboxListProps {
@@ -40,23 +42,37 @@ export default function InboxList({
                   : ""
               }`}
             >
-              <div className="flex items-center justify-between">
-                <h3
-                  className={`font-semibold ${
-                    email.unread
-                      ? "text-blue-600 dark:text-blue-400"
-                      : "text-gray-900 dark:text-white"
-                  }`}
-                >
-                  {email.subject}
-                </h3>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-2">
+                  <h3
+                    className={`truncate font-semibold ${
+                      email.unread
+                        ? "text-blue-600 dark:text-blue-400"
+                        : "text-gray-900 dark:text-white"
+                    }`}
+                  >
+                    {email.subject || "(No subject)"}
+                  </h3>
 
-                <span className="text-xs text-gray-500">
+                  <span
+                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                      email.provider === "outlook"
+                        ? "bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
+                        : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300"
+                    }`}
+                  >
+                    {email.provider === "outlook"
+                      ? "Outlook"
+                      : "Gmail"}
+                  </span>
+                </div>
+
+                <span className="shrink-0 text-xs text-gray-500 dark:text-gray-400">
                   {email.receivedAt}
                 </span>
               </div>
 
-              <p className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+              <p className="mt-1 truncate text-sm text-gray-700 dark:text-gray-300">
                 {email.from}
               </p>
 

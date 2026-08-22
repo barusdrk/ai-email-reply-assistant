@@ -6,63 +6,53 @@ import {
   useState,
   type ReactNode,
 } from "react";
-
 import {
   login as loginService,
   register as registerService,
   logout as logoutService,
   getCurrentUser,
+  getToken,
 } from "../services/auth.js";
-
 import type { User } from "../types/user.js";
 
 interface AuthContextValue {
   user: User | null;
-
   loading: boolean;
-
   isAuthenticated: boolean;
-
-  login: (
-    email: string,
-    password: string
-  ) => Promise<void>;
-
+  login: (email: string, password: string) => Promise<void>;
   register: (
+    name: string,
     email: string,
     password: string
   ) => Promise<void>;
-
   logout: () => void;
-
   refreshUser: () => Promise<void>;
 }
 
 export const AuthContext =
-  createContext<AuthContextValue | null>(
-    null
-  );
+  createContext<AuthContextValue | null>(null);
 
 interface Props {
   children: ReactNode;
 }
 
-export function AuthProvider({
-  children,
-}: Props) {
-  const [user, setUser] =
-    useState<User | null>(null);
-
-  const [loading, setLoading] =
-    useState(true);
+export function AuthProvider({ children }: Props) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   async function refreshUser() {
-    try {
-      const currentUser =
-        await getCurrentUser();
+    const token = getToken();
 
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      const currentUser = await getCurrentUser();
       setUser(currentUser);
     } catch {
+      logoutService();
       setUser(null);
     }
   }
@@ -79,62 +69,73 @@ export function AuthProvider({
     initialize();
   }, []);
 
+  useEffect(() => {
+    function handleUnauthorized() {
+      logoutService();
+      setUser(null);
+      setLoading(false);
+    }
+
+    window.addEventListener(
+      "auth:logout",
+      handleUnauthorized
+    );
+
+    return () => {
+      window.removeEventListener(
+        "auth:logout",
+        handleUnauthorized
+      );
+    };
+  }, []);
+
   async function login(
     email: string,
     password: string
   ) {
-    const result =
-      await loginService(
-        email,
-        password
-      );
+    const result = await loginService(
+      email,
+      password
+    );
 
     setUser(result.user);
   }
 
   async function register(
+    name: string,
     email: string,
     password: string
   ) {
-    const result =
-      await registerService(
-        email,
-        password
-      );
+    const result = await registerService(
+      name,
+      email,
+      password
+    );
 
     setUser(result.user);
   }
 
   function logout() {
     logoutService();
-
     setUser(null);
+    setLoading(false);
   }
 
   const value = useMemo(
     () => ({
       user,
-
       loading,
-
-      isAuthenticated:
-        !!user,
-
+      isAuthenticated: Boolean(user),
       login,
-
       register,
-
       logout,
-
       refreshUser,
     }),
     [user, loading]
   );
 
   return (
-    <AuthContext.Provider
-      value={value}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

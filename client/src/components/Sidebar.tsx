@@ -1,6 +1,8 @@
 import {
   NavLink,
+  useNavigate,
 } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.js";
 
 const links = [
   {
@@ -36,6 +38,16 @@ const links = [
 ];
 
 export default function Sidebar() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
+  function handleLogout() {
+    logout();
+    navigate("/login", {
+      replace: true,
+    });
+  }
+
   return (
     <aside className="flex w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
       <div className="border-b border-gray-200 p-6 dark:border-gray-700">
@@ -55,21 +67,11 @@ export default function Sidebar() {
               <NavLink
                 to={link.path}
                 className={({ isActive }) =>
-                  `
-                  flex
-                  items-center
-                  gap-3
-                  rounded-lg
-                  px-4
-                  py-3
-                  transition
-
-                  ${
+                  `flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                     isActive
                       ? "bg-blue-600 text-white"
                       : "text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-                  }
-                  `
+                  }`
                 }
               >
                 <span className="text-lg">
@@ -85,13 +87,23 @@ export default function Sidebar() {
         </ul>
       </nav>
 
-      <div className="border-t border-gray-200 p-4 text-center text-xs text-gray-500 dark:border-gray-700">
-        AI Email Reply Assistant
+      <div className="border-t border-gray-200 p-4 dark:border-gray-700">
+        <button
+          type="button"
+          onClick={handleLogout}
+          className="w-full rounded-lg bg-red-600 px-4 py-3 font-medium text-white transition hover:bg-red-700"
+        >
+          Logout
+        </button>
 
-        <br />
+        <p className="mt-4 text-center text-xs text-gray-500">
+          AI Email Reply Assistant
 
-        Version 1.0
+          <br />
+
+          Version 1.0
+        </p>
       </div>
     </aside>
-  )
+  );
 }

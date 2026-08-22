@@ -1,8 +1,9 @@
-import { env } from "../../config/env.js";
+import { env } from "../config/env.js";
 import type { AIProvider } from "./types.js";
 import { OpenAIProvider } from "./openai.js";
-import { GroqProvider } from "./groq.js";
 import { GeminiProvider } from "./gemini.js";
+import { GroqProvider } from "./groq.js";
+import { ClaudeProvider } from "./claude.js";
 import { MockAIProvider } from "./mock.js";
 
 export function createAIProvider(): AIProvider {
@@ -11,12 +12,12 @@ export function createAIProvider(): AIProvider {
   }
 
   switch (env.AI_PROVIDER.toLowerCase()) {
-    case "groq":
-      return new GroqProvider();
-
     case "gemini":
       return new GeminiProvider();
-
+    case "groq":
+      return new GroqProvider();
+    case "claude":
+      return new ClaudeProvider();
     case "openai":
     default:
       return new OpenAIProvider();

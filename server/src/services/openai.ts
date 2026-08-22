@@ -18,25 +18,29 @@ function getClient() {
 }
 
 export interface GenerateReplyInput {
-  email:string;
-  tone:Tone;
-  length:Length;
+  email: string;
+  tone:
+    | "professional"
+    | "friendly"
+    | "formal"
+    | "concise"
+    | "empathetic"
+    | "enthusiastic";
+  length: Length;
 }
 
 export async function generateReply(
-  input:GenerateReplyInput
+  input: GenerateReplyInput
 ) {
   const client = getClient();
 
   const response =
     await client.responses.create({
-      model:
-        env.OPENAI_MODEL,
-
-      input:`
+      model: env.OPENAI_MODEL,
+      input: `
 You are an AI email assistant.
 
-Write a professional customer reply.
+Write a customer email reply.
 
 Tone:
 ${input.tone}
@@ -46,6 +50,14 @@ ${input.length}
 
 Customer email:
 ${input.email}
+
+Tone instructions:
+- professional: clear, polished, and business-appropriate.
+- friendly: warm, approachable, and helpful.
+- formal: respectful, structured, and professional.
+- concise: brief, direct, and focused on the essential information.
+- empathetic: understanding, supportive, and considerate of the customer's situation.
+- enthusiastic: positive, energetic, and encouraging without being excessive.
 
 Rules:
 - Reply only with the email.
@@ -59,16 +71,14 @@ Rules:
 }
 
 export async function summarizeEmail(
-  email:string
+  email: string
 ) {
   const client = getClient();
 
   const response =
     await client.responses.create({
-      model:
-        env.OPENAI_MODEL,
-
-      input:`
+      model: env.OPENAI_MODEL,
+      input: `
 Summarize this customer email.
 
 Return:
@@ -85,16 +95,14 @@ ${email}
 }
 
 export async function classifyEmail(
-  email:string
+  email: string
 ) {
   const client = getClient();
 
   const response =
     await client.responses.create({
-      model:
-        env.OPENAI_MODEL,
-
-      input:`
+      model: env.OPENAI_MODEL,
+      input: `
 Classify this customer email.
 
 Categories:

@@ -1,25 +1,73 @@
-import { Link } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+import {
+  Link,
+} from "react-router-dom";
+import {
+  getDashboardStats,
+  type DashboardStats,
+} from "../services/dashboard.js";
 
 export default function Dashboard() {
-  const stats = [
+  const [stats, setStats] =
+    useState<DashboardStats>({
+      inboxEmails: 0,
+      draftReplies: 0,
+      pendingApprovals: 0,
+      sentToday: 0,
+    });
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data =
+          await getDashboardStats();
+
+        setStats(data);
+      } catch (error) {
+        setError(
+          error instanceof Error
+            ? error.message
+            : "Failed to load dashboard."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, []);
+
+  const statCards = [
     {
       label: "Inbox Emails",
-      value: 128,
+      value: stats.inboxEmails,
       color: "bg-blue-500",
     },
     {
       label: "Draft Replies",
-      value: 24,
+      value: stats.draftReplies,
       color: "bg-yellow-500",
     },
     {
       label: "Pending Approvals",
-      value: 6,
+      value: stats.pendingApprovals,
       color: "bg-orange-500",
     },
     {
       label: "Sent Today",
-      value: 42,
+      value: stats.sentToday,
       color: "bg-green-500",
     },
   ];
@@ -36,8 +84,14 @@ export default function Dashboard() {
         </p>
       </div>
 
+      {error && (
+        <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+          {error}
+        </div>
+      )}
+
       <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        {stats.map((stat) => (
+        {statCards.map((stat) => (
           <div
             key={stat.label}
             className="rounded-xl border border-gray-300 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800"
@@ -47,7 +101,7 @@ export default function Dashboard() {
             />
 
             <div className="text-4xl font-bold text-gray-900 dark:text-white">
-              {stat.value}
+              {loading ? "..." : stat.value}
             </div>
 
             <div className="mt-2 text-gray-500">

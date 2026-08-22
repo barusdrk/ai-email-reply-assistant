@@ -9,18 +9,21 @@ import {
 } from "../middleware/auth.js";
 
 import {
-  generateReply,
-} from "../services/ai.js";
-
-import {
-  TONES,
-  type Tone,
-  type ReplyLength,
-} from "../templates/tones.js";
+  ai,
+} from "../ai/index.js";
 
 import {
   canGenerateReply,
 } from "../services/billing.js";
+
+import {
+  TONES,
+} from "../templates/tones.js";
+
+import type {
+  Tone,
+  ReplyLength,
+} from "../ai/types.js";
 
 const router =
   Router();
@@ -45,6 +48,7 @@ router.post(
         email,
         tone = "professional",
         length = "medium",
+        signature,
       } = req.body;
 
       if (!email?.trim()) {
@@ -80,18 +84,18 @@ router.post(
       }
 
       const reply =
-        await generateReply({
+        await ai.generateReply({
           email,
           tone:
             tone as Tone,
           length:
             length as ReplyLength,
+          signature,
         });
 
       res.json({
         reply,
       });
-
     } catch (error) {
       res.status(500).json({
         message:

@@ -3,35 +3,24 @@ import {
   useEffect,
   useState,
 } from "react";
-
-import type {
-  Draft,
-} from "../types/index.js";
-
+import type { Draft } from "../types/index.js";
 import {
   getDrafts,
   approveDraft,
   rejectDraft,
+  updateDraft,
 } from "../services/drafts.js";
 
 export function useApprovals() {
-  const [
-    approvals,
-    setApprovals,
-  ] = useState<Draft[]>([]);
+  const [approvals, setApprovals] =
+    useState<Draft[]>([]);
+  const [loading, setLoading] =
+    useState(false);
+  const [error, setError] =
+    useState("");
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const loadApprovals =
-    useCallback(async () => {
+  const loadApprovals = useCallback(
+    async () => {
       try {
         setLoading(true);
         setError("");
@@ -42,8 +31,7 @@ export function useApprovals() {
         setApprovals(
           drafts.filter(
             (draft) =>
-              draft.status ===
-              "pending"
+              draft.status === "pending"
           )
         );
       } catch (error) {
@@ -55,25 +43,29 @@ export function useApprovals() {
       } finally {
         setLoading(false);
       }
-    }, []);
+    },
+    []
+  );
 
   useEffect(() => {
-    loadApprovals();
+    void loadApprovals();
   }, [loadApprovals]);
 
-  async function approve(
-    id:string
+  async function edit(
+    id: string,
+    reply: string
   ) {
-    await approveDraft(id);
-
+    await updateDraft(id, reply);
     await loadApprovals();
   }
 
-  async function reject(
-    id:string
-  ) {
-    await rejectDraft(id);
+  async function approve(id: string) {
+    await approveDraft(id);
+    await loadApprovals();
+  }
 
+  async function reject(id: string) {
+    await rejectDraft(id);
     await loadApprovals();
   }
 
@@ -81,9 +73,9 @@ export function useApprovals() {
     approvals,
     loading,
     error,
+    edit,
     approve,
     reject,
-    refresh:
-      loadApprovals,
+    refresh: loadApprovals,
   };
 }

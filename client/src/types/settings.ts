@@ -1,25 +1,40 @@
 export type AIProvider =
   | "openai"
-  | "gemini";
+  | "groq"
+  | "gemini"
+  | "claude"
+  | "mock";
+
+export type ReplyTone =
+  | "friendly"
+  | "formal"
+  | "professional"
+  | "concise"
+  | "empathetic"
+  | "enthusiastic";
+
+export type Theme =
+  | "light"
+  | "dark"
+  | "system";
 
 export interface AISettings {
-  id?: string;
-
   provider: AIProvider;
-
-  openAiApiKey?: string;
-
-  geminiApiKey?: string;
-
-  defaultTone: string;
-
-  defaultLength: string;
-
+  defaultReplyTone: ReplyTone;
+  defaultLength:
+    | "short"
+    | "medium"
+    | "long";
   temperature: number;
-
   maxDailyReplies: number;
-
-  createdAt?: string;
-
-  updatedAt?: string;
+  autoDraft: boolean;
+  signature: string;
+  theme: Theme;
+  language: string;
+  timezone: string;
+  emailNotifications: boolean;
+  desktopNotifications: boolean;
+  openAiApiKey?: string;
+  groqApiKey?: string;
+  geminiApiKey?: string;
 }

@@ -1,7 +1,6 @@
 import {
   Schema,
   model,
-  Types,
   type InferSchemaType,
   type HydratedDocument,
 } from "mongoose";
@@ -16,10 +15,7 @@ const emailSchema = new Schema(
     },
     provider: {
       type: String,
-      enum: [
-        "gmail",
-        "outlook",
-      ],
+      enum: ["gmail", "outlook", "sample"],
       required: true,
     },
     messageId: {
@@ -58,6 +54,11 @@ const emailSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    isSample: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     receivedAt: {
       type: Date,
       default: Date.now,
@@ -80,9 +81,7 @@ emailSchema.index({
 });
 
 export type Email =
-  InferSchemaType<
-    typeof emailSchema
-  >;
+  InferSchemaType<typeof emailSchema>;
 
 export type EmailDocument =
   HydratedDocument<Email>;

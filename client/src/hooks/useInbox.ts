@@ -3,32 +3,30 @@ import {
   useEffect,
   useState,
 } from "react";
-
-import { getInbox, getEmail, generateReply } from "../services/email.js";
-import type { Email, ReplyRequest } from "../types/index.js";
+import {
+  getInbox,
+  getEmail,
+  generateReply,
+} from "../services/emails.js";
+import type {
+  Email,
+  ReplyRequest,
+} from "../types/index.js";
 
 export function useInbox() {
   const [emails, setEmails] =
     useState<Email[]>([]);
-
   const [selectedEmail, setSelectedEmail] =
     useState<Email | null>(null);
-
-  const [reply, setReply] =
-    useState("");
-
-  const [loading, setLoading] =
-    useState(false);
-
-  const [error, setError] =
-    useState("");
+  const [reply, setReply] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const loadInbox = useCallback(async () => {
     try {
       setLoading(true);
-
+      setError("");
       const data = await getInbox();
-
       setEmails(data);
     } catch (err) {
       setError(
@@ -42,42 +40,50 @@ export function useInbox() {
   }, []);
 
   useEffect(() => {
-    loadInbox();
+    void loadInbox();
   }, [loadInbox]);
 
-  async function selectEmail(id: string) {
-    try {
-      const email = await getEmail(id);
-      setSelectedEmail(email);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load email."
-      );
-    }
-  }
+  const selectEmail = useCallback(
+    async (id: string) => {
+      try {
+        setLoading(true);
+        setError("");
+        setReply("");
+        const email = await getEmail(id);
+        setSelectedEmail(email);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load email."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
-  async function createReply(
-    request: ReplyRequest
-  ) {
-    try {
-      setLoading(true);
-
-      const result =
-        await generateReply(request);
-
-      setReply(result.reply);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to generate reply."
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
+  const createReply = useCallback(
+    async (request: ReplyRequest) => {
+      try {
+        setLoading(true);
+        setError("");
+        const result =
+          await generateReply(request);
+        setReply(result.reply);
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to generate reply."
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    []
+  );
 
   return {
     emails,
@@ -85,6 +91,7 @@ export function useInbox() {
     reply,
     loading,
     error,
+    setReply,
     selectEmail,
     createReply,
     refresh: loadInbox,

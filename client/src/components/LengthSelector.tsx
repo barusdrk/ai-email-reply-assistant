@@ -1,86 +1,70 @@
-export type ReplyLength =
+export type ReplyLengthValue =
   | "short"
   | "medium"
   | "long";
 
-interface LengthSelectorProps {
+export type ReplyLength =
+  | "default"
+  | ReplyLengthValue;
+
+interface Props {
   value: ReplyLength;
-  onChange: (length: ReplyLength) => void;
-  disabled?: boolean;
+  onChange: (value: ReplyLength) => void;
+  defaultLength?: ReplyLengthValue;
+  label?: string;
+  useDefault?: boolean;
 }
 
-const LENGTHS: {
-  value: ReplyLength;
-  label: string;
-  description: string;
-}[] = [
-  {
-    value: "short",
-    label: "Short",
-    description: "Up to 100 words",
-  },
-  {
-    value: "medium",
-    label: "Medium",
-    description: "100–180 words",
-  },
-  {
-    value: "long",
-    label: "Long",
-    description: "180–300 words",
-  },
-];
+function formatLength(
+  value: ReplyLengthValue
+) {
+  return (
+    value.charAt(0).toUpperCase() +
+    value.slice(1)
+  );
+}
 
 export default function LengthSelector({
   value,
   onChange,
-  disabled = false,
-}: LengthSelectorProps) {
+  defaultLength,
+  label = "Reply Length",
+  useDefault = false,
+}: Props) {
   return (
-    <div className="space-y-2">
-      <label
-        htmlFor="reply-length"
-        className="block text-sm font-semibold text-gray-700 dark:text-gray-200"
-      >
-        Reply Length
+    <div>
+      <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200">
+        {label}
       </label>
 
       <select
-        id="reply-length"
         value={value}
-        disabled={disabled}
-        onChange={(e) =>
+        onChange={(event) =>
           onChange(
-            e.target.value as ReplyLength
+            event.target.value as ReplyLength
           )
         }
-        className="
-          w-full
-          rounded-lg
-          border
-          border-gray-300
-          bg-white
-          px-4
-          py-2
-          text-gray-900
-          focus:border-blue-500
-          focus:outline-none
-          focus:ring-2
-          focus:ring-blue-500
-          disabled:bg-gray-100
-          dark:border-gray-700
-          dark:bg-gray-800
-          dark:text-white
-        "
+        className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-gray-900 outline-none transition focus:border-blue-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
       >
-        {LENGTHS.map((length) => (
-          <option
-            key={length.value}
-            value={length.value}
-          >
-            {length.label} — {length.description}
+        {useDefault && (
+          <option value="default">
+            {defaultLength
+              ? `Use Default (${formatLength(defaultLength)})`
+              : "Use Default"}
           </option>
-        ))}
+        )}
+
+        <option value="short">
+          Short
+        </option>
+
+        <option value="medium">
+          Medium
+        </option>
+
+        <option value="long">
+          Long
+        </option>
       </select>
     </div>
   );

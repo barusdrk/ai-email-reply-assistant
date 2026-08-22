@@ -1,10 +1,21 @@
 import {
   Schema,
   model,
-  Types,
   type InferSchemaType,
   type HydratedDocument,
 } from "mongoose";
+
+export const DRAFT_TONES = [
+  "professional",
+  "friendly",
+  "formal",
+  "concise",
+  "empathetic",
+  "enthusiastic",
+] as const;
+
+export type DraftTone =
+  (typeof DRAFT_TONES)[number];
 
 const draftSchema = new Schema(
   {
@@ -34,13 +45,17 @@ const draftSchema = new Schema(
     },
     tone: {
       type: String,
-      enum: [
-        "professional",
-        "friendly",
-        "formal",
-        "empathetic",
-      ],
+      enum: DRAFT_TONES,
       default: "professional",
+    },
+    length: {
+      type: String,
+      enum: [
+        "short",
+        "medium",
+        "long",
+      ],
+      default: "medium",
     },
     status: {
       type: String,
@@ -62,9 +77,7 @@ const draftSchema = new Schema(
 );
 
 export type Draft =
-  InferSchemaType<
-    typeof draftSchema
-  >;
+  InferSchemaType<typeof draftSchema>;
 
 export type DraftDocument =
   HydratedDocument<Draft>;

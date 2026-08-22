@@ -5,48 +5,39 @@ import {
 } from "express";
 
 import {
-  getGoogleAuthUrl,
-  exchangeCode,
-  disconnectAccount,
-  connectionStatus,
-} from "../services/gmailService.js";
+  auth,
+} from "../middleware/auth.js";
+
+import {
+  connectOutlook,
+  disconnectOutlook,
+  outlookStatus,
+  syncOutlook,
+} from "../services/outlook.js";
 
 const router =
   Router();
 
-router.get(
-  "/login",
-  (
-    _req: Request,
-    res: Response
-  ) => {
-    res.json(
-      getGoogleAuthUrl()
-    );
-  }
-);
+router.use(auth);
 
-router.get(
-  "/callback",
+router.post(
+  "/connect",
   async (
     req: Request,
     res: Response
   ) => {
-    const code =
-      typeof req.query.code === "string"
-        ? req.query.code
-        : undefined;
-
-    if (!code) {
-      res.status(400).json({
+    if (!req.user) {
+      res.status(401).json({
         message:
-          "Authorization code missing.",
+          "Unauthorized.",
       });
       return;
     }
 
     res.json(
-      await exchangeCode(code)
+      await connectOutlook(
+        req.user.id
+      )
     );
   }
 );
@@ -54,25 +45,65 @@ router.get(
 router.post(
   "/disconnect",
   async (
-    _req: Request,
+    req: Request,
     res: Response
   ) => {
-    await disconnectAccount();
+    if (!req.user) {
+      res.status(401).json({
+        message:
+          "Unauthorized.",
+      });
+      return;
+    }
 
-    res.json({
-      success:true,
-    });
+    res.json(
+      await disconnectOutlook(
+        req.user.id
+      )
+    );
   }
 );
 
 router.get(
   "/status",
   async (
-    _req: Request,
+    req: Request,
     res: Response
   ) => {
+    if (!req.user) {
+      res.status(401).json({
+        message:
+          "Unauthorized.",
+      });
+      return;
+    }
+
     res.json(
-      await connectionStatus()
+      await outlookStatus(
+        req.user.id
+      )
+    );
+  }
+);
+
+router.post(
+  "/sync",
+  async (
+    req: Request,
+    res: Response
+  ) => {
+    if (!req.user) {
+      res.status(401).json({
+        message:
+          "Unauthorized.",
+      });
+      return;
+    }
+
+    res.json(
+      await syncOutlook(
+        req.user.id
+      )
     );
   }
 );

@@ -3,11 +3,7 @@ import {
   useEffect,
   useState,
 } from "react";
-
-import type {
-  Draft,
-} from "../types/index.js";
-
+import type { Draft } from "../types/index.js";
 import {
   getDrafts,
   createDraft,
@@ -17,92 +13,58 @@ import {
 } from "../services/drafts.js";
 
 export function useDrafts() {
-  const [
-    drafts,
-    setDrafts,
-  ] = useState<Draft[]>([]);
+  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
-  const [
-    loading,
-    setLoading,
-  ] = useState(false);
-
-  const [
-    error,
-    setError,
-  ] = useState("");
-
-  const loadDrafts =
-    useCallback(async () => {
-      try {
-        setLoading(true);
-        setError("");
-
-        const data =
-          await getDrafts();
-
-        setDrafts(data);
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : "Unable to load drafts."
-        );
-      } finally {
-        setLoading(false);
-      }
-    }, []);
+  const loadDrafts = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      setDrafts(await getDrafts());
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Unable to load drafts."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    loadDrafts();
+    void loadDrafts();
   }, [loadDrafts]);
 
   async function addDraft(
-    emailId:string,
-    reply:string
+    emailId: string,
+    reply: string
   ) {
     await createDraft({
       emailId,
-      customer:"",
-      subject:"",
+      customer: "",
+      subject: "",
       reply,
-      status:"draft",
-      createdAt:
-        new Date().toISOString(),
     });
-
     await loadDrafts();
   }
 
   async function editDraft(
-    draftId:string,
-    reply:string
+    draftId: string,
+    reply: string
   ) {
-    await updateDraft(
-      draftId,
-      reply
-    );
-
+    await updateDraft(draftId, reply);
     await loadDrafts();
   }
 
-  async function removeDraft(
-    draftId:string
-  ) {
-    await deleteDraft(
-      draftId
-    );
-
+  async function removeDraft(draftId: string) {
+    await deleteDraft(draftId);
     await loadDrafts();
   }
 
-  async function submit(
-    draftId:string
-  ) {
-    await submitForApproval(
-      draftId
-    );
-
+  async function submit(draftId: string) {
+    await submitForApproval(draftId);
     await loadDrafts();
   }
 
@@ -110,16 +72,10 @@ export function useDrafts() {
     drafts,
     loading,
     error,
-
-    refresh:
-      loadDrafts,
-
+    refresh: loadDrafts,
     addDraft,
-
     editDraft,
-
     removeDraft,
-
     submit,
   };
 }

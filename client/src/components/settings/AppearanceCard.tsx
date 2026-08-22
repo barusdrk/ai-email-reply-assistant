@@ -1,5 +1,11 @@
 import { useMemo } from "react";
-import { useTheme } from "../../context/ThemeContext.js";
+
+import {
+  useTheme,
+} from "../../context/ThemeContext.js";
+
+import FormInput from "../ui/FormInput.js";
+import FormSelect from "../ui/FormSelect.js";
 
 export default function AppearanceCard() {
   const {
@@ -9,7 +15,9 @@ export default function AppearanceCard() {
 
   const timezone = useMemo(
     () =>
-      Intl.DateTimeFormat().resolvedOptions().timeZone,
+      Intl.DateTimeFormat()
+        .resolvedOptions()
+        .timeZone,
     []
   );
 
@@ -20,59 +28,48 @@ export default function AppearanceCard() {
       </h2>
 
       <div className="space-y-5">
-        <div>
-          <label className="mb-2 block text-sm font-medium dark:text-white">
-            Theme
-          </label>
+        <FormSelect
+          label="Theme"
+          value={theme}
+          onChange={(value) =>
+            setTheme(
+              value as
+                | "light"
+                | "dark"
+                | "system"
+            )
+          }
+          options={[
+            {
+              value: "light",
+              label: "Light",
+            },
+            {
+              value: "dark",
+              label: "Dark",
+            },
+            {
+              value: "system",
+              label: "System",
+            },
+          ]}
+        />
 
-          <select
-            className="w-full rounded border px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            value={theme}
-            onChange={(e) =>
-              setTheme(
-                e.target.value as
-                  | "light"
-                  | "dark"
-                  | "system"
-              )
-            }
-          >
-            <option value="light">
-              Light
-            </option>
-
-            <option value="dark">
-              Dark
-            </option>
-
-            <option value="system">
-              System
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <label className="mb-2 block text-sm font-medium dark:text-white">
-            Language
-          </label>
-
-          <input
-            className="w-full rounded border bg-gray-100 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
-            value="English"
-            readOnly
-          />
-        </div>
+        <FormInput
+          label="Language"
+          value="English"
+          onChange={() => {}}
+          readOnly
+        />
 
         <div>
-          <label className="mb-2 block text-sm font-medium dark:text-white">
-            Timezone
-          </label>
-
-          <input
-            className="w-full rounded border bg-gray-100 px-3 py-2 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
+          <FormInput
+            label="Timezone"
             value={timezone}
+            onChange={() => {}}
             readOnly
           />
+
           <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
             Automatically detected from your browser.
           </p>

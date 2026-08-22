@@ -1,16 +1,26 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-import { env } from "../config/env.js";
+import {
+  env,
+} from "../config/env.js";
 
-import { userRepository } from "../repositories/UserRepository.js";
-import { aiSettingsRepository } from "../repositories/AISettingsRepository.js";
-import { subscriptionRepository } from "../repositories/SubscriptionRepository.js";
+import {
+  userRepository,
+} from "../repositories/UserRepository.js";
+
+import {
+  aiSettingsRepository,
+} from "../repositories/AISettingsRepository.js";
+
+import {
+  subscriptionRepository,
+} from "../repositories/SubscriptionRepository.js";
 
 export async function register(
-  name:string,
-  email:string,
-  password:string
+  name: string,
+  email: string,
+  password: string
 ) {
   const existing =
     await userRepository.findByEmail(
@@ -33,57 +43,61 @@ export async function register(
     await userRepository.create({
       name,
       email,
-      password:hash,
-      role:"user",
-      plan:"starter",
-      subscriptionStatus:"trial",
-      active:true,
-      emailVerified:false,
+      password: hash,
+      role: "user",
+      plan: "starter",
+      subscriptionStatus: "trial",
+      active: true,
+      emailVerified: false,
     });
 
   await aiSettingsRepository.create({
-    userId:user._id,
-    provider:"openai",
-    maxDailyReplies:20,
-    temperature:0.7,
-    defaultTone:"professional",
-    defaultLength:"medium",
+    userId: user._id,
+    provider: "openai",
+    maxDailyReplies: 20,
+    temperature: 0.7,
+    defaultReplyTone: "formal",
+    defaultLength: "medium",
+    signature: "Customer Support",
+    autoDraft: false,
+    emailNotifications: true,
+    desktopNotifications: false,
   });
 
   await subscriptionRepository.create({
-    userId:user._id,
-    plan:"free",
-    status:"active",
-    provider:"none",
+    userId: user._id,
+    plan: "free",
+    status: "active",
+    provider: "none",
   });
 
   const token =
     jwt.sign(
       {
-        id:user._id.toString(),
-        email:user.email,
-        role:user.role,
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
       },
       env.JWT_SECRET,
       {
-        expiresIn:"7d",
+        expiresIn: "7d",
       }
     );
 
   const {
-    password:_password,
+    password: _password,
     ...safeUser
   } = user.toObject();
 
   return {
     token,
-    user:safeUser,
+    user: safeUser,
   };
 }
 
 export async function login(
-  email:string,
-  password:string
+  email: string,
+  password: string
 ) {
   const user =
     await userRepository.findByEmail(
@@ -111,29 +125,29 @@ export async function login(
   const token =
     jwt.sign(
       {
-        id:user._id.toString(),
-        email:user.email,
-        role:user.role,
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role,
       },
       env.JWT_SECRET,
       {
-        expiresIn:"7d",
+        expiresIn: "7d",
       }
     );
 
   const {
-    password:_password,
+    password: _password,
     ...safeUser
   } = user.toObject();
 
   return {
     token,
-    user:safeUser,
+    user: safeUser,
   };
 }
 
 export async function getCurrentUser(
-  id:string
+  id: string
 ) {
   const user =
     await userRepository.findById(
@@ -147,7 +161,7 @@ export async function getCurrentUser(
   }
 
   const {
-    password:_password,
+    password: _password,
     ...safeUser
   } = user.toObject();
 

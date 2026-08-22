@@ -4,7 +4,6 @@ import OutlookConnectButton from "../OutlookConnectButton.js";
 interface Props {
   gmailConnected: boolean;
   outlookConnected: boolean;
-
   onConnectGmail: () => void;
   onConnectOutlook: () => void;
 }
