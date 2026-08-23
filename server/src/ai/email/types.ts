@@ -1,3 +1,7 @@
+export type EmailProviderName =
+  | "gmail"
+  | "outlook";
+
 export interface EmailMessage {
   id: string;
   threadId?: string;
@@ -5,9 +9,9 @@ export interface EmailMessage {
   to?: string;
   subject: string;
   body: string;
-  preview?: string;
+  preview: string;
   receivedAt?: string;
-  unread?: boolean;
+  unread: boolean;
 }
 
 export interface SendEmailInput {
@@ -16,12 +20,20 @@ export interface SendEmailInput {
   body: string;
 }
 
+export interface EmailTokens {
+  access_token?: string;
+  refresh_token?: string;
+  expiry_date?: number;
+  token_type?: string;
+  scope?: string;
+}
+
 export interface EmailProvider {
   getAuthUrl(): string;
 
   exchangeCode(
     code: string
-  ): Promise<unknown>;
+  ): Promise<EmailTokens>;
 
   listMessages(
     accessToken: string

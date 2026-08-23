@@ -19,23 +19,22 @@ export async function processEmail(
     return null;
   }
 
-  const summary =
-    await summarizeEmail(
-      email.body ?? ""
-    );
+  const summary = await summarizeEmail(
+  email.userId.toString(),
+  email.body ?? ""
+);
 
-  const category =
-    await classifyEmail(
-      email.body ?? ""
-    );
+  const category = await classifyEmail(
+    email.userId.toString(),
+    email.body ?? ""
+  );
 
-  const reply =
-    await generateReply({
-      email:
-        email.body ?? "",
-      tone: "professional",
-      length: "medium",
-    });
+  const reply = await generateReply({
+    userId: email.userId.toString(),
+    email: email.body ?? "",
+    tone: "professional",
+    length: "medium",
+  });
 
   const draft =
     await draftRepository.create({

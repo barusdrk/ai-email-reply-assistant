@@ -29,6 +29,10 @@ export interface SummarizeInput {
   text: string;
 }
 
+export interface ClassifyInput {
+  text: string;
+}
+
 export interface AIProvider {
   readonly name: AIProviderName;
 
@@ -38,5 +42,9 @@ export interface AIProvider {
 
   summarize(
     input: SummarizeInput
+  ): Promise<string>;
+
+  classify(
+    input: ClassifyInput
   ): Promise<string>;
 }

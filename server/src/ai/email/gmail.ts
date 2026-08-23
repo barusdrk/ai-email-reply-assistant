@@ -3,15 +3,65 @@ import { env } from "../../config/env.js";
 import type {
   EmailMessage,
   EmailProvider,
+  EmailTokens,
   SendEmailInput,
 } from "./types.js";
 
-const oauth2 =
-  new google.auth.OAuth2(
-    env.GOOGLE_CLIENT_ID,
-    env.GOOGLE_CLIENT_SECRET,
-    env.GOOGLE_CALLBACK_URL
+const oauth2 = new google.auth.OAuth2(
+  env.GOOGLE_CLIENT_ID,
+  env.GOOGLE_CLIENT_SECRET,
+  env.GOOGLE_CALLBACK_URL
+);
+
+function getHeader(
+  headers: Array<{
+    name?: string | null;
+    value?: string | null;
+  }>,
+  name: string
+) {
+  return (
+    headers.find(
+      header =>
+        header.name?.toLowerCase() ===
+        name.toLowerCase()
+    )?.value ?? ""
   );
+}
+
+function decodeBody(
+  data?: string | null
+) {
+  if (!data) return "";
+
+  return Buffer.from(
+    data
+      .replace(/-/g, "+")
+      .replace(/_/g, "/"),
+    "base64"
+  ).toString("utf8");
+}
+
+function extractBody(
+  part?: any
+): string {
+  if (!part) return "";
+
+  if (
+    part.mimeType === "text/plain" &&
+    part.body?.data
+  ) {
+    return decodeBody(part.body.data);
+  }
+
+  for (const child of part.parts ?? []) {
+    const body = extractBody(child);
+
+    if (body) return body;
+  }
+
+  return "";
+}
 
 export class GmailProvider
   implements EmailProvider {
@@ -29,13 +79,22 @@ export class GmailProvider
 
   async exchangeCode(
     code: string
-  ) {
+  ): Promise<EmailTokens> {
     const { tokens } =
       await oauth2.getToken(code);
 
-    oauth2.setCredentials(tokens);
-
-    return tokens;
+    return {
+      access_token:
+        tokens.access_token ?? undefined,
+      refresh_token:
+        tokens.refresh_token ?? undefined,
+      expiry_date:
+        tokens.expiry_date ?? undefined,
+      token_type:
+        tokens.token_type ?? undefined,
+      scope:
+        tokens.scope ?? undefined,
+    };
   }
 
   async listMessages(
@@ -45,11 +104,10 @@ export class GmailProvider
       access_token: accessToken,
     });
 
-    const gmail =
-      google.gmail({
-        version: "v1",
-        auth: oauth2,
-      });
+    const gmail = google.gmail({
+      version: "v1",
+      auth: oauth2,
+    });
 
     const { data } =
       await gmail.users.messages.list({
@@ -57,18 +115,19 @@ export class GmailProvider
         maxResults: 20,
       });
 
-    return (data.messages ?? []).map(
-      message => ({
-        id: message.id ?? "",
-        threadId:
-          message.threadId ?? undefined,
-        from: "",
-        subject: "",
-        body: "",
-        preview: "",
-        receivedAt: "",
-        unread: false,
-      })
+    const messages =
+      await Promise.all(
+        (data.messages ?? []).map(
+          async message =>
+            this.getMessage(
+              accessToken,
+              message.id ?? ""
+            )
+        )
+      );
+
+    return messages.filter(
+      message => message.id
     );
   }
 
@@ -80,11 +139,10 @@ export class GmailProvider
       access_token: accessToken,
     });
 
-    const gmail =
-      google.gmail({
-        version: "v1",
-        auth: oauth2,
-      });
+    const gmail = google.gmail({
+      version: "v1",
+      auth: oauth2,
+    });
 
     const { data } =
       await gmail.users.messages.get({
@@ -96,65 +154,62 @@ export class GmailProvider
     const headers =
       data.payload?.headers ?? [];
 
-    const header =
-      (name: string) =>
-        headers.find(
-          h => h.name === name
-        )?.value ?? "";
-
     return {
       id: data.id ?? "",
       threadId:
         data.threadId ?? undefined,
       from:
-        header("From"),
+        getHeader(headers, "From"),
       to:
-        header("To"),
+        getHeader(headers, "To") ||
+        undefined,
       subject:
-        header("Subject"),
-      body: "",
+        getHeader(headers, "Subject"),
+      body:
+        extractBody(data.payload),
       preview:
         data.snippet ?? "",
       receivedAt:
-        data.internalDate ?? undefined,
+        data.internalDate
+          ? new Date(
+              Number(data.internalDate)
+            ).toISOString()
+          : undefined,
       unread: false,
     };
   }
 
   async sendMessage(
     accessToken: string,
-    raw: SendEmailInput
+    message: SendEmailInput
   ): Promise<void> {
     oauth2.setCredentials({
       access_token: accessToken,
     });
 
-    const gmail =
-      google.gmail({
-        version: "v1",
-        auth: oauth2,
-      });
+    const gmail = google.gmail({
+      version: "v1",
+      auth: oauth2,
+    });
 
-    const mime =
-      [
-        `To: ${raw.to}`,
-        `Subject: ${raw.subject}`,
-        "Content-Type: text/plain; charset=utf-8",
-        "",
-        raw.body,
-      ].join("\n");
+    const mime = [
+      `To: ${message.to}`,
+      `Subject: ${message.subject}`,
+      "Content-Type: text/plain; charset=utf-8",
+      "",
+      message.body,
+    ].join("\r\n");
 
-    const encoded =
-      Buffer.from(mime)
-        .toString("base64")
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
+    const raw = Buffer.from(mime)
+      .toString("base64")
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
 
     await gmail.users.messages.send({
       userId: "me",
       requestBody: {
-        raw: encoded,
+        raw,
       },
     });
   }

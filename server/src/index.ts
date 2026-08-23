@@ -17,8 +17,11 @@ import approvalRoutes from "./routes/approvals.js";
 import settingsRoutes from "./routes/settings.js";
 import profileRoutes from "./routes/profile.js";
 import billingRoutes from "./routes/billing.js";
+import stripeWebhookRoutes from "./routes/stripeWebhook.js";
 import dashboardRoutes from "./routes/dashboard.js";
-import { initializeWebSocket } from "./services/websocket.js";
+import {
+  initializeWebSocket,
+} from "./services/websocket.js";
 
 dotenv.config();
 
@@ -33,13 +36,22 @@ const allowedOrigins = [
 const corsOptions = {
   origin(
     origin: string | undefined,
-    callback: (error: Error | null, success?: boolean) => void
+    callback: (
+      error: Error | null,
+      success?: boolean
+    ) => void
   ) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (
+      !origin ||
+      allowedOrigins.includes(origin)
+    ) {
       callback(null, true);
       return;
     }
-    callback(new Error("Not allowed by CORS"));
+
+    callback(
+      new Error("Not allowed by CORS")
+    );
   },
   credentials: true,
 };
@@ -50,14 +62,26 @@ const io = new Server(server, {
 
 initializeWebSocket(io);
 
+app.use(
+  "/api/stripe/webhook",
+  express.raw({
+    type: "application/json",
+  }),
+  stripeWebhookRoutes
+);
+
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 
-app.get("/", (_req: Request, res: Response) => {
-  res.json({
-    message: "AI Email Reply Assistant API",
-  });
-});
+app.get(
+  "/",
+  (_req: Request, res: Response) => {
+    res.json({
+      message:
+        "AI Email Reply Assistant API",
+    });
+  }
+);
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
@@ -71,20 +95,26 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
-const PORT = Number(process.env.PORT ?? 3001);
+const PORT = Number(
+  process.env.PORT ?? 3001
+);
 
 async function start() {
   try {
     await connectDatabase();
 
     server.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+      console.log(
+        `Server running on port ${PORT}`
+      );
     });
   } catch (error) {
-    console.error("Failed to start server.");
+    console.error(
+      "Failed to start server."
+    );
     console.error(error);
     process.exit(1);
   }
 }
 
-start();
+void start();

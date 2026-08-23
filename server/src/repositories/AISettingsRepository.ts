@@ -1,52 +1,41 @@
-import {
-  Types,
-} from "mongoose";
-
+import { Types } from "mongoose";
 import AISettingsModel, {
   type AISettingsDocument,
 } from "../models/AISettings.js";
 
 class AISettingsRepository {
-  findByUser(
-    userId:string
-  ) {
+  findByUser(userId: string) {
     return AISettingsModel.findOne({
-      userId:
-        new Types.ObjectId(userId),
+      userId: new Types.ObjectId(userId),
     });
   }
 
-  create(
-    data:Partial<AISettingsDocument>
-  ) {
+  create(data: Partial<AISettingsDocument>) {
     return AISettingsModel.create(data);
   }
 
   update(
-    userId:string,
-    data:Partial<AISettingsDocument>
+    userId: string,
+    data: Partial<AISettingsDocument>
   ) {
     return AISettingsModel.findOneAndUpdate(
       {
-        userId:
-          new Types.ObjectId(userId),
+        userId: new Types.ObjectId(userId),
       },
       {
-        $set:data,
+        $set: data,
       },
       {
-        new:true,
-        upsert:true,
+        new: true,
+        upsert: true,
+        runValidators: true,
       }
     );
   }
 
-  delete(
-    userId:string
-  ) {
+  delete(userId: string) {
     return AISettingsModel.findOneAndDelete({
-      userId:
-        new Types.ObjectId(userId),
+      userId: new Types.ObjectId(userId),
     });
   }
 }

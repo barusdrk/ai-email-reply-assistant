@@ -31,6 +31,11 @@ const links = [
     icon: "📤",
   },
   {
+    label: "Billing",
+    path: "/billing",
+    icon: "💳",
+  },
+  {
     label: "Settings",
     path: "/settings",
     icon: "⚙",

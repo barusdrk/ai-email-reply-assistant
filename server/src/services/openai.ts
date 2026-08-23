@@ -1,123 +1,105 @@
-import OpenAI from "openai";
-import { env } from "../config/env.js";
+import { subscriptionRepository } from "../repositories/SubscriptionRepository.js";
 import {
-  type Tone,
-  type Length,
-} from "../templates/tones.js";
+  createAIProvider,
+  type AIProviderName,
+} from "../ai/factory.js";
+import type {
+  ReplyLength,
+  Tone,
+} from "../ai/types.js";
+import type { AIProvider } from "../ai/types.js";
 
-function getClient() {
-  if (!env.OPENAI_API_KEY) {
-    throw new Error(
-      "OPENAI_API_KEY is missing"
-    );
-  }
-
-  return new OpenAI({
-    apiKey: env.OPENAI_API_KEY,
-  });
-}
+type Plan =
+  | "free"
+  | "starter"
+  | "pro";
 
 export interface GenerateReplyInput {
+  userId: string;
   email: string;
-  tone:
-    | "professional"
-    | "friendly"
-    | "formal"
-    | "concise"
-    | "empathetic"
-    | "enthusiastic";
-  length: Length;
+  tone?: Tone;
+  length?: ReplyLength;
+  signature?: string;
+}
+
+function getProviderName(
+  plan: Plan
+): AIProviderName {
+  switch (plan) {
+    case "pro":
+      return "openai";
+    case "starter":
+    case "free":
+    default:
+      return "gemini";
+  }
+}
+
+async function getUserProvider(
+  userId: string
+): Promise<AIProvider> {
+  const subscription =
+    await subscriptionRepository.findByUser(
+      userId
+    );
+
+  const plan: Plan =
+    subscription?.plan === "pro"
+      ? "pro"
+      : subscription?.plan === "starter"
+        ? "starter"
+        : "free";
+
+  return createAIProvider(
+    getProviderName(plan)
+  );
 }
 
 export async function generateReply(
   input: GenerateReplyInput
-) {
-  const client = getClient();
+): Promise<string> {
+  const provider =
+    await getUserProvider(input.userId);
 
-  const response =
-    await client.responses.create({
-      model: env.OPENAI_MODEL,
-      input: `
-You are an AI email assistant.
-
-Write a customer email reply.
-
-Tone:
-${input.tone}
-
-Length:
-${input.length}
-
-Customer email:
-${input.email}
-
-Tone instructions:
-- professional: clear, polished, and business-appropriate.
-- friendly: warm, approachable, and helpful.
-- formal: respectful, structured, and professional.
-- concise: brief, direct, and focused on the essential information.
-- empathetic: understanding, supportive, and considerate of the customer's situation.
-- enthusiastic: positive, energetic, and encouraging without being excessive.
-
-Rules:
-- Reply only with the email.
-- Be polite.
-- Do not invent information.
-- Do not explain reasoning.
-`,
-    });
-
-  return response.output_text;
+  return provider.generateReply({
+    email: input.email,
+    tone:
+      input.tone ??
+      "professional",
+    length:
+      input.length ??
+      "medium",
+    signature:
+      input.signature,
+  });
 }
 
 export async function summarizeEmail(
+  userId: string,
   email: string
-) {
-  const client = getClient();
+): Promise<string> {
+  const provider =
+    await getUserProvider(userId);
 
-  const response =
-    await client.responses.create({
-      model: env.OPENAI_MODEL,
-      input: `
-Summarize this customer email.
-
-Return:
-- Main issue
-- Important details
-- Required action
-
-Email:
-${email}
-`,
-    });
-
-  return response.output_text;
+  return provider.summarize({
+    text: email,
+  });
 }
 
 export async function classifyEmail(
+  userId: string,
   email: string
-) {
-  const client = getClient();
+): Promise<string> {
+  const provider =
+    await getUserProvider(userId);
 
-  const response =
-    await client.responses.create({
-      model: env.OPENAI_MODEL,
-      input: `
-Classify this customer email.
-
-Categories:
-billing
-technical
-complaint
-request
-general
-
-Return only the category.
-
-Email:
-${email}
-`,
+  const result =
+    await provider.summarize({
+      text:
+        `Classify the following email into one short category such as ` +
+        `"support", "sales", "billing", "feedback", "urgent", or "other". ` +
+        `Return only the category.\n\n${email}`,
     });
 
-  return response.output_text;
+  return result.trim();
 }

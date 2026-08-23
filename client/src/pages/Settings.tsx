@@ -28,6 +28,7 @@ import {
   type UserProfile,
 } from "../services/users.js";
 import type { ReplyLength } from "../components/LengthSelector.js";
+import ProviderSelector from "../components/ProviderSelector.js";
 
 export default function Settings() {
   const [settings, setSettings] =
@@ -195,7 +196,14 @@ export default function Settings() {
 
       <AppearanceCard />
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-3">
+        <ProviderSelector
+          value={settings.provider}
+          onChange={(provider) => {
+            void save({ provider });
+          }}
+        />
+
         <ToneSelector
           value={settings.defaultReplyTone}
           onChange={(value) => {
@@ -209,17 +217,18 @@ export default function Settings() {
         />
 
         <LengthSelector
-          value={lengthValue}
-          onChange={(value) => {
-            if (value !== "default") {
+          value={settings.defaultLength as ReplyLength}
+          onChange={(defaultLength) => {
+            if (defaultLength !== "default") {
               void save({
-                defaultLength: value,
+                defaultLength,
               });
             }
           }}
           label="Default Reply Length"
         />
       </div>
+
 
       <SignatureCard
         value={settings.signature ?? ""}

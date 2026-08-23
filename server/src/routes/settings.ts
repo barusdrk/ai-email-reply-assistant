@@ -29,151 +29,138 @@ const DEFAULT_REPLY_LENGTHS = [
   "long",
 ] as const;
 
-router.get(
-  "/",
-  async (
-    req: Request,
-    res: Response
-  ) => {
-    if (!req.user) {
-      res.status(401).json({
-        message: "Unauthorized.",
-      });
-      return;
-    }
+function formatSettings(settings: any) {
+  return {
+    ...settings,
+    defaultReplyTone:
+      settings.defaultReplyTone ?? "formal",
+    defaultLength:
+      settings.defaultLength ?? "medium",
+    emailNotifications:
+      settings.emailNotifications ?? true,
+    desktopNotifications:
+      settings.desktopNotifications ?? false,
+  };
+}
 
-    try {
-      const settings = await getSettings(
-        req.user.id
-      );
-
-      res.json({
-        ...settings,
-        defaultReplyTone:
-          settings.defaultReplyTone ?? "formal",
-        defaultLength:
-          settings.defaultLength ?? "medium",
-      });
-    } catch (error) {
-      res.status(500).json({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to load settings.",
-      });
-    }
+router.get("/", async (
+  req: Request,
+  res: Response
+) => {
+  if (!req.user) {
+    res.status(401).json({
+      message: "Unauthorized.",
+    });
+    return;
   }
-);
 
-router.put(
-  "/",
-  async (
-    req: Request,
-    res: Response
-  ) => {
-    if (!req.user) {
-      res.status(401).json({
-        message: "Unauthorized.",
+  try {
+    const settings = await getSettings(
+      req.user.id
+    );
+
+    res.json(formatSettings(settings));
+  } catch (error) {
+    res.status(500).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to load settings.",
+    });
+  }
+});
+
+router.put("/", async (
+  req: Request,
+  res: Response
+) => {
+  if (!req.user) {
+    res.status(401).json({
+      message: "Unauthorized.",
+    });
+    return;
+  }
+
+  try {
+    const {
+      defaultReplyTone,
+      defaultLength,
+      ...updates
+    } = req.body;
+
+    if (
+      defaultReplyTone !== undefined &&
+      !DEFAULT_REPLY_TONES.includes(
+        defaultReplyTone
+      )
+    ) {
+      res.status(400).json({
+        message: "Invalid default reply tone.",
       });
       return;
     }
 
-    try {
-      const {
-        defaultReplyTone,
-        defaultLength,
-        ...updates
-      } = req.body;
+    if (
+      defaultLength !== undefined &&
+      !DEFAULT_REPLY_LENGTHS.includes(
+        defaultLength
+      )
+    ) {
+      res.status(400).json({
+        message: "Invalid default reply length.",
+      });
+      return;
+    }
 
-      if (
-        defaultReplyTone !== undefined &&
-        !DEFAULT_REPLY_TONES.includes(
-          defaultReplyTone
-        )
-      ) {
-        res.status(400).json({
-          message: "Invalid default reply tone.",
-        });
-        return;
+    const settings = await updateSettings(
+      req.user.id,
+      {
+        ...updates,
+        ...(defaultReplyTone !== undefined
+          ? { defaultReplyTone }
+          : {}),
+        ...(defaultLength !== undefined
+          ? { defaultLength }
+          : {}),
       }
+    );
 
-      if (
-        defaultLength !== undefined &&
-        !DEFAULT_REPLY_LENGTHS.includes(
-          defaultLength
-        )
-      ) {
-        res.status(400).json({
-          message: "Invalid default reply length.",
-        });
-        return;
-      }
-
-      const settings = await updateSettings(
-        req.user.id,
-        {
-          ...updates,
-          ...(defaultReplyTone !== undefined
-            ? { defaultReplyTone }
-            : {}),
-          ...(defaultLength !== undefined
-            ? { defaultLength }
-            : {}),
-        }
-      );
-
-      res.json({
-        ...settings,
-        defaultReplyTone:
-          settings.defaultReplyTone ?? "formal",
-        defaultLength:
-          settings.defaultLength ?? "medium",
-      });
-    } catch (error) {
-      res.status(500).json({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to update settings.",
-      });
-    }
+    res.json(formatSettings(settings));
+  } catch (error) {
+    res.status(500).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to update settings.",
+    });
   }
-);
+});
 
-router.post(
-  "/reset",
-  async (
-    req: Request,
-    res: Response
-  ) => {
-    if (!req.user) {
-      res.status(401).json({
-        message: "Unauthorized.",
-      });
-      return;
-    }
-
-    try {
-      const settings = await resetSettings(
-        req.user.id
-      );
-
-      res.json({
-        ...settings,
-        defaultReplyTone:
-          settings.defaultReplyTone ?? "formal",
-        defaultLength:
-          settings.defaultLength ?? "medium",
-      });
-    } catch (error) {
-      res.status(500).json({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to reset settings.",
-      });
-    }
+router.post("/reset", async (
+  req: Request,
+  res: Response
+) => {
+  if (!req.user) {
+    res.status(401).json({
+      message: "Unauthorized.",
+    });
+    return;
   }
-);
+
+  try {
+    const settings = await resetSettings(
+      req.user.id
+    );
+
+    res.json(formatSettings(settings));
+  } catch (error) {
+    res.status(500).json({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to reset settings.",
+    });
+  }
+});
 
 export default router;

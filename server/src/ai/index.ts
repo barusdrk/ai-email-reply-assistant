@@ -1,7 +1,6 @@
 import {
   createAIProvider,
 } from "./factory.js";
-
 import {
   setAIProvider,
 } from "./provider.js";
@@ -12,5 +11,10 @@ export const ai =
 setAIProvider(ai);
 
 export * from "./types.js";
-export * from "./provider.js";
-export * from "./factory.js";
+export {
+  getAIProvider,
+  setAIProvider,
+} from "./provider.js";
+export {
+  createAIProvider,
+} from "./factory.js";

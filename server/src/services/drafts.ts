@@ -57,6 +57,7 @@ export async function createDraft(data: CreateDraftData) {
   const reply = data.reply?.trim()
     ? data.reply.trim()
     : await generateReply({
+        userId: data.userId,
         email: data.email,
         tone,
         length,

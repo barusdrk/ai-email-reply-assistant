@@ -1,24 +1,102 @@
 import axios from "axios";
+import { env } from "../../config/env.js";
 import type {
   EmailMessage,
   EmailProvider,
+  EmailTokens,
   SendEmailInput,
 } from "./types.js";
 
 const GRAPH =
   "https://graph.microsoft.com/v1.0";
 
+const AUTHORIZE_URL =
+  "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
+
+const TOKEN_URL =
+  "https://login.microsoftonline.com/common/oauth2/v2.0/token";
+
+function authHeaders(
+  accessToken: string
+) {
+  return {
+    Authorization:
+      `Bearer ${accessToken}`,
+  };
+}
+
 export class OutlookProvider
   implements EmailProvider {
 
   getAuthUrl() {
-    return "";
+    const params =
+      new URLSearchParams({
+        client_id:
+          env.MICROSOFT_CLIENT_ID,
+        response_type:
+          "code",
+        redirect_uri:
+          env.MICROSOFT_CALLBACK_URL,
+        response_mode:
+          "query",
+        scope:
+          [
+            "offline_access",
+            "https://graph.microsoft.com/Mail.Read",
+            "https://graph.microsoft.com/Mail.Send",
+          ].join(" "),
+      });
+
+    return (
+      `${AUTHORIZE_URL}?` +
+      params.toString()
+    );
   }
 
   async exchangeCode(
     code: string
-  ) {
-    return { code };
+  ): Promise<EmailTokens> {
+    const body =
+      new URLSearchParams({
+        client_id:
+          env.MICROSOFT_CLIENT_ID,
+        client_secret:
+          env.MICROSOFT_CLIENT_SECRET,
+        code,
+        redirect_uri:
+          env.MICROSOFT_CALLBACK_URL,
+        grant_type:
+          "authorization_code",
+      });
+
+    const { data } =
+      await axios.post(
+        TOKEN_URL,
+        body.toString(),
+        {
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+          },
+        }
+      );
+
+    return {
+      access_token:
+        data.access_token ?? undefined,
+      refresh_token:
+        data.refresh_token ?? undefined,
+      token_type:
+        data.token_type ?? undefined,
+      scope:
+        data.scope ?? undefined,
+      expiry_date:
+        data.expires_in
+          ? Date.now() +
+            Number(data.expires_in) *
+              1000
+          : undefined,
+    };
   }
 
   async listMessages(
@@ -28,31 +106,43 @@ export class OutlookProvider
       await axios.get(
         `${GRAPH}/me/messages`,
         {
-          headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
+          params: {
+            $top: 20,
+            $select:
+              "id,conversationId,from,toRecipients,subject,bodyPreview,receivedDateTime,isRead",
+            $orderby:
+              "receivedDateTime DESC",
           },
+          headers:
+            authHeaders(accessToken),
         }
       );
 
-    return data.value.map(
-      (m: any) => ({
-        id: m.id,
+    return (data.value ?? []).map(
+      (message: any): EmailMessage => ({
+        id:
+          message.id ?? "",
         threadId:
-          m.conversationId,
+          message.conversationId ??
+          undefined,
         from:
-          m.from?.emailAddress
+          message.from?.emailAddress
             ?.address ?? "",
+        to:
+          message.toRecipients?.[0]
+            ?.emailAddress?.address ??
+          undefined,
         subject:
-          m.subject,
+          message.subject ?? "",
         body:
-          m.bodyPreview ?? "",
+          message.bodyPreview ?? "",
         preview:
-          m.bodyPreview,
+          message.bodyPreview ?? "",
         receivedAt:
-          m.receivedDateTime,
+          message.receivedDateTime ??
+          undefined,
         unread:
-          m.isRead === false,
+          message.isRead === false,
       })
     );
   }
@@ -65,33 +155,33 @@ export class OutlookProvider
       await axios.get(
         `${GRAPH}/me/messages/${id}`,
         {
-          headers: {
-            Authorization:
-              `Bearer ${accessToken}`,
-          },
+          headers:
+            authHeaders(accessToken),
         }
       );
 
     return {
-      id: data.id,
+      id:
+        data.id ?? "",
       threadId:
-        data.conversationId,
+        data.conversationId ??
+        undefined,
       from:
         data.from?.emailAddress
           ?.address ?? "",
       to:
         data.toRecipients?.[0]
-          ?.emailAddress
-          ?.address,
+          ?.emailAddress?.address ??
+        undefined,
       subject:
-        data.subject,
+        data.subject ?? "",
       body:
-        data.body?.content ??
-        "",
+        data.body?.content ?? "",
       preview:
-        data.bodyPreview,
+        data.bodyPreview ?? "",
       receivedAt:
-        data.receivedDateTime,
+        data.receivedDateTime ??
+        undefined,
       unread:
         data.isRead === false,
     };
@@ -108,8 +198,7 @@ export class OutlookProvider
           subject:
             message.subject,
           body: {
-            contentType:
-              "Text",
+            contentType: "Text",
             content:
               message.body,
           },
@@ -122,12 +211,11 @@ export class OutlookProvider
             },
           ],
         },
+        saveToSentItems: true,
       },
       {
-        headers: {
-          Authorization:
-            `Bearer ${accessToken}`,
-        },
+        headers:
+          authHeaders(accessToken),
       }
     );
   }

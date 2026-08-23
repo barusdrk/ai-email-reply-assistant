@@ -3,14 +3,15 @@ import { draftRepository } from "../repositories/DraftRepository.js";
 
 export async function generateDraftJob(
   draftId: string,
+  userId: string,
   prompt: string
 ) {
-  const reply =
-    await generateReply({
-      email: prompt,
-      tone: "professional",
-      length: "medium",
-    });
+  const reply = await generateReply({
+    userId,
+    email: prompt,
+    tone: "professional",
+    length: "medium",
+  });
 
   await draftRepository.update(
     draftId,
@@ -18,4 +19,6 @@ export async function generateDraftJob(
       reply,
     }
   );
+
+  return reply;
 }

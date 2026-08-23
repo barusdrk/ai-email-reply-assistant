@@ -7,50 +7,60 @@ export type Plan =
 
 export interface Subscription {
   id: string;
-
   plan: Plan;
-
   status:
     | "active"
     | "cancelled"
     | "expired";
-
   provider:
     | "none"
     | "stripe";
-
   currentPeriodStart?: string;
-
   currentPeriodEnd?: string;
 }
 
-export async function getSubscription() {
+export interface CheckoutSession {
+  id: string;
+  url: string;
+}
+
+export async function getSubscription(): Promise<Subscription> {
   const { data } =
     await API.get<Subscription>(
-      "/billing"
+      "/billing/subscription"
     );
 
   return data;
 }
 
 export async function changePlan(
-  plan: Plan
-) {
+  plan: "free"
+): Promise<Subscription> {
   const { data } =
     await API.post<Subscription>(
       "/billing/change-plan",
-      {
-        plan,
-      }
+      { plan }
     );
 
   return data;
 }
 
-export async function cancelSubscription() {
+export async function cancelSubscription(): Promise<Subscription> {
   const { data } =
     await API.post<Subscription>(
       "/billing/cancel"
+    );
+
+  return data;
+}
+
+export async function createCheckout(
+  plan: Exclude<Plan, "free">
+): Promise<CheckoutSession> {
+  const { data } =
+    await API.post<CheckoutSession>(
+      "/billing/checkout",
+      { plan }
     );
 
   return data;

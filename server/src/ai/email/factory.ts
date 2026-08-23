@@ -1,24 +1,17 @@
+import type { EmailProvider } from "./types.js";
 import { GmailProvider } from "./gmail.js";
 import { OutlookProvider } from "./outlook.js";
-import type { EmailProvider } from "./types.js";
 
-export type EmailProviderName =
-  | "gmail"
-  | "outlook";
+const providers: Record<
+  "gmail" | "outlook",
+  EmailProvider
+> = {
+  gmail: new GmailProvider(),
+  outlook: new OutlookProvider(),
+};
 
-export function createEmailProvider(
-  provider: EmailProviderName
+export function getEmailProvider(
+  provider: "gmail" | "outlook"
 ): EmailProvider {
-  switch (provider) {
-    case "gmail":
-      return new GmailProvider();
-
-    case "outlook":
-      return new OutlookProvider();
-
-    default:
-      throw new Error(
-        `Unsupported email provider: ${provider}`
-      );
-  }
+  return providers[provider];
 }
