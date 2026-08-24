@@ -7,16 +7,21 @@ import type {
   SummarizeInput,
 } from "./types.js";
 
-const client = new OpenAI({
-  apiKey: env.GEMINI_API_KEY,
-  baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-});
+function getClient() {
+  if (!env.GEMINI_API_KEY) {
+    throw new Error("Gemini is not configured.");
+  }
+  return new OpenAI({
+    apiKey: env.GEMINI_API_KEY,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  });
+}
 
 export class GeminiProvider implements AIProvider {
   readonly name = "gemini" as const;
 
   async generateReply(input: GenerateReplyInput): Promise<string> {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: env.GEMINI_MODEL,
       messages: [{
         role: "user",
@@ -27,7 +32,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async summarize(input: SummarizeInput): Promise<string> {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: env.GEMINI_MODEL,
       messages: [{
         role: "user",
@@ -38,7 +43,7 @@ export class GeminiProvider implements AIProvider {
   }
 
   async classify(input: ClassifyInput): Promise<string> {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: env.GEMINI_MODEL,
       messages: [{
         role: "user",

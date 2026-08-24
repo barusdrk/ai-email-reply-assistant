@@ -7,16 +7,21 @@ import type {
   SummarizeInput,
 } from "./types.js";
 
-const client = new OpenAI({
-  apiKey: env.GROQ_API_KEY,
-  baseURL: "https://api.groq.com/openai/v1",
-});
+function getClient() {
+  if (!env.GROQ_API_KEY) {
+    throw new Error("Groq is not configured.");
+  }
+  return new OpenAI({
+    apiKey: env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+  });
+}
 
 export class GroqProvider implements AIProvider {
   readonly name = "groq" as const;
 
   async generateReply(input: GenerateReplyInput): Promise<string> {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: env.GROQ_MODEL,
       messages: [{
         role: "user",
@@ -27,7 +32,7 @@ export class GroqProvider implements AIProvider {
   }
 
   async summarize(input: SummarizeInput): Promise<string> {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: env.GROQ_MODEL,
       messages: [{
         role: "user",
@@ -38,7 +43,7 @@ export class GroqProvider implements AIProvider {
   }
 
   async classify(input: ClassifyInput): Promise<string> {
-    const response = await client.chat.completions.create({
+    const response = await getClient().chat.completions.create({
       model: env.GROQ_MODEL,
       messages: [{
         role: "user",

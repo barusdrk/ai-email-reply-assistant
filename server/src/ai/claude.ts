@@ -7,15 +7,18 @@ import type {
   SummarizeInput,
 } from "./types.js";
 
-const client = new Anthropic({
-  apiKey: env.ANTHROPIC_API_KEY,
-});
+function getClient() {
+  if (!env.ANTHROPIC_API_KEY) {
+    throw new Error("Claude is not configured.");
+  }
+  return new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+}
 
 export class ClaudeProvider implements AIProvider {
   readonly name = "claude" as const;
 
   async generateReply(input: GenerateReplyInput): Promise<string> {
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: env.CLAUDE_MODEL,
       max_tokens: 1024,
       messages: [{
@@ -28,7 +31,7 @@ export class ClaudeProvider implements AIProvider {
   }
 
   async summarize(input: SummarizeInput): Promise<string> {
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: env.CLAUDE_MODEL,
       max_tokens: 1024,
       messages: [{
@@ -41,7 +44,7 @@ export class ClaudeProvider implements AIProvider {
   }
 
   async classify(input: ClassifyInput): Promise<string> {
-    const response = await client.messages.create({
+    const response = await getClient().messages.create({
       model: env.CLAUDE_MODEL,
       max_tokens: 100,
       messages: [{
