@@ -7,183 +7,108 @@ import type {
   SendEmailInput,
 } from "./types.js";
 
-const GRAPH =
-  "https://graph.microsoft.com/v1.0";
+const GRAPH = "https://graph.microsoft.com/v1.0";
+const AUTH_URL = `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/authorize`;
+const TOKEN_URL = `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
 
-const AUTHORIZE_URL =
-  "https://login.microsoftonline.com/common/oauth2/v2.0/authorize";
-
-const TOKEN_URL =
-  "https://login.microsoftonline.com/common/oauth2/v2.0/token";
-
-function authHeaders(
-  accessToken: string
-) {
-  return {
-    Authorization:
-      `Bearer ${accessToken}`,
-  };
+function requireOutlookConfig() {
+  if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CALLBACK_URL) {
+    throw new Error("Microsoft Outlook OAuth is not configured.");
+  }
 }
 
-export class OutlookProvider
-  implements EmailProvider {
-
+export class OutlookProvider implements EmailProvider {
   getAuthUrl() {
-    const params =
-      new URLSearchParams({
-        client_id:
-          env.MICROSOFT_CLIENT_ID,
-        response_type:
-          "code",
-        redirect_uri:
-          env.MICROSOFT_CALLBACK_URL,
-        response_mode:
-          "query",
-        scope:
-          [
-            "offline_access",
-            "https://graph.microsoft.com/Mail.Read",
-            "https://graph.microsoft.com/Mail.Send",
-          ].join(" "),
-      });
+    requireOutlookConfig();
 
-    return (
-      `${AUTHORIZE_URL}?` +
-      params.toString()
-    );
+    const params = new URLSearchParams({
+      client_id: env.MICROSOFT_CLIENT_ID!,
+      response_type: "code",
+      redirect_uri: env.MICROSOFT_CALLBACK_URL!,
+      response_mode: "query",
+      scope: "openid profile offline_access User.Read Mail.Read Mail.Send",
+    });
+
+    return `${AUTH_URL}?${params.toString()}`;
   }
 
-  async exchangeCode(
-    code: string
-  ): Promise<EmailTokens> {
-    const body =
-      new URLSearchParams({
-        client_id:
-          env.MICROSOFT_CLIENT_ID,
-        client_secret:
-          env.MICROSOFT_CLIENT_SECRET,
-        code,
-        redirect_uri:
-          env.MICROSOFT_CALLBACK_URL,
-        grant_type:
-          "authorization_code",
-      });
+  async exchangeCode(code: string): Promise<EmailTokens> {
+    requireOutlookConfig();
 
-    const { data } =
-      await axios.post(
-        TOKEN_URL,
-        body.toString(),
-        {
-          headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded",
-          },
-        }
-      );
+    if (!env.MICROSOFT_CLIENT_SECRET) {
+      throw new Error("Microsoft Outlook client secret is not configured.");
+    }
 
-    return {
-      access_token:
-        data.access_token ?? undefined,
-      refresh_token:
-        data.refresh_token ?? undefined,
-      token_type:
-        data.token_type ?? undefined,
-      scope:
-        data.scope ?? undefined,
-      expiry_date:
-        data.expires_in
-          ? Date.now() +
-            Number(data.expires_in) *
-              1000
-          : undefined,
-    };
+    const params = new URLSearchParams({
+      client_id: env.MICROSOFT_CLIENT_ID!,
+      client_secret: env.MICROSOFT_CLIENT_SECRET,
+      code,
+      redirect_uri: env.MICROSOFT_CALLBACK_URL!,
+      grant_type: "authorization_code",
+      scope: "openid profile offline_access User.Read Mail.Read Mail.Send",
+    });
+
+    const { data } = await axios.post<EmailTokens>(
+      TOKEN_URL,
+      params.toString(),
+      {
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+
+    return data;
   }
 
-  async listMessages(
-    accessToken: string
-  ): Promise<EmailMessage[]> {
-    const { data } =
-      await axios.get(
-        `${GRAPH}/me/messages`,
-        {
-          params: {
-            $top: 20,
-            $select:
-              "id,conversationId,from,toRecipients,subject,bodyPreview,receivedDateTime,isRead",
-            $orderby:
-              "receivedDateTime DESC",
-          },
-          headers:
-            authHeaders(accessToken),
-        }
-      );
+  async listMessages(accessToken: string): Promise<EmailMessage[]> {
+    const { data } = await axios.get(`${GRAPH}/me/messages`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      params: {
+        $top: 20,
+        $select:
+          "id,conversationId,from,toRecipients,subject,bodyPreview,receivedDateTime,isRead",
+      },
+    });
 
-    return (data.value ?? []).map(
-      (message: any): EmailMessage => ({
-        id:
-          message.id ?? "",
-        threadId:
-          message.conversationId ??
-          undefined,
-        from:
-          message.from?.emailAddress
-            ?.address ?? "",
-        to:
-          message.toRecipients?.[0]
-            ?.emailAddress?.address ??
-          undefined,
-        subject:
-          message.subject ?? "",
-        body:
-          message.bodyPreview ?? "",
-        preview:
-          message.bodyPreview ?? "",
-        receivedAt:
-          message.receivedDateTime ??
-          undefined,
-        unread:
-          message.isRead === false,
-      })
-    );
+    return (data.value ?? []).map((m: any) => ({
+      id: m.id,
+      threadId: m.conversationId,
+      from: m.from?.emailAddress?.address ?? "",
+      to: m.toRecipients?.[0]?.emailAddress?.address,
+      subject: m.subject ?? "",
+      body: m.bodyPreview ?? "",
+      preview: m.bodyPreview ?? "",
+      receivedAt: m.receivedDateTime,
+      unread: m.isRead === false,
+    }));
   }
 
   async getMessage(
     accessToken: string,
     id: string
   ): Promise<EmailMessage> {
-    const { data } =
-      await axios.get(
-        `${GRAPH}/me/messages/${id}`,
-        {
-          headers:
-            authHeaders(accessToken),
-        }
-      );
+    const { data } = await axios.get(
+      `${GRAPH}/me/messages/${encodeURIComponent(id)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
 
     return {
-      id:
-        data.id ?? "",
-      threadId:
-        data.conversationId ??
-        undefined,
-      from:
-        data.from?.emailAddress
-          ?.address ?? "",
-      to:
-        data.toRecipients?.[0]
-          ?.emailAddress?.address ??
-        undefined,
-      subject:
-        data.subject ?? "",
-      body:
-        data.body?.content ?? "",
-      preview:
-        data.bodyPreview ?? "",
-      receivedAt:
-        data.receivedDateTime ??
-        undefined,
-      unread:
-        data.isRead === false,
+      id: data.id,
+      threadId: data.conversationId,
+      from: data.from?.emailAddress?.address ?? "",
+      to: data.toRecipients?.[0]?.emailAddress?.address,
+      subject: data.subject ?? "",
+      body: data.body?.content ?? "",
+      preview: data.bodyPreview ?? "",
+      receivedAt: data.receivedDateTime,
+      unread: data.isRead === false,
     };
   }
 
@@ -195,27 +120,24 @@ export class OutlookProvider
       `${GRAPH}/me/sendMail`,
       {
         message: {
-          subject:
-            message.subject,
+          subject: message.subject,
           body: {
             contentType: "Text",
-            content:
-              message.body,
+            content: message.body,
           },
           toRecipients: [
             {
               emailAddress: {
-                address:
-                  message.to,
+                address: message.to,
               },
             },
           ],
         },
-        saveToSentItems: true,
       },
       {
-        headers:
-          authHeaders(accessToken),
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
       }
     );
   }
