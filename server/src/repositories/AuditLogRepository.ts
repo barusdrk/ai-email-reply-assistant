@@ -1,3 +1,4 @@
+import type { DeleteResult } from "mongodb";
 import AuditLog from "../models/AuditLog.js";
 
 class AuditLogRepository {
@@ -6,28 +7,16 @@ class AuditLogRepository {
   }
 
   findByUser(userId: string) {
-    return AuditLog.find({
-      userId,
-    })
-      .sort({ createdAt: -1 })
-      .lean();
+    return AuditLog.find({ userId }).sort({ createdAt: -1 }).lean();
   }
 
   recent(limit = 100) {
-    return AuditLog.find()
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .lean();
+    return AuditLog.find().sort({ createdAt: -1 }).limit(limit).lean();
   }
 
-  deleteOlderThan(date: Date) {
-    return AuditLog.deleteMany({
-      createdAt: {
-        $lt: date,
-      },
-    });
+  deleteOlderThan(date: Date): Promise<DeleteResult> {
+    return AuditLog.deleteMany({ createdAt: { $lt: date } });
   }
 }
 
-export const auditLogRepository =
-  new AuditLogRepository();
+export const auditLogRepository = new AuditLogRepository();

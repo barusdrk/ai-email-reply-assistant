@@ -1,27 +1,20 @@
-import EmailModel, {
-  type EmailDocument,
-} from "../models/Email.js";
+import EmailModel, { type EmailDocument } from "../models/Email.js";
 
 class EmailRepository {
   findAll(userId: string) {
     return EmailModel.find({ userId }).sort({ receivedAt: -1 });
   }
 
-  async findPage(
-    userId: string,
-    page = 1,
-    limit = 50
-  ) {
+  async findPage(userId: string, page = 1, limit = 50) {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(Math.max(1, limit), 100);
     const filter = { userId };
-
     const [emails, total] = await Promise.all([
       EmailModel.find(filter)
         .sort({ receivedAt: -1 })
         .skip((safePage - 1) * safeLimit)
         .limit(safeLimit),
-      EmailModel.countDocuments(filter),
+      EmailModel.countDocuments(filter)
     ]);
 
     return {
@@ -29,7 +22,7 @@ class EmailRepository {
       total,
       page: safePage,
       limit: safeLimit,
-      hasMore: safePage * safeLimit < total,
+      hasMore: safePage * safeLimit < total
     };
   }
 
@@ -41,8 +34,8 @@ class EmailRepository {
     return EmailModel.find({
       $or: [
         { draftId: null },
-        { draftId: { $exists: false } },
-      ],
+        { draftId: { $exists: false } }
+      ]
     });
   }
 
@@ -50,29 +43,26 @@ class EmailRepository {
     return EmailModel.create(data);
   }
 
-  upsert(
-    messageId: string,
-    data: Partial<EmailDocument>
-  ) {
+  upsert(messageId: string, data: Partial<EmailDocument>) {
     return EmailModel.findOneAndUpdate(
       {
         userId: data.userId,
         provider: data.provider,
-        messageId,
+        messageId
       },
       {
-        $set: data,
+        $set: data
       },
       {
         new: true,
-        upsert: true,
+        upsert: true
       }
     );
   }
 
   async bulkUpsert(
     emails: Partial<EmailDocument>[]
-  ) {
+  ): Promise<Awaited<ReturnType<typeof EmailModel.bulkWrite>>> {
     const operations = emails
       .filter(
         (email) =>
@@ -85,28 +75,23 @@ class EmailRepository {
           filter: {
             userId: email.userId,
             provider: email.provider,
-            messageId: email.messageId,
+            messageId: email.messageId
           },
           update: {
-            $set: email,
+            $set: email
           },
-          upsert: true,
-        },
+          upsert: true
+        }
       }));
 
     if (operations.length === 0) {
-      return {
-        acknowledged: true,
-        matchedCount: 0,
-        modifiedCount: 0,
-        upsertedCount: 0,
-      };
+      return EmailModel.bulkWrite([]);
     }
 
     return EmailModel.bulkWrite(
       operations,
       {
-        ordered: false,
+        ordered: false
       }
     );
   }
@@ -118,10 +103,10 @@ class EmailRepository {
     return EmailModel.findByIdAndUpdate(
       id,
       {
-        $set: data,
+        $set: data
       },
       {
-        new: true,
+        new: true
       }
     );
   }
