@@ -34,16 +34,16 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "@types/html-to-text": "^9.0.4",
-    "@types/jsonwebtoken": "^9.0.10",
-    "@types/node": "^24.13.3",
-    "@types/sanitize-html": "^2.16.1",
-    "tsx": "^4.20.3",
-    "typescript": "^5.9.3"
-  },
+  "@types/bcrypt": "^6.0.0",
+  "@types/cors": "^2.8.19",
+  "@types/express": "^5.0.6",
+  "@types/html-to-text": "^9.0.4",
+  "@types/jsonwebtoken": "^9.0.10",
+  "@types/node": "^24.13.3",
+  "@types/sanitize-html": "^2.16.1",
+  "tsx": "^4.20.3",
+  "typescript": "^5.9.3"
+},
   "engines": {
     "node": ">=22"
   }
