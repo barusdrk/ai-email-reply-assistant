@@ -14,7 +14,6 @@
     "server"
   ],
   "scripts": {
-    "install:all": "npm install --workspaces",
     "dev": "concurrently \"npm run dev --workspace client\" \"npm run dev --workspace server\"",
     "build": "npm run build --workspace client && npm run build --workspace server",
     "start": "npm run start --workspace server",
@@ -24,10 +23,6 @@
     "clean": "rimraf node_modules client/node_modules server/node_modules client/dist server/dist"
   },
   "devDependencies": {
-    "@types/bcrypt": "^6.0.0",
-    "@types/express": "^5.0.6",
-    "@types/html-to-text": "^9.0.4",
-    "@types/jsonwebtoken": "^9.0.10",
     "concurrently": "^9.0.1",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1"
@@ -35,14 +30,5 @@
   "engines": {
     "node": ">=22",
     "npm": ">=10"
-  },
-  "dependencies": {
-    "@anthropic-ai/sdk": "^0.116.0",
-    "@azure/msal-node": "^5.5.0",
-    "@google/genai": "^2.16.0",
-    "@google/generative-ai": "^0.24.1",
-    "groq-sdk": "^1.5.0",
-    "openai": "^7.5.0",
-    "stripe": "^22.4.0"
   }
 }

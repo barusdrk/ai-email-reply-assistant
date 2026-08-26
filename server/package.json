@@ -11,11 +11,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.116.0",
-    "@azure/msal-node": "^3.8.10",
+    "@azure/msal-node": "^5.5.0",
     "@google/generative-ai": "^0.24.1",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.2",
     "bullmq": "^5.81.2",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
@@ -27,16 +26,15 @@
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.18.0",
-    "openai": "^5.23.2",
+    "openai": "^7.5.0",
     "pino": "^9.9.0",
-    "sanitize-html": "^2.17.7",
+    "sanitize-html": "^2.17.0",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.3",
-    "stripe": "^22.5.0"
+    "stripe": "^22.5.0",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
-    "@types/bcryptjs": "^2.4.6",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/html-to-text": "^9.0.4",

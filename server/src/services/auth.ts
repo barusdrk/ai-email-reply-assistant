@@ -1,4 +1,4 @@
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { userRepository } from "../repositories/UserRepository.js";
@@ -7,10 +7,7 @@ import { subscriptionRepository } from "../repositories/SubscriptionRepository.j
 
 export async function register(name: string, email: string, password: string) {
   const existing = await userRepository.findByEmail(email);
-
-  if (existing) {
-    throw new Error("Email already exists.");
-  }
+  if (existing) throw new Error("Email already exists.");
 
   const hash = await bcrypt.hash(password, 10);
 
@@ -50,34 +47,20 @@ export async function register(name: string, email: string, password: string) {
       role: user.role,
     },
     env.JWT_SECRET,
-    {
-      expiresIn: "7d",
-    }
+    { expiresIn: "7d" }
   );
 
-  const {
-    password: _password,
-    ...safeUser
-  } = user.toObject();
+  const { password: _password, ...safeUser } = user.toObject();
 
-  return {
-    token,
-    user: safeUser,
-  };
+  return { token, user: safeUser };
 }
 
 export async function login(email: string, password: string) {
   const user = await userRepository.findByEmail(email);
-
-  if (!user) {
-    throw new Error("Invalid credentials.");
-  }
+  if (!user) throw new Error("Invalid credentials.");
 
   const valid = await bcrypt.compare(password, user.password);
-
-  if (!valid) {
-    throw new Error("Invalid credentials.");
-  }
+  if (!valid) throw new Error("Invalid credentials.");
 
   const token = jwt.sign(
     {
@@ -86,33 +69,19 @@ export async function login(email: string, password: string) {
       role: user.role,
     },
     env.JWT_SECRET,
-    {
-      expiresIn: "7d",
-    }
+    { expiresIn: "7d" }
   );
 
-  const {
-    password: _password,
-    ...safeUser
-  } = user.toObject();
+  const { password: _password, ...safeUser } = user.toObject();
 
-  return {
-    token,
-    user: safeUser,
-  };
+  return { token, user: safeUser };
 }
 
 export async function getCurrentUser(id: string) {
   const user = await userRepository.findById(id);
+  if (!user) throw new Error("User not found.");
 
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-  const {
-    password: _password,
-    ...safeUser
-  } = user.toObject();
+  const { password: _password, ...safeUser } = user.toObject();
 
   return safeUser;
 }
