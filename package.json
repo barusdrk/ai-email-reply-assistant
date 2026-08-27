@@ -9,16 +9,12 @@
     "type": "git",
     "url": "https://github.com/barusdrk/ai-email-reply-assistant"
   },
-  "workspaces": [
-    "client",
-    "server"
-  ],
   "scripts": {
-    "dev": "concurrently \"npm run dev --workspace client\" \"npm run dev --workspace server\"",
-    "build": "npm run build --workspace client && npm run build --workspace server",
-    "start": "npm run start --workspace server",
-    "lint": "npm run lint --workspace client && npm run lint --workspace server",
-    "test": "npm run test --workspace client && npm run test --workspace server",
+    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "build": "npm run build --prefix client && npm run build --prefix server",
+    "start": "npm start --prefix server",
+    "lint": "npm run lint --prefix client && npm run lint --prefix server",
+    "test": "npm run test --prefix client && npm run test --prefix server",
     "format": "prettier --write .",
     "clean": "rimraf node_modules client/node_modules server/node_modules client/dist server/dist"
   },
@@ -28,7 +24,7 @@
     "rimraf": "^6.0.1"
   },
   "engines": {
-    "node": ">=22",
+    "node": "24.x",
     "npm": ">=10"
   }
 }
