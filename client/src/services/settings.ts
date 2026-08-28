@@ -36,10 +36,6 @@ export async function updateAutoDraft(autoDraft: boolean): Promise<AISettings> {
   return updateSettings({ autoDraft });
 }
 
-export async function updateApiKeys(keys: { openAiApiKey?: string; groqApiKey?: string; geminiApiKey?: string }): Promise<AISettings> {
-  return updateSettings(keys);
-}
-
 export async function updateAppearance(data: { theme?: Theme; language?: string; timezone?: string }): Promise<AISettings> {
   return updateSettings(data);
 }

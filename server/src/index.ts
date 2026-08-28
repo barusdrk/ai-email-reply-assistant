@@ -1,10 +1,8 @@
-import express, {
-  type Request,
-  type Response,
-} from "express";
+import express, { type Request, type Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import http from "http";
+import mongoose from "mongoose";
 import { Server } from "socket.io";
 import { connectDatabase } from "./config/database.js";
 import authRoutes from "./routes/auth.js";
@@ -19,9 +17,7 @@ import profileRoutes from "./routes/profile.js";
 import billingRoutes from "./routes/billing.js";
 import stripeWebhookRoutes from "./routes/stripeWebhook.js";
 import dashboardRoutes from "./routes/dashboard.js";
-import {
-  initializeWebSocket,
-} from "./services/websocket.js";
+import { initializeWebSocket } from "./services/websocket.js";
 
 dotenv.config();
 
@@ -34,24 +30,12 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin(
-    origin: string | undefined,
-    callback: (
-      error: Error | null,
-      success?: boolean
-    ) => void
-  ) {
-    if (
-      !origin ||
-      allowedOrigins.includes(origin)
-    ) {
+  origin(origin: string | undefined, callback: (error: Error | null, success?: boolean) => void) {
+    if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
       return;
     }
-
-    callback(
-      new Error("Not allowed by CORS")
-    );
+    callback(new Error("Not allowed by CORS"));
   },
   credentials: true,
 };
@@ -64,28 +48,25 @@ initializeWebSocket(io);
 
 app.use(
   "/api/stripe/webhook",
-  express.raw({
-    type: "application/json",
-  }),
+  express.raw({ type: "application/json" }),
   stripeWebhookRoutes
 );
 
 app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 
-app.get(
-  "/",
-  (_req: Request, res: Response) => {
-    res.json({
-      message:
-        "AI Email Reply Assistant API",
-    });
-  }
-);
+app.get("/", (_req: Request, res: Response) => {
+  res.json({
+    message: "AI Email Reply Assistant API",
+  });
+});
 
 app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).json({
-    status: "ok",
+  const databaseConnected = mongoose.connection.readyState === 1;
+
+  res.status(databaseConnected ? 200 : 503).json({
+    status: databaseConnected ? "ok" : "error",
+    database: databaseConnected ? "connected" : "disconnected",
   });
 });
 
@@ -101,23 +82,17 @@ app.use("/api/profile", profileRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 
-const PORT = Number(
-  process.env.PORT ?? 3001
-);
+const PORT = Number(process.env.PORT ?? 3001);
 
 async function start() {
   try {
     await connectDatabase();
 
     server.listen(PORT, () => {
-      console.log(
-        `Server running on port ${PORT}`
-      );
+      console.log(`Server running on port ${PORT}`);
     });
   } catch (error) {
-    console.error(
-      "Failed to start server."
-    );
+    console.error("Failed to start server.");
     console.error(error);
     process.exit(1);
   }

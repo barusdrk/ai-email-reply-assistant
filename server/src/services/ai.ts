@@ -1,30 +1,26 @@
-import { ai } from "../ai/index.js";
+import { createAIProvider, type AIProviderName } from "../ai/factory.js";
+import { aiSettingsRepository } from "../repositories/AISettingsRepository.js";
 import type { GenerateReplyInput } from "../ai/types.js";
 
-export async function generateReply(
-  input: GenerateReplyInput
-): Promise<string> {
-  return ai.generateReply(input);
+async function getUserAIProvider(userId: string) {
+  const settings = await aiSettingsRepository.findByUser(userId);
+  const providerName = (settings?.provider ?? "gemini") as AIProviderName;
+  return createAIProvider(providerName);
 }
 
-export async function summarizeEmail(
-  email: string
-): Promise<string> {
-  return ai.summarize({
-    text: email,
-  });
+export async function generateReplyForUser(userId: string, input: GenerateReplyInput): Promise<string> {
+  const provider = await getUserAIProvider(userId);
+  return provider.generateReply(input);
 }
 
-export async function classifyEmail(
-  email: string
-) {
-  const summary = await ai.summarize({
-    text: email,
-  });
+export async function summarizeEmailForUser(userId: string, email: string): Promise<string> {
+  const provider = await getUserAIProvider(userId);
+  return provider.summarize({ text: email });
+}
 
+export async function classifyEmailForUser(userId: string, email: string) {
+  const provider = await getUserAIProvider(userId);
   return {
-    category: "general",
-    priority: "medium",
-    summary,
+    category: await provider.classify({ text: email }),
   };
 }

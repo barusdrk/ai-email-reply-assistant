@@ -30,27 +30,40 @@ const DEFAULT_SETTINGS = {
 };
 
 export async function getSettings(userId: string) {
-  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID.");
+  }
+
   let settings = await aiSettingsRepository.findByUser(userId);
+
   if (!settings) {
     settings = await aiSettingsRepository.create({
       userId: new Types.ObjectId(userId),
       ...DEFAULT_SETTINGS,
     });
   }
+
   return settings;
 }
 
-export async function updateSettings(userId: string, data: SettingsUpdate) {
-  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
-  const settings = await aiSettingsRepository.update(userId, data);
-  if (!settings) throw new Error("Settings not found.");
-  return settings;
+export async function updateSettings(
+  userId: string,
+  data: SettingsUpdate
+) {
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID.");
+  }
+
+  return aiSettingsRepository.update(userId, data);
 }
 
 export async function resetSettings(userId: string) {
-  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
-  const settings = await aiSettingsRepository.update(userId, DEFAULT_SETTINGS);
-  if (!settings) throw new Error("Settings not found.");
-  return settings;
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID.");
+  }
+
+  return aiSettingsRepository.update(
+    userId,
+    DEFAULT_SETTINGS
+  );
 }

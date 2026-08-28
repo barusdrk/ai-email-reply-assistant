@@ -6,16 +6,9 @@ import { GroqProvider } from "./groq.js";
 import { ClaudeProvider } from "./claude.js";
 import { MockAIProvider } from "./mock.js";
 
-export type AIProviderName =
-  | "openai"
-  | "gemini"
-  | "groq"
-  | "claude"
-  | "mock";
+export type AIProviderName = "openai" | "gemini" | "groq" | "claude" | "mock";
 
-export function createAIProvider(
-  providerName: AIProviderName = "openai"
-): AIProvider {
+export function createAIProvider(providerName: AIProviderName = "openai"): AIProvider {
   if (env.USE_MOCK_AI) {
     return new MockAIProvider();
   }

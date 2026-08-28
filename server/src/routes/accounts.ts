@@ -5,6 +5,8 @@ import { getMicrosoftAuthUrl, exchangeMicrosoftCode, outlookStatus, disconnectOu
 
 const router = Router();
 
+const clientUrl = process.env.CLIENT_URL ?? "http://localhost:5173";
+
 router.get("/gmail/callback", async (req: Request, res: Response) => {
   try {
     const code = typeof req.query.code === "string" ? req.query.code : "";
@@ -16,11 +18,8 @@ router.get("/gmail/callback", async (req: Request, res: Response) => {
     }
 
     await exchangeCode(code, state);
-
-    const clientUrl = process.env.CLIENT_URL ?? "http://localhost:5173";
     res.redirect(`${clientUrl}/settings?gmail=connected`);
   } catch (error) {
-    const clientUrl = process.env.CLIENT_URL ?? "http://localhost:5173";
     const message = error instanceof Error ? error.message : "Failed to connect Gmail.";
     res.redirect(`${clientUrl}/settings?gmail=error&message=${encodeURIComponent(message)}`);
   }
@@ -37,11 +36,8 @@ router.get("/outlook/callback", async (req: Request, res: Response) => {
     }
 
     await exchangeMicrosoftCode(code, state);
-
-    const clientUrl = process.env.CLIENT_URL ?? "http://localhost:5173";
     res.redirect(`${clientUrl}/settings?outlook=connected`);
   } catch (error) {
-    const clientUrl = process.env.CLIENT_URL ?? "http://localhost:5173";
     const message = error instanceof Error ? error.message : "Failed to connect Outlook.";
     res.redirect(`${clientUrl}/settings?outlook=error&message=${encodeURIComponent(message)}`);
   }
@@ -61,18 +57,11 @@ router.get("/", async (req: Request, res: Response) => {
       outlookStatus(req.user.id),
     ]);
 
-    res.json({
-      gmail,
-      outlook: outlook.connected,
-    });
+    res.json({ gmail, outlook: outlook.connected });
   } catch (error) {
     console.error("GET /api/accounts failed:", error);
-
     res.status(500).json({
-      message:
-        error instanceof Error
-          ? error.message
-          : "Failed to get account status.",
+      message: error instanceof Error ? error.message : "Failed to get account status.",
     });
   }
 });
@@ -121,10 +110,7 @@ router.get("/outlook/connect", async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Outlook OAuth start failed:", error);
     res.status(500).json({
-      message:
-        error instanceof Error
-          ? error.message
-          : "Failed to start Outlook connection.",
+      message: error instanceof Error ? error.message : "Failed to start Outlook connection.",
     });
   }
 });
