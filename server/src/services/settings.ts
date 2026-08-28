@@ -15,11 +15,19 @@ export interface SettingsUpdate {
   autoDraft?: boolean;
   emailNotifications?: boolean;
   desktopNotifications?: boolean;
-  openAiApiKey?: string;
-  groqApiKey?: string;
-  geminiApiKey?: string;
-  anthropicApiKey?: string;
 }
+
+const DEFAULT_SETTINGS = {
+  provider: "gemini" as AIProvider,
+  defaultReplyTone: "formal" as ReplyTone,
+  defaultLength: "medium" as ReplyLength,
+  maxDailyReplies: 20,
+  temperature: 0.7,
+  signature: "Customer Support",
+  autoDraft: false,
+  emailNotifications: true,
+  desktopNotifications: false,
+};
 
 export async function getSettings(userId: string) {
   if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
@@ -27,15 +35,7 @@ export async function getSettings(userId: string) {
   if (!settings) {
     settings = await aiSettingsRepository.create({
       userId: new Types.ObjectId(userId),
-      provider: "gemini",
-      defaultReplyTone: "formal",
-      defaultLength: "medium",
-      maxDailyReplies: 20,
-      temperature: 0.7,
-      signature: "Customer Support",
-      autoDraft: false,
-      emailNotifications: true,
-      desktopNotifications: false,
+      ...DEFAULT_SETTINGS,
     });
   }
   return settings;
@@ -43,20 +43,14 @@ export async function getSettings(userId: string) {
 
 export async function updateSettings(userId: string, data: SettingsUpdate) {
   if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
-  return aiSettingsRepository.update(userId, data);
+  const settings = await aiSettingsRepository.update(userId, data);
+  if (!settings) throw new Error("Settings not found.");
+  return settings;
 }
 
 export async function resetSettings(userId: string) {
   if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
-  return aiSettingsRepository.update(userId, {
-    provider: "gemini",
-    defaultReplyTone: "formal",
-    defaultLength: "medium",
-    maxDailyReplies: 20,
-    temperature: 0.7,
-    signature: "Customer Support",
-    autoDraft: false,
-    emailNotifications: true,
-    desktopNotifications: false,
-  });
+  const settings = await aiSettingsRepository.update(userId, DEFAULT_SETTINGS);
+  if (!settings) throw new Error("Settings not found.");
+  return settings;
 }
