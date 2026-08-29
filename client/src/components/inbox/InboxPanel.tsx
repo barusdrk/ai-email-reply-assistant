@@ -45,7 +45,6 @@ return ( <div
      onSelect={onSelect}
    />
 
-```
   <div className="min-h-16 py-4 text-center">
     {loadingMore && (
       <p className="text-sm text-gray-500">

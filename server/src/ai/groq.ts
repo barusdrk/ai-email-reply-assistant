@@ -21,6 +21,8 @@ export class GroqProvider implements AIProvider {
   readonly name = "groq" as const;
 
   async generateReply(input: GenerateReplyInput): Promise<string> {
+    console.log("Groq model:", env.GROQ_MODEL);
+
     const response = await getClient().chat.completions.create({
       model: env.GROQ_MODEL,
       messages: [{
@@ -28,6 +30,7 @@ export class GroqProvider implements AIProvider {
         content: `Write a ${input.tone}, ${input.length} email reply.\n\n${input.email}`,
       }],
     });
+
     return response.choices[0]?.message?.content ?? "";
   }
 
