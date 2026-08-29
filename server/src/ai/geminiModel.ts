@@ -1,161 +1,134 @@
+import OpenAI from "openai";
 import { env } from "../config/env.js";
 
-interface GeminiModel {
-  name?: string;
-  supportedGenerationMethods?: string[];
-}
-
-interface GeminiModelsResponse {
-  models?: GeminiModel[];
-  nextPageToken?: string;
-}
-
 let cachedModel: string | null = null;
+let cachedAt = 0;
 
-async function listGeminiModels(): Promise<GeminiModel[]> {
-  if (!env.GEMINI_API_KEY) {
-    throw new Error("Gemini is not configured.");
-  }
+const CACHE_TTL = 60 * 60 * 1000;
 
-  const models: GeminiModel[] = [];
-  let pageToken = "";
-
-  do {
-    const url = new URL(
-      "https://generativelanguage.googleapis.com/v1beta/models"
-    );
-
-    url.searchParams.set("key", env.GEMINI_API_KEY);
-    if (pageToken) url.searchParams.set("pageToken", pageToken);
-
-    const response = await fetch(url);
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(
-        `Gemini model discovery failed: ${response.status} ${text}`
-      );
-    }
-
-    const data = await response.json() as GeminiModelsResponse;
-
-    models.push(...(data.models ?? []));
-    pageToken = data.nextPageToken ?? "";
-  } while (pageToken);
-
-  return models;
+function getClient() {
+  if (!env.GEMINI_API_KEY) throw new Error("Gemini is not configured.");
+  return new OpenAI({
+    apiKey: env.GEMINI_API_KEY,
+    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
+  });
 }
 
-function modelId(name: string): string {
-  return name.replace(/^models\//, "");
-}
+function isSupportedModel(id: string): boolean {
+  const lower = id.toLowerCase();
 
-function isCompatibleTextModel(model: GeminiModel): boolean {
-  const name = model.name ?? "";
-  const methods = model.supportedGenerationMethods ?? [];
-  const id = modelId(name).toLowerCase();
+  if (!lower.startsWith("gemini-")) return false;
 
-  if (!id) return false;
+  const excluded = [
+    "image",
+    "embedding",
+    "embed",
+    "tts",
+    "transcribe",
+    "live",
+    "audio",
+    "video",
+    "robotics",
+    "computer-use",
+    "computer_use",
+    "deep-research",
+    "deep-research",
+    "veo",
+  ];
 
-  if (!methods.includes("generateContent")) {
-    return false;
-  }
-
-  if (
-    id.includes("embedding") ||
-    id.includes("image") ||
-    id.includes("tts") ||
-    id.includes("audio") ||
-    id.includes("aqa")
-  ) {
+  if (excluded.some((name) => lower.includes(name))) {
     return false;
   }
 
   return (
-    id.includes("gemini") ||
-    id.includes("flash") ||
-    id.includes("pro")
+    lower.includes("flash") ||
+    lower.includes("pro")
   );
 }
 
-function modelPriority(name: string): number {
-  const id = modelId(name).toLowerCase();
+function isProductionModel(id: string): boolean {
+  const lower = id.toLowerCase();
 
-  let score = 0;
+  return ![
+    "preview",
+    "experimental",
+    "exp",
+    "beta",
+  ].some((name) => lower.includes(name));
+}
 
-  if (id.includes("latest")) score += 1000;
+function modelScore(id: string): number {
+  const lower = id.toLowerCase();
 
-  if (id.includes("flash")) score += 100;
-  if (id.includes("pro")) score += 80;
+  if (lower === "gemini-3.7-flash") return 3700;
+  if (lower === "gemini-3.6-flash") return 3600;
+  if (lower === "gemini-3.5-flash") return 3500;
+  if (lower === "gemini-3.5-flash-lite") return 3450;
+  if (lower === "gemini-3.1-flash-lite") return 3100;
+  if (lower === "gemini-2.5-flash") return 2500;
+  if (lower === "gemini-2.5-flash-lite") return 2450;
+  if (lower === "gemini-2.5-pro") return 2400;
 
-  if (id.includes("3.6")) score += 60;
-  else if (id.includes("3.5")) score += 50;
-  else if (id.includes("3.0")) score += 40;
-  else if (id.includes("2.5")) score += 30;
-  else if (id.includes("2.0")) score += 20;
-  else if (id.includes("1.5")) score += 10;
-
-  if (id.includes("preview")) score -= 5;
-  if (id.includes("experimental")) score -= 10;
-
-  return score;
+  return 0;
 }
 
 export async function resolveGeminiModel(): Promise<string> {
-  if (cachedModel) {
+  const now = Date.now();
+
+  if (cachedModel && now - cachedAt < CACHE_TTL) {
     return cachedModel;
   }
 
-  const configured = env.GEMINI_MODEL?.trim();
+  const configuredModel = env.GEMINI_MODEL?.trim();
 
-  if (configured) {
-    const models = await listGeminiModels();
+  if (
+    configuredModel &&
+    configuredModel.toLowerCase() !== "latest"
+  ) {
+    cachedModel = configuredModel;
+    cachedAt = now;
 
-    const exact = models.find(
-      (model) =>
-        modelId(model.name ?? "") ===
-        modelId(configured) &&
-        isCompatibleTextModel(model)
+    console.log(
+      `Gemini model configured: ${configuredModel}`
     );
 
-    if (exact?.name) {
-      cachedModel = modelId(exact.name);
-      console.log(`Gemini model: ${cachedModel}`);
-      return cachedModel;
-    }
+    return configuredModel;
   }
 
-  const models = await listGeminiModels();
+  const models = await getClient().models.list();
 
-  const compatible = models
-    .filter(isCompatibleTextModel)
-    .filter((model) => Boolean(model.name))
-    .sort(
-      (a, b) =>
-        modelPriority(b.name ?? "") -
-        modelPriority(a.name ?? "")
-    );
+  const candidates = models.data
+    .map((model) => model.id)
+    .filter((id): id is string => Boolean(id))
+    .filter(isSupportedModel)
+    .filter(isProductionModel)
+    .map((id) => ({
+      id,
+      score: modelScore(id),
+    }))
+    .filter((model) => model.score > 0)
+    .sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
 
-  const selected = compatible[0];
+      return b.id.localeCompare(a.id);
+    });
 
-  if (!selected?.name) {
-    console.error(
-      "Gemini models returned by API:",
-      models.map((model) => ({
-        name: model.name,
-        supportedGenerationMethods:
-          model.supportedGenerationMethods,
-      }))
-    );
+  const model = candidates[0]?.id;
 
+  if (!model) {
     throw new Error(
-      "No compatible Gemini text model was found."
+      "No compatible Gemini production text model was found."
     );
   }
 
-  cachedModel = modelId(selected.name);
+  cachedModel = model;
+  cachedAt = now;
 
-  console.log(`Gemini model: ${cachedModel}`);
+  console.log(
+    `Gemini model resolved: ${model}`
+  );
 
-  return cachedModel;
+  return model;
 }
