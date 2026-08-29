@@ -51,11 +51,6 @@ export async function getMicrosoftAuthUrl(userId: string) {
   getUserObjectId(userId);
   const { callbackUrl } = getMicrosoftConfig();
 
-  console.log(
-    "Microsoft OAuth callback URL:",
-    callbackUrl
-  );
-
   return getMsalClient().getAuthCodeUrl({
     scopes: SCOPES,
     redirectUri: callbackUrl,
