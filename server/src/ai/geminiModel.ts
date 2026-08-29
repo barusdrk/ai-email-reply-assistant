@@ -3,7 +3,6 @@ import { env } from "../config/env.js";
 
 let cachedModel: string | null = null;
 let cachedAt = 0;
-
 const CACHE_TTL = 60 * 60 * 1000;
 
 function getClient() {
@@ -21,55 +20,35 @@ function isSupportedModel(id: string): boolean {
 
   const excluded = [
     "image",
-    "embedding",
-    "embed",
-    "tts",
-    "transcribe",
     "live",
+    "tts",
     "audio",
-    "video",
+    "transcribe",
+    "embedding",
     "robotics",
-    "computer-use",
-    "computer_use",
-    "deep-research",
-    "deep-research",
     "veo",
+    "imagen",
+    "vision",
   ];
 
-  if (excluded.some((name) => lower.includes(name))) {
-    return false;
-  }
+  if (excluded.some((name) => lower.includes(name))) return false;
 
-  return (
-    lower.includes("flash") ||
-    lower.includes("pro")
-  );
-}
+  if (!lower.includes("flash")) return false;
 
-function isProductionModel(id: string): boolean {
-  const lower = id.toLowerCase();
+  if (lower.includes("preview")) return false;
 
-  return ![
-    "preview",
-    "experimental",
-    "exp",
-    "beta",
-  ].some((name) => lower.includes(name));
+  return true;
 }
 
 function modelScore(id: string): number {
-  const lower = id.toLowerCase();
+  const match = id.match(/^gemini-(\d+)(?:\.(\d+))?-flash/i);
 
-  if (lower === "gemini-3.7-flash") return 3700;
-  if (lower === "gemini-3.6-flash") return 3600;
-  if (lower === "gemini-3.5-flash") return 3500;
-  if (lower === "gemini-3.5-flash-lite") return 3450;
-  if (lower === "gemini-3.1-flash-lite") return 3100;
-  if (lower === "gemini-2.5-flash") return 2500;
-  if (lower === "gemini-2.5-flash-lite") return 2450;
-  if (lower === "gemini-2.5-pro") return 2400;
+  if (!match) return 0;
 
-  return 0;
+  const major = Number(match[1]);
+  const minor = Number(match[2] ?? 0);
+
+  return major * 100 + minor;
 }
 
 export async function resolveGeminiModel(): Promise<string> {
@@ -81,17 +60,10 @@ export async function resolveGeminiModel(): Promise<string> {
 
   const configuredModel = env.GEMINI_MODEL?.trim();
 
-  if (
-    configuredModel &&
-    configuredModel.toLowerCase() !== "latest"
-  ) {
+  if (configuredModel && configuredModel !== "latest") {
     cachedModel = configuredModel;
     cachedAt = now;
-
-    console.log(
-      `Gemini model configured: ${configuredModel}`
-    );
-
+    console.log(`Gemini model: ${configuredModel}`);
     return configuredModel;
   }
 
@@ -99,36 +71,27 @@ export async function resolveGeminiModel(): Promise<string> {
 
   const candidates = models.data
     .map((model) => model.id)
-    .filter((id): id is string => Boolean(id))
     .filter(isSupportedModel)
-    .filter(isProductionModel)
-    .map((id) => ({
-      id,
-      score: modelScore(id),
-    }))
-    .filter((model) => model.score > 0)
     .sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
+      const scoreDifference = modelScore(b) - modelScore(a);
+
+      if (scoreDifference !== 0) {
+        return scoreDifference;
       }
 
-      return b.id.localeCompare(a.id);
+      return b.localeCompare(a);
     });
 
-  const model = candidates[0]?.id;
+  const model = candidates[0];
 
   if (!model) {
-    throw new Error(
-      "No compatible Gemini production text model was found."
-    );
+    throw new Error("No compatible Gemini Flash text model was found.");
   }
 
   cachedModel = model;
   cachedAt = now;
 
-  console.log(
-    `Gemini model resolved: ${model}`
-  );
+  console.log(`Gemini model: ${model}`);
 
   return model;
 }
