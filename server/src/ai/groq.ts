@@ -5,7 +5,10 @@ import { resolveGroqModel } from "./groqModel.js";
 
 function getClient() {
   if (!env.GROQ_API_KEY) throw new Error("Groq is not configured.");
-  return new OpenAI({ apiKey: env.GROQ_API_KEY, baseURL: "https://api.groq.com/openai/v1" });
+  return new OpenAI({
+    apiKey: env.GROQ_API_KEY,
+    baseURL: "https://api.groq.com/openai/v1",
+  });
 }
 
 export class GroqProvider implements AIProvider {
