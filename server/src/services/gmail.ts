@@ -23,7 +23,6 @@ export interface GoogleOAuthTokens {
 }
 
 function createOAuthClient() {
-  console.log("Google OAuth callback:", env.GOOGLE_CALLBACK_URL);
   return new google.auth.OAuth2(
     env.GOOGLE_CLIENT_ID,
     env.GOOGLE_CLIENT_SECRET,
