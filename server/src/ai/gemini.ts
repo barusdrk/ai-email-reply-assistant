@@ -21,6 +21,7 @@ export class GeminiProvider implements AIProvider {
   readonly name = "gemini" as const;
 
   async generateReply(input: GenerateReplyInput): Promise<string> {
+    console.log("Gemini model:", env.GEMINI_MODEL);
     const response = await getClient().chat.completions.create({
       model: env.GEMINI_MODEL,
       messages: [{
