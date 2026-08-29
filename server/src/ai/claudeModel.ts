@@ -13,10 +13,11 @@ function getClient() {
 
 function isSupportedModel(id: string): boolean {
   const lower = id.toLowerCase();
-  if (!id.trim()) return false;
-  if (!lower.includes("claude-")) return false;
+
+  if (!lower.startsWith("claude-")) return false;
 
   const excluded = [
+    "instant",
     "embedding",
     "embed",
     "moderation",
@@ -26,24 +27,58 @@ function isSupportedModel(id: string): boolean {
     "vision",
   ];
 
-  return !excluded.some((name) => lower.includes(name));
+  if (excluded.some((name) => lower.includes(name))) {
+    return false;
+  }
+
+  if (
+    !lower.includes("opus") &&
+    !lower.includes("sonnet") &&
+    !lower.includes("haiku")
+  ) {
+    return false;
+  }
+
+  return true;
 }
 
 function modelScore(id: string): number {
   const lower = id.toLowerCase();
 
-  if (lower.includes("claude-opus-5")) return 1000;
-  if (lower.includes("claude-sonnet-5")) return 900;
-  if (lower.includes("claude-haiku-4-5")) return 800;
-  if (lower.includes("claude-opus-4-8")) return 700;
-  if (lower.includes("claude-sonnet-4-6")) return 600;
-  if (lower.includes("claude-haiku-4-5")) return 500;
+  if (lower.includes("claude-opus-4-8")) return 4800;
+  if (lower.includes("claude-opus-4-7")) return 4700;
+  if (lower.includes("claude-opus-4-6")) return 4600;
+  if (lower.includes("claude-opus-4-5")) return 4500;
+  if (lower.includes("claude-opus-4")) return 4400;
 
-  const match = lower.match(/claude-(?:opus|sonnet|haiku)-(\d+(?:-\d+)?)/);
+  if (lower.includes("claude-sonnet-4-8")) return 3800;
+  if (lower.includes("claude-sonnet-4-7")) return 3700;
+  if (lower.includes("claude-sonnet-4-6")) return 3600;
+  if (lower.includes("claude-sonnet-4-5")) return 3500;
+  if (lower.includes("claude-sonnet-4")) return 3400;
 
-  if (!match) return 0;
+  if (lower.includes("claude-haiku-4-5")) return 2500;
+  if (lower.includes("claude-haiku-4")) return 2400;
 
-  return Number(match[1].replace("-", "."));
+  if (lower.includes("claude-3-7-sonnet")) return 1700;
+  if (lower.includes("claude-3-5-sonnet")) return 1600;
+  if (lower.includes("claude-3-5-haiku")) return 1500;
+  if (lower.includes("claude-3-opus")) return 1400;
+  if (lower.includes("claude-3-sonnet")) return 1300;
+  if (lower.includes("claude-3-haiku")) return 1200;
+
+  return 0;
+}
+
+function isPreviewModel(id: string): boolean {
+  const lower = id.toLowerCase();
+
+  return [
+    "preview",
+    "experimental",
+    "beta",
+    "test",
+  ].some((name) => lower.includes(name));
 }
 
 export async function resolveClaudeModel(): Promise<string> {
@@ -61,7 +96,11 @@ export async function resolveClaudeModel(): Promise<string> {
   ) {
     cachedModel = configuredModel;
     cachedAt = now;
-    console.log(`Claude model configured: ${configuredModel}`);
+
+    console.log(
+      `Claude model configured: ${configuredModel}`
+    );
+
     return configuredModel;
   }
 
@@ -71,18 +110,21 @@ export async function resolveClaudeModel(): Promise<string> {
     .map((model) => model.id)
     .filter((id): id is string => Boolean(id))
     .filter(isSupportedModel)
+    .filter((id) => !isPreviewModel(id))
+    .map((id) => ({
+      id,
+      score: modelScore(id),
+    }))
+    .filter((model) => model.score > 0)
     .sort((a, b) => {
-      const scoreDifference =
-        modelScore(b) - modelScore(a);
-
-      if (scoreDifference !== 0) {
-        return scoreDifference;
+      if (b.score !== a.score) {
+        return b.score - a.score;
       }
 
-      return b.localeCompare(a);
+      return b.id.localeCompare(a.id);
     });
 
-  const model = candidates[0];
+  const model = candidates[0]?.id;
 
   if (!model) {
     throw new Error(
@@ -93,7 +135,9 @@ export async function resolveClaudeModel(): Promise<string> {
   cachedModel = model;
   cachedAt = now;
 
-  console.log(`Claude model resolved: ${model}`);
+  console.log(
+    `Claude model resolved: ${model}`
+  );
 
   return model;
 }
