@@ -38,19 +38,19 @@ router.post("/", authenticate, async (req: Request, res: Response) => {
       return;
     }
 
-    const reply = await generateReplyForUser(req.user.id, {
+    const result = await generateReplyForUser(req.user.id, {
       email,
       tone: tone as Tone,
       length: length as ReplyLength,
       signature: typeof signature === "string" ? signature : undefined,
     });
 
-    if (!reply.trim()) {
+    if (!result.reply.trim()) {
       res.status(500).json({ message: "AI returned an empty reply." });
       return;
     }
 
-    res.json({ reply });
+    res.json({ success: true, ...result });
   } catch (error) {
     console.error("POST /api/reply failed:", error);
     res.status(500).json({

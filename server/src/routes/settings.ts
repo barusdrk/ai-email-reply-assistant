@@ -5,7 +5,7 @@ import { getSettings, updateSettings, resetSettings } from "../services/settings
 const router = Router();
 router.use(auth);
 
-const AI_PROVIDERS = ["openai", "anthropic", "gemini", "groq"] as const;
+const AI_PROVIDERS = ["openai", "gemini", "groq", "claude"] as const;
 const DEFAULT_REPLY_TONES = ["friendly", "formal", "professional", "concise", "empathetic", "enthusiastic"] as const;
 const DEFAULT_REPLY_LENGTHS = ["short", "medium", "long"] as const;
 

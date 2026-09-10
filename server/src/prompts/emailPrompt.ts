@@ -6,12 +6,14 @@ import {
   type ReplyLength,
   type Tone,
 } from "../templates/tones.js";
+import type { KnowledgeBaseContext } from "../ai/types.js";
 
 export interface BuildEmailPromptOptions {
   email: string;
   tone?: Tone;
   length?: ReplyLength;
   signature?: string;
+  knowledgeBase?: KnowledgeBaseContext[];
 }
 
 export function buildEmailPrompt({
@@ -19,12 +21,33 @@ export function buildEmailPrompt({
   tone = DEFAULT_TONE,
   length = DEFAULT_LENGTH,
   signature,
+  knowledgeBase = [],
 }: BuildEmailPromptOptions): string {
-  const toneInstruction =
-    TONES[tone].instruction;
+  const toneInstruction = TONES[tone].instruction;
+  const lengthInstruction = LENGTHS[length].instruction;
 
-  const lengthInstruction =
-    LENGTHS[length].instruction;
+  const knowledgeBaseSection = knowledgeBase.length > 0
+    ? `
+Relevant company knowledge base:
+
+${knowledgeBase.map((article) => `Title: ${article.title}
+Category: ${article.category ?? "general"}
+Content:
+${article.content}`).join("\n\n")}
+
+Knowledge base rules:
+
+- Treat the knowledge base as the authoritative source for company-specific information.
+- Use it when answering questions about company policies, products, billing, refunds, cancellations, shipping, accounts, or technical support.
+- Do not contradict information from the knowledge base.
+- Do not invent company policies, prices, guarantees, timelines, or procedures.
+- If the knowledge base does not contain enough information to answer a question, do not make up an answer.
+`
+    : `
+No relevant company knowledge base information was found.
+
+Do not invent company-specific policies, prices, guarantees, timelines, or procedures.
+`;
 
   return `
 You are an expert AI email assistant.
@@ -47,6 +70,8 @@ Rules:
 Customer email:
 
 ${email}
+
+${knowledgeBaseSection}
 
 ${
   signature

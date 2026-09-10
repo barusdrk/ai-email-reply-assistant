@@ -9,10 +9,12 @@ import Login from "./pages/Login.js";
 import Dashboard from "./pages/Dashboard.js";
 import Inbox from "./pages/Inbox.js";
 import Drafts from "./pages/Drafts.js";
+import DraftDetails from "./pages/DraftDetails.js";
 import Approvals from "./pages/Approvals.js";
 import Sent from "./pages/Sent.js";
 import Settings from "./pages/Settings.js";
 import BillingPage from "./pages/BillingPage.js";
+import KnowledgeBase from "./pages/KnowledgeBase.js";
 import Sidebar from "./components/Sidebar.js";
 import { useAuth } from "./context/AuthContext.js";
 
@@ -21,7 +23,6 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
-
         <Route
           path="/"
           element={
@@ -32,7 +33,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/dashboard"
           element={
@@ -43,7 +43,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/inbox"
           element={
@@ -54,7 +53,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/drafts"
           element={
@@ -65,7 +63,16 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
+        <Route
+          path="/drafts/:id"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <DraftDetails />
+              </AppLayout>
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/approvals"
           element={
@@ -76,7 +83,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/sent"
           element={
@@ -87,7 +93,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/settings"
           element={
@@ -98,7 +103,6 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
           path="/billing"
           element={
@@ -109,11 +113,17 @@ export default function App() {
             </ProtectedRoute>
           }
         />
-
         <Route
-          path="*"
-          element={<Navigate to="/" replace />}
+          path="/knowledge-base"
+          element={
+            <ProtectedRoute>
+              <AppLayout>
+                <KnowledgeBase />
+              </AppLayout>
+            </ProtectedRoute>
+          }
         />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );
@@ -123,13 +133,8 @@ interface ProtectedRouteProps {
   children: ReactNode;
 }
 
-function ProtectedRoute({
-  children,
-}: ProtectedRouteProps) {
-  const {
-    loading,
-    isAuthenticated,
-  } = useAuth();
+function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { loading, isAuthenticated } = useAuth();
 
   if (loading) {
     return (
@@ -140,12 +145,7 @@ function ProtectedRoute({
   }
 
   if (!isAuthenticated) {
-    return (
-      <Navigate
-        to="/login"
-        replace
-      />
-    );
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
@@ -155,17 +155,12 @@ interface AppLayoutProps {
   children: ReactNode;
 }
 
-function AppLayout({
-  children,
-}: AppLayoutProps) {
+function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
       <Sidebar />
-
       <main className="min-w-0 flex-1 p-6">
-        <div className="mx-auto max-w-7xl">
-          {children}
-        </div>
+        <div className="mx-auto max-w-7xl">{children}</div>
       </main>
     </div>
   );

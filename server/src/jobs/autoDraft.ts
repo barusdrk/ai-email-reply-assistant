@@ -2,8 +2,7 @@ import { emailRepository } from "../repositories/EmailRepository.js";
 import { createDraft } from "../services/drafts.js";
 
 export async function autoDraftJob() {
-  const emails =
-    await emailRepository.findAllWithoutDraft();
+  const emails = await emailRepository.findAllWithoutDraft();
 
   for (const email of emails) {
     if (!email.userId) {
@@ -11,26 +10,14 @@ export async function autoDraftJob() {
     }
 
     await createDraft({
-      userId:
-        email.userId.toString(),
-
-      emailId:
-        email._id.toString(),
-
-      subject:
-        email.subject ?? "(No subject)",
-
-      customer:
-        email.from ?? "Unknown sender",
-
-      email:
-        email.body ?? "",
-
-      tone:
-        "professional",
-
-      length:
-        "medium",
+      userId: email.userId.toString(),
+      emailId: email._id.toString(),
+      provider: email.provider,
+      subject: email.subject ?? "(No subject)",
+      customer: email.from ?? "Unknown sender",
+      email: email.body ?? "",
+      tone: "professional",
+      length: "medium",
     });
   }
 }

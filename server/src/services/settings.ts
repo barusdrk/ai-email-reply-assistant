@@ -1,7 +1,7 @@
 import { Types } from "mongoose";
 import { aiSettingsRepository } from "../repositories/AISettingsRepository.js";
 
-export type AIProvider = "mock" | "openai" | "gemini" | "groq" | "claude";
+export type AIProvider = "openai" | "gemini" | "groq" | "claude";
 export type ReplyTone = "professional" | "friendly" | "formal" | "empathetic" | "concise" | "enthusiastic";
 export type ReplyLength = "short" | "medium" | "long";
 

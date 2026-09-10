@@ -5,10 +5,7 @@ export const BILLING_AI_PROVIDERS = [
   "gemini",
   "groq",
   "claude",
-] as const satisfies readonly Exclude<
-  AIProviderName,
-  "mock"
->[];
+] as const satisfies readonly AIProviderName[];
 
 export type BillingAIProvider =
   typeof BILLING_AI_PROVIDERS[number];

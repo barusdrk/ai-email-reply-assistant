@@ -14,7 +14,20 @@ function getClient() {
 function isSupportedModel(id: string): boolean {
   const lower = id.toLowerCase();
   if (!lower.startsWith("gpt-")) return false;
-  const excluded = ["image", "realtime", "transcribe", "tts", "audio", "search", "embedding", "moderation", "codex", "computer"];
+
+  const excluded = [
+    "image",
+    "realtime",
+    "transcribe",
+    "tts",
+    "audio",
+    "search",
+    "embedding",
+    "moderation",
+    "codex",
+    "computer",
+  ];
+
   return !excluded.some((name) => lower.includes(name));
 }
 
@@ -30,7 +43,7 @@ export async function resolveOpenAIModel(): Promise<string> {
 
   const configuredModel = env.OPENAI_MODEL?.trim();
 
-  if (configuredModel && configuredModel.toLowerCase() !== "latest") {
+  if (configuredModel) {
     cachedModel = configuredModel;
     cachedAt = now;
     console.log(`OpenAI model configured: ${configuredModel}`);
@@ -50,7 +63,9 @@ export async function resolveOpenAIModel(): Promise<string> {
 
   const model = candidates[0];
 
-  if (!model) throw new Error("No compatible OpenAI text model was found.");
+  if (!model) {
+    throw new Error("No compatible OpenAI text model was found.");
+  }
 
   cachedModel = model;
   cachedAt = now;

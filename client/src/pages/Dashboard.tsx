@@ -1,146 +1,93 @@
-import {
-  useEffect,
-  useState,
-} from "react";
-import {
-  Link,
-} from "react-router-dom";
-import {
-  getDashboardStats,
-  type DashboardStats,
-} from "../services/dashboard.js";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { getDashboardStats, type DashboardStats } from "../services/dashboard.js";
 
 export default function Dashboard() {
-  const [stats, setStats] =
-    useState<DashboardStats>({
-      inboxEmails: 0,
-      draftReplies: 0,
-      pendingApprovals: 0,
-      sentToday: 0,
-    });
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState("");
+  const [stats, setStats] = useState<DashboardStats>({
+    inboxEmails: 0,
+    draftReplies: 0,
+    pendingApprovals: 0,
+    sentToday: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     async function loadDashboard() {
       try {
         setLoading(true);
         setError("");
-
-        const data =
-          await getDashboardStats();
-
+        const data = await getDashboardStats();
         setStats(data);
       } catch (error) {
-        setError(
-          error instanceof Error
-            ? error.message
-            : "Failed to load dashboard."
-        );
+        setError(error instanceof Error ? error.message : "Failed to load dashboard.");
       } finally {
         setLoading(false);
       }
     }
-
-    loadDashboard();
+    void loadDashboard();
   }, []);
 
   const statCards = [
-    {
-      label: "Inbox Emails",
-      value: stats.inboxEmails,
-      color: "bg-blue-500",
-    },
-    {
-      label: "Draft Replies",
-      value: stats.draftReplies,
-      color: "bg-yellow-500",
-    },
-    {
-      label: "Pending Approvals",
-      value: stats.pendingApprovals,
-      color: "bg-orange-500",
-    },
-    {
-      label: "Sent Today",
-      value: stats.sentToday,
-      color: "bg-green-500",
-    },
+    { label: "Inbox Emails", value: stats.inboxEmails, color: "bg-blue-500" },
+    { label: "Draft Replies", value: stats.draftReplies, color: "bg-yellow-500" },
+    { label: "Pending Approvals", value: stats.pendingApprovals, color: "bg-orange-500" },
+    { label: "Sent Today", value: stats.sentToday, color: "bg-green-500" },
   ];
 
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Dashboard
-        </h1>
-
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Welcome to your AI Email Reply Assistant.
-        </p>
+        <h1 className="text-3xl font-bold text-(--text-h)">Dashboard</h1>
+        <p className="mt-2 text-(--text-secondary)">Welcome to your AI Email Reply Assistant.</p>
       </div>
 
       {error && (
-        <div className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-700 dark:border-red-800 dark:bg-red-950/30 dark:text-red-300">
+        <div className="rounded-lg border border-(--danger-text) bg-(--danger-bg) p-4 text-(--danger-text)">
           {error}
         </div>
       )}
 
       <section className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         {statCards.map((stat) => (
-          <div
-            key={stat.label}
-            className="rounded-xl border border-gray-300 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800"
-          >
-            <div
-              className={`mb-4 h-3 w-16 rounded-full ${stat.color}`}
-            />
-
-            <div className="text-4xl font-bold text-gray-900 dark:text-white">
+          <div key={stat.label} className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
+            <div className={`mb-4 h-3 w-16 rounded-full ${stat.color}`} />
+            <div className="text-4xl font-bold text-(--text-h)">
               {loading ? "..." : stat.value}
             </div>
-
-            <div className="mt-2 text-gray-500">
-              {stat.label}
-            </div>
+            <div className="mt-2 text-(--text-secondary)">{stat.label}</div>
           </div>
         ))}
       </section>
 
-      <section className="rounded-xl border border-gray-300 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="mb-4 text-xl font-semibold dark:text-white">
-          Quick Actions
-        </h2>
+      <section className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
+        <h2 className="mb-4 text-xl font-semibold text-(--text-h)">Quick Actions</h2>
 
         <div className="flex flex-wrap gap-4">
           <Link
             to="/inbox"
-            className="rounded-lg bg-blue-600 px-5 py-3 text-white hover:bg-blue-700"
+            className="rounded-lg bg-(--accent) px-5 py-3 text-(--accent-contrast) hover:bg-(--accent-hover)"
           >
             Open Inbox
           </Link>
 
           <Link
             to="/drafts"
-            className="rounded-lg bg-yellow-600 px-5 py-3 text-white hover:bg-yellow-700"
+            className="rounded-lg bg-(--warning) px-5 py-3 text-(--warning-contrast) hover:opacity-90"
           >
             View Drafts
           </Link>
 
           <Link
             to="/approvals"
-            className="rounded-lg bg-green-600 px-5 py-3 text-white hover:bg-green-700"
+            className="rounded-lg bg-(--info) px-5 py-3 text-(--accent-contrast) hover:opacity-90"
           >
             Review Approvals
           </Link>
 
           <Link
             to="/settings"
-            className="rounded-lg bg-gray-700 px-5 py-3 text-white hover:bg-gray-800"
+            className="rounded-lg bg-(--settings) px-5 py-3 text-(--accent-contrast) hover:opacity-90"
           >
             Settings
           </Link>

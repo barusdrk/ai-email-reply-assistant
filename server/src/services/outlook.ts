@@ -1,36 +1,9 @@
-import { ConfidentialClientApplication } from "@azure/msal-node";
 import { Types } from "mongoose";
-import { connectedAccountRepository } from "../repositories/ConnectedAccountRepository.js";
-import { syncInbox } from "./email.js";
-import type { InboxEmail } from "./gmail.js";
+import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
-import { htmlToText } from "../utils/emailBody.js";
+import { connectedAccountRepository } from "../repositories/ConnectedAccountRepository.js";
 
-function requiredEnv(value: string | undefined, name: string): string {
-  if (!value) throw new Error(`${name} is not configured.`);
-  return value;
-}
-
-function getMicrosoftConfig() {
-  return {
-    clientId: requiredEnv(env.MICROSOFT_CLIENT_ID, "MICROSOFT_CLIENT_ID"),
-    clientSecret: requiredEnv(env.MICROSOFT_CLIENT_SECRET, "MICROSOFT_CLIENT_SECRET"),
-    callbackUrl: requiredEnv(env.MICROSOFT_CALLBACK_URL, "MICROSOFT_CALLBACK_URL"),
-  };
-}
-
-function getMsalClient() {
-  const config = getMicrosoftConfig();
-  return new ConfidentialClientApplication({
-    auth: {
-      clientId: config.clientId,
-      clientSecret: config.clientSecret,
-      authority: "https://login.microsoftonline.com/common",
-    },
-  });
-}
-
-const SCOPES = [
+const MICROSOFT_SCOPES = [
   "openid",
   "profile",
   "email",
@@ -40,196 +13,338 @@ const SCOPES = [
   "Mail.Send",
 ];
 
-function getUserObjectId(userId: string) {
-  if (!Types.ObjectId.isValid(userId)) {
-    throw new Error("Invalid user ID.");
-  }
-  return new Types.ObjectId(userId);
+const MICROSOFT_TOKEN_URL = `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
+const MICROSOFT_GRAPH_URL = "https://graph.microsoft.com/v1.0";
+const OAUTH_STATE_EXPIRES_IN = "10m";
+
+interface OAuthState {
+  userId: string;
+  provider: "outlook";
 }
 
-export async function getMicrosoftAuthUrl(userId: string) {
-  getUserObjectId(userId);
-  const { callbackUrl } = getMicrosoftConfig();
-
-  return getMsalClient().getAuthCodeUrl({
-    scopes: SCOPES,
-    redirectUri: callbackUrl,
-    state: userId,
-    prompt: "select_account",
-  });
+interface MicrosoftTokenResponse {
+  access_token?: string;
+  refresh_token?: string;
+  expires_in?: number;
 }
 
-export async function exchangeMicrosoftCode(code: string, state: string) {
-  const userId = getUserObjectId(state);
-  const { callbackUrl } = getMicrosoftConfig();
-
-  const result = await getMsalClient().acquireTokenByCode({
-    code,
-    scopes: SCOPES,
-    redirectUri: callbackUrl,
-  });
-
-  if (!result.accessToken) {
-    throw new Error("Microsoft did not return an access token.");
-  }
-
-  await connectedAccountRepository.upsert({
-    userId,
-    provider: "outlook",
-    connected: true,
-    accessToken: result.accessToken,
-    refreshToken: "",
-    expiresAt: result.expiresOn ?? undefined,
-  });
-
-  return {
-    connected: true,
-    account: result.account?.username ?? null,
-  };
+export interface InboxEmail {
+  id: string;
+  threadId: string;
+  subject: string;
+  from: string;
+  preview: string;
+  body: string;
+  receivedAt?: Date;
 }
 
-export async function connectOutlook(userId: string) {
-  return {
-    connected: false,
-    url: await getMicrosoftAuthUrl(userId),
-  };
-}
-
-export async function disconnectOutlook(userId: string) {
-  getUserObjectId(userId);
-  await connectedAccountRepository.remove(userId, "outlook");
-  return { connected: false };
-}
-
-export async function outlookStatus(userId: string) {
-  getUserObjectId(userId);
-
-  const account = await connectedAccountRepository.findOne(
-    userId,
-    "outlook"
-  );
-
-  return {
-    connected: Boolean(account?.connected && account.accessToken),
-  };
-}
-
-export async function syncOutlook(userId: string) {
-  return syncInbox("outlook", userId);
-}
-
-async function getAccessToken(userId: string) {
-  getUserObjectId(userId);
-
-  const account = await connectedAccountRepository.findOne(
-    userId,
-    "outlook"
-  );
-
-  if (!account?.connected || !account.accessToken) {
-    throw new Error("Outlook account is not connected.");
-  }
-
-  return account.accessToken;
-}
-
-interface GraphMessage {
+interface MicrosoftGraphMessage {
   id?: string;
   conversationId?: string;
   subject?: string;
+  bodyPreview?: string;
+  receivedDateTime?: string;
   from?: {
     emailAddress?: {
       address?: string;
       name?: string;
     };
   };
-  bodyPreview?: string;
   body?: {
     content?: string;
     contentType?: string;
   };
-  receivedDateTime?: string;
 }
 
-interface GraphResponse {
-  value?: GraphMessage[];
+interface MicrosoftGraphMessageResponse {
+  value?: MicrosoftGraphMessage[];
   "@odata.nextLink"?: string;
 }
 
-function toInboxEmail(message: GraphMessage): InboxEmail {
-  const address = message.from?.emailAddress?.address ?? "";
-  const name = message.from?.emailAddress?.name ?? "";
-  const from = name && address ? `${name} <${address}>` : address;
+function createOAuthState(userId: string): string {
+  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
+  return jwt.sign(
+    { userId, provider: "outlook" } satisfies OAuthState,
+    env.JWT_SECRET,
+    { expiresIn: OAUTH_STATE_EXPIRES_IN }
+  );
+}
+
+function verifyOAuthState(state: string): string {
+  try {
+    const payload = jwt.verify(state, env.JWT_SECRET) as OAuthState;
+    if (payload.provider !== "outlook" || !Types.ObjectId.isValid(payload.userId)) {
+      throw new Error("Invalid OAuth state.");
+    }
+    return payload.userId;
+  } catch {
+    throw new Error("Invalid or expired Microsoft OAuth state.");
+  }
+}
+
+export function getMicrosoftAuthUrl(userId: string): string {
+  if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CALLBACK_URL) {
+    throw new Error("Microsoft OAuth is not configured.");
+  }
+
+  const state = createOAuthState(userId);
+  const params = new URLSearchParams({
+    client_id: env.MICROSOFT_CLIENT_ID,
+    response_type: "code",
+    redirect_uri: env.MICROSOFT_CALLBACK_URL,
+    response_mode: "query",
+    scope: MICROSOFT_SCOPES.join(" "),
+    state,
+  });
+
+  return `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/authorize?${params.toString()}`;
+}
+
+export async function exchangeMicrosoftCode(code: string, state: string) {
+  if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CLIENT_SECRET || !env.MICROSOFT_CALLBACK_URL) {
+    throw new Error("Microsoft OAuth is not configured.");
+  }
+
+  const userId = verifyOAuthState(state);
+  const body = new URLSearchParams({
+    client_id: env.MICROSOFT_CLIENT_ID,
+    client_secret: env.MICROSOFT_CLIENT_SECRET,
+    code,
+    redirect_uri: env.MICROSOFT_CALLBACK_URL,
+    grant_type: "authorization_code",
+    scope: MICROSOFT_SCOPES.join(" "),
+  });
+
+  const response = await fetch(MICROSOFT_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Microsoft OAuth token exchange failed: ${response.status} ${text}`);
+  }
+
+  const tokens = await response.json() as MicrosoftTokenResponse;
+
+  if (!tokens.access_token) {
+    throw new Error("Microsoft OAuth did not return an access token.");
+  }
+
+  const userResponse = await fetch(`${MICROSOFT_GRAPH_URL}/me`, {
+    headers: { Authorization: `Bearer ${tokens.access_token}` },
+  });
+
+  if (!userResponse.ok) {
+    const text = await userResponse.text();
+    throw new Error(`Microsoft Graph profile request failed: ${userResponse.status} ${text}`);
+  }
+
+  const profile = await userResponse.json() as {
+    mail?: string;
+    userPrincipalName?: string;
+  };
+
+  const email = profile.mail ?? profile.userPrincipalName ?? "";
+
+  if (!email) {
+    throw new Error("Unable to determine Microsoft account email.");
+  }
+
+  await connectedAccountRepository.upsert({
+    userId: new Types.ObjectId(userId),
+    provider: "outlook",
+    email,
+    connected: true,
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token ?? null,
+    expiresAt: tokens.expires_in
+      ? new Date(Date.now() + tokens.expires_in * 1000)
+      : undefined,
+    syncStatus: "idle",
+    lastError: "",
+  });
+
+  return { userId, email };
+}
+
+async function refreshAccessToken(userId: string): Promise<string> {
+  const account = await connectedAccountRepository.findByProvider(userId, "outlook");
+
+  if (!account) throw new Error("Outlook account is not connected.");
+  if (!account.refreshToken) {
+    throw new Error("Outlook refresh token is unavailable. Please reconnect your Outlook account.");
+  }
+  if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CLIENT_SECRET) {
+    throw new Error("Microsoft OAuth is not configured.");
+  }
+
+  const body = new URLSearchParams({
+    client_id: env.MICROSOFT_CLIENT_ID,
+    client_secret: env.MICROSOFT_CLIENT_SECRET,
+    refresh_token: account.refreshToken,
+    grant_type: "refresh_token",
+    scope: MICROSOFT_SCOPES.join(" "),
+  });
+
+  const response = await fetch(MICROSOFT_TOKEN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+
+    await connectedAccountRepository.update(account._id.toString(), {
+      connected: false,
+      syncStatus: "error",
+      lastError: `Microsoft token refresh failed: ${response.status}`,
+    });
+
+    throw new Error(`Microsoft token refresh failed: ${response.status} ${text}`);
+  }
+
+  const tokens = await response.json() as MicrosoftTokenResponse;
+
+  if (!tokens.access_token) {
+    throw new Error("Microsoft token refresh did not return an access token.");
+  }
+
+  await connectedAccountRepository.update(account._id.toString(), {
+    accessToken: tokens.access_token,
+    refreshToken: tokens.refresh_token ?? account.refreshToken,
+    expiresAt: tokens.expires_in
+      ? new Date(Date.now() + tokens.expires_in * 1000)
+      : undefined,
+    connected: true,
+    syncStatus: "idle",
+    lastError: "",
+  });
+
+  return tokens.access_token;
+}
+
+async function getAccessToken(userId: string, forceRefresh = false): Promise<string> {
+  const account = await connectedAccountRepository.findByProvider(userId, "outlook");
+
+  if (!account?.connected) {
+    throw new Error("Outlook is not connected.");
+  }
+
+  if (forceRefresh) {
+    return refreshAccessToken(userId);
+  }
+
+  const expiresAt = account.expiresAt?.getTime() ?? 0;
+  const refreshBuffer = 60 * 1000;
+
+  if (!account.accessToken || expiresAt <= Date.now() + refreshBuffer) {
+    return refreshAccessToken(userId);
+  }
+
+  return account.accessToken;
+}
+
+export async function outlookStatus(userId: string) {
+  const account = await connectedAccountRepository.findByProvider(userId, "outlook");
 
   return {
-    id: message.id ?? "",
-    threadId: message.conversationId ?? "",
-    subject: message.subject ?? "",
-    from,
-    preview: message.bodyPreview ?? "",
-    body: message.body?.contentType === "html"
-      ? htmlToText(message.body.content ?? "")
-      : message.body?.content ?? "",
+    connected: Boolean(account?.connected),
+    email: account?.email ?? null,
+    expiresAt: account?.expiresAt ?? null,
+    lastSyncAt: account?.lastSyncAt ?? null,
+    syncStatus: account?.syncStatus ?? "idle",
+    lastError: account?.lastError ?? "",
   };
 }
 
-export async function listEmails(
-  userId: string,
-  maxResults = 100
-): Promise<InboxEmail[]> {
-  const accessToken = await getAccessToken(userId);
-  const pageSize = Math.min(100, Math.max(1, maxResults));
-  const emails: InboxEmail[] = [];
+export async function disconnectOutlook(userId: string) {
+  const account = await connectedAccountRepository.findByProvider(userId, "outlook");
 
-  const params = new URLSearchParams({
-    "$top": String(pageSize),
-    "$select": [
-      "id",
-      "conversationId",
-      "subject",
-      "from",
-      "bodyPreview",
-      "body",
-      "receivedDateTime",
-    ].join(","),
-    "$orderby": "receivedDateTime DESC",
-  });
-
-  let nextUrl =
-    `https://graph.microsoft.com/v1.0/me/messages?${params.toString()}`;
-
-  while (nextUrl && emails.length < maxResults) {
-    const response = await fetch(nextUrl, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        Accept: "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(
-        `Microsoft Graph request failed: ${response.status} ${text}`
-      );
-    }
-
-    const data = await response.json() as GraphResponse;
-
-    for (const message of data.value ?? []) {
-      if (emails.length >= maxResults) break;
-      if (!message.id) continue;
-      emails.push(toInboxEmail(message));
-    }
-
-    nextUrl = data["@odata.nextLink"] ?? "";
+  if (account) {
+    await connectedAccountRepository.remove(userId, "outlook");
   }
 
-  return emails;
+  return {
+    success: true,
+    outlook: false,
+  };
 }
 
-function extractEmailAddress(value: string) {
-  const match = value.match(/<([^>]+)>/);
-  return (match?.[1] ?? value).trim();
+async function handleGraphError(userId: string, response: Response, operation: string): Promise<never> {
+  const text = await response.text();
+  const account = await connectedAccountRepository.findByProvider(userId, "outlook");
+
+  if (account) {
+    await connectedAccountRepository.update(account._id.toString(), {
+      syncStatus: "error",
+      lastError: `Microsoft Graph ${operation} failed: ${response.status}`,
+    });
+  }
+
+  throw new Error(`Microsoft Graph ${operation} failed: ${response.status} ${text}`);
+}
+
+export async function replyToEmail(
+  userId: string,
+  messageId: string,
+  reply: string
+) {
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID.");
+  }
+
+  if (!messageId.trim() || !reply.trim()) {
+    throw new Error("Message ID and reply are required.");
+  }
+
+  let accessToken = await getAccessToken(userId);
+
+  const url =
+    `${MICROSOFT_GRAPH_URL}/me/messages/` +
+    `${encodeURIComponent(messageId)}/reply`;
+
+  const body = JSON.stringify({
+    message: {
+      body: {
+        contentType: "Text",
+        content: reply.trim(),
+      },
+    },
+  });
+
+  let response = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body,
+  });
+
+  if (response.status === 401) {
+    accessToken = await getAccessToken(userId, true);
+
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body,
+    });
+  }
+
+  if (!response.ok) {
+    await handleGraphError(userId, response, "reply");
+  }
+
+  return {
+    sent: true,
+    id: messageId,
+  };
 }
 
 export async function sendEmail(
@@ -238,52 +353,115 @@ export async function sendEmail(
     to: string;
     subject: string;
     reply: string;
+    threadId?: string;
   }
 ) {
-  const accessToken = await getAccessToken(userId);
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID.");
+  }
 
-  const response = await fetch(
-    "https://graph.microsoft.com/v1.0/me/sendMail",
-    {
+  if (!options.to.trim() || !options.subject.trim() || !options.reply.trim()) {
+    throw new Error("Recipient, subject, and reply are required.");
+  }
+
+  let accessToken = await getAccessToken(userId);
+
+  const subject = options.subject.startsWith("Re:")
+    ? options.subject
+    : `Re: ${options.subject}`;
+
+  const body = JSON.stringify({
+    message: {
+      subject,
+      body: {
+        contentType: "Text",
+        content: options.reply.trim(),
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: options.to.trim(),
+          },
+        },
+      ],
+    },
+    saveToSentItems: true,
+  });
+
+  let response = await fetch(`${MICROSOFT_GRAPH_URL}/me/sendMail`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body,
+  });
+
+  if (response.status === 401) {
+    accessToken = await getAccessToken(userId, true);
+
+    response = await fetch(`${MICROSOFT_GRAPH_URL}/me/sendMail`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        message: {
-          subject:
-            options.subject.startsWith("Re:")
-              ? options.subject
-              : `Re: ${options.subject}`,
-          body: {
-            contentType: "Text",
-            content: options.reply,
-          },
-          toRecipients: [
-            {
-              emailAddress: {
-                address: extractEmailAddress(
-                  options.to
-                ),
-              },
-            },
-          ],
-        },
-        saveToSentItems: true,
-      }),
-    }
-  );
+      body,
+    });
+  }
 
   if (!response.ok) {
-    const text = await response.text();
-
-    throw new Error(
-      `Microsoft Graph send failed: ${response.status} ${text}`
-    );
+    await handleGraphError(userId, response, "send");
   }
 
   return {
     sent: true,
   };
+}
+
+export async function listEmails(userId: string): Promise<InboxEmail[]> {
+  if (!Types.ObjectId.isValid(userId)) {
+    throw new Error("Invalid user ID.");
+  }
+
+  let accessToken = await getAccessToken(userId);
+
+  const url = `${MICROSOFT_GRAPH_URL}/me/mailFolders/inbox/messages?$top=50&$orderby=receivedDateTime%20desc`;
+
+  let response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  if (response.status === 401) {
+    accessToken = await getAccessToken(userId, true);
+
+    response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+    });
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`Microsoft Graph inbox request failed: ${response.status} ${text}`);
+  }
+
+  const data = await response.json() as MicrosoftGraphMessageResponse;
+
+  return (data.value ?? [])
+    .filter((message) => message.id)
+    .map((message) => ({
+      id: message.id ?? "",
+      threadId: message.conversationId ?? message.id ?? "",
+      subject: message.subject ?? "",
+      from: message.from?.emailAddress?.address ?? message.from?.emailAddress?.name ?? "",
+      preview: message.bodyPreview ?? "",
+      body: message.body?.content ?? message.bodyPreview ?? "",
+      receivedAt: message.receivedDateTime ? new Date(message.receivedDateTime) : undefined,
+    }));
 }

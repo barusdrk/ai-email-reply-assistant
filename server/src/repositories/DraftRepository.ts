@@ -1,9 +1,11 @@
 import type { DeleteResult } from "mongodb";
-import DraftModel, { type DraftDocument } from "../models/Draft.js";
+import DraftModel, { type DraftDocument, type DraftStatus } from "../models/Draft.js";
 
 class DraftRepository {
-  findAll(userId: string) {
-    return DraftModel.find({ userId }).sort({ createdAt: -1 });
+  findAll(userId: string, status?: DraftStatus) {
+    const filter: { userId: string; status?: DraftStatus } = { userId };
+    if (status) filter.status = status;
+    return DraftModel.find(filter).sort({ createdAt: -1 });
   }
 
   findById(id: string) {

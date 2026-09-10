@@ -1,13 +1,25 @@
-import type { Draft } from "../types/draft";
+import { AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import type { Draft, ConfidenceLevel } from "../types/draft.js";
 
 interface ApprovalCardProps {
   draft: Draft;
-
   onApprove: () => void;
-
   onReject: () => void;
-
   onEdit: () => void;
+  disabled?: boolean;
+  approving?: boolean;
+}
+
+function confidenceClasses(level: ConfidenceLevel) {
+  if (level === "high") return "bg-(--success-bg) text-(--success-text)";
+  if (level === "medium") return "bg-(--warning-bg) text-(--warning-text)";
+  return "bg-(--error-bg) text-(--error-text)";
+}
+
+function confidenceIcon(level: ConfidenceLevel) {
+  if (level === "high") return <CheckCircle2 size={15} />;
+  if (level === "medium") return <Clock size={15} />;
+  return <AlertTriangle size={15} />;
 }
 
 export default function ApprovalCard({
@@ -15,55 +27,141 @@ export default function ApprovalCard({
   onApprove,
   onReject,
   onEdit,
+  disabled = false,
+  approving = false,
 }: ApprovalCardProps) {
-  return (
-    <div className="rounded-xl border border-gray-300 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold dark:text-white">
-            {draft.subject}
-          </h2>
+  const confidence = draft.confidence;
+  const escalated = draft.status === "escalated";
 
-          <p className="text-sm text-gray-500">
-            {draft.customer}
+  return (
+    <article className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-semibold text-(--text-h)">
+            {draft.subject || "Untitled Draft"}
+          </h2>
+          <p className="mt-1 truncate text-sm text-(--text-secondary)">
+            {draft.customer || "No recipient"}
           </p>
         </div>
-
-        <span className="rounded bg-orange-100 px-3 py-1 text-sm font-medium text-orange-800">
-          Pending Approval
+        <span
+          className={`shrink-0 rounded px-3 py-1 text-sm font-medium ${
+            escalated
+              ? "bg-(--error-bg) text-(--danger-text)"
+              : "bg-(--warning-bg) text-(--warning-text)"
+          }`}
+        >
+          {escalated ? "Human Review Required" : "Pending Approval"}
         </span>
       </div>
 
-      <p className="mt-4 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
-        {draft.reply}
-      </p>
+      {escalated && (
+        <div className="mt-4 rounded-lg border border-(--danger) bg-(--error-bg) p-3 text-(--danger-text)">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <AlertTriangle size={16} />
+            <span>Automatically Escalated</span>
+          </div>
+          <p className="mt-2 text-sm">
+            This reply requires human review before it can be approved.
+          </p>
+          {draft.escalationReasons && draft.escalationReasons.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs">
+              {draft.escalationReasons.map((reason, index) => (
+                <li key={`${reason}-${index}`}>• {reason}</li>
+              ))}
+            </ul>
+          )}
+          {draft.escalatedAt && (
+            <p className="mt-2 text-xs">
+              Escalated {new Date(draft.escalatedAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
 
-      <p className="mt-4 text-sm text-gray-500">
-        Created {draft.createdAt}
-      </p>
-
-      <div className="mt-6 flex flex-wrap gap-3">
-        <button
-          onClick={onApprove}
-          className="rounded bg-green-600 px-4 py-2 text-white hover:bg-green-700"
+      {confidence && (
+        <div
+          className={`mt-4 rounded-lg p-3 ${confidenceClasses(
+            confidence.level
+          )}`}
         >
-          Approve
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              {confidenceIcon(confidence.level)}
+              <span>AI confidence: {confidence.score}/100</span>
+            </div>
+            <span className="text-xs font-semibold uppercase">
+              {confidence.level}
+            </span>
+          </div>
+          {confidence.level === "low" && (
+            <p className="mt-2 text-sm">
+              Human review is strongly recommended before approval.
+            </p>
+          )}
+          {confidence.level === "medium" && (
+            <p className="mt-2 text-sm">
+              Review the response carefully before approval.
+            </p>
+          )}
+          {confidence.reasons.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs">
+              {confidence.reasons.slice(0, 3).map((reason, index) => (
+                <li key={`${reason}-${index}`}>• {reason}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <div className="mt-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-(--text-secondary)">
+          Proposed Reply
+        </p>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-(--text)">
+          {draft.reply}
+        </p>
+      </div>
+
+      {draft.createdAt && (
+        <p className="mt-4 text-xs text-(--text-secondary)">
+          Created {new Date(draft.createdAt).toLocaleString()}
+        </p>
+      )}
+
+      <div className="mt-6 flex flex-wrap gap-3 border-t border-(--border) pt-4">
+        <button
+          type="button"
+          onClick={onApprove}
+          disabled={disabled || escalated}
+          title={
+            escalated
+              ? "Review and resubmit this draft before approval."
+              : undefined
+          }
+          className="rounded-lg bg-(--success) px-4 py-2 text-sm font-medium text-(--success-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {approving ? "Approving..." : "Approve"}
         </button>
 
         <button
+          type="button"
           onClick={onEdit}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          disabled={disabled}
+          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Edit
         </button>
 
         <button
+          type="button"
           onClick={onReject}
-          className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          disabled={disabled}
+          className="rounded-lg bg-(--danger) px-4 py-2 text-sm font-medium text-(--danger-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Reject
         </button>
       </div>
-    </div>
+    </article>
   );
 }

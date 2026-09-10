@@ -3,134 +3,94 @@ import { approvalRepository } from "../repositories/ApprovalRepository.js";
 import { draftRepository } from "../repositories/DraftRepository.js";
 import { notify } from "./notification.js";
 import { audit } from "./audit.js";
+import { approveDraft, rejectDraft } from "./drafts.js";
 
-export function approvals(
-  userId:string
-){
+export function approvals(userId: string) {
   return approvalRepository.findAll(userId);
 }
 
-export function approval(
-  id:string
-){
+export function approval(id: string) {
   return approvalRepository.findById(id);
 }
 
-export async function requestApproval(
-  draftId:string,
-  reviewerId:string
-){
-  const approval =
-    await approvalRepository.create({
-      draftId: new Types.ObjectId(draftId),
-      reviewerId: new Types.ObjectId(reviewerId),
-      status:"pending",
-    });
+export async function requestApproval(draftId: string, reviewerId: string) {
+  if (!Types.ObjectId.isValid(draftId)) throw new Error("Invalid draft ID.");
+  if (!Types.ObjectId.isValid(reviewerId)) throw new Error("Invalid reviewer ID.");
 
-  await notify(
-    reviewerId,
-    "approval",
-    "Approval requested",
-    "A draft is awaiting review.",
-    draftId
-  );
+  const item = await approvalRepository.create({
+    draftId: new Types.ObjectId(draftId),
+    reviewerId: new Types.ObjectId(reviewerId),
+    status: "pending",
+  });
 
-  await audit(
-    "approval_requested",
-    "draft",
-    draftId,
-    reviewerId
-  );
+  await notify(reviewerId, "approval", "Approval requested", "A draft is awaiting review.", draftId);
+  await audit("approval_requested", "draft", draftId, reviewerId);
 
-  return approval;
+  return item;
 }
 
-export async function approve(
-  id:string
-){
-  const approval =
-    await approvalRepository.update(
-      id,
-      {
-        status:"approved",
-        reviewedAt:new Date(),
-      }
-    );
+export async function approve(id: string, reviewerId: string) {
+  if (!Types.ObjectId.isValid(id)) throw new Error("Invalid approval ID.");
 
-  if(!approval){
-    return null;
+  const item = await approvalRepository.findById(id);
+  if (!item) return null;
+
+  if (item.reviewerId.toString() !== reviewerId) {
+    throw new Error("Unauthorized.");
   }
 
-  await draftRepository.update(
-    approval.draftId.toString(),
-    {
-      status:"approved",
-      approvedAt:new Date(),
-    }
-  );
+  if (item.status !== "pending") {
+    throw new Error("Only pending approvals can be approved.");
+  }
 
-  await audit(
-    "approval_approved",
-    "approval",
-    id,
-    approval.reviewerId.toString()
-  );
+  await approveDraft(item.draftId.toString(), reviewerId);
 
-  return approval;
+  const updated = await approvalRepository.update(id, {
+    status: "approved",
+    reviewedAt: new Date(),
+  });
+
+  if (!updated) return null;
+
+  await audit("approval_approved", "approval", id, reviewerId);
+
+  return updated;
 }
 
-export async function reject(
-  id:string,
-  comment?:string
-){
-  const approval =
-    await approvalRepository.update(
-      id,
-      {
-        status:"rejected",
-        comment,
-        reviewedAt:new Date(),
-      }
-    );
+export async function reject(id: string, reviewerId: string, comment?: string) {
+  if (!Types.ObjectId.isValid(id)) throw new Error("Invalid approval ID.");
 
-  if(!approval){
-    return null;
+  const item = await approvalRepository.findById(id);
+  if (!item) return null;
+
+  if (item.reviewerId.toString() !== reviewerId) {
+    throw new Error("Unauthorized.");
   }
 
-  await draftRepository.update(
-    approval.draftId.toString(),
-    {
-      status:"rejected",
-      rejectionReason:comment,
-    }
-  );
+  if (item.status !== "pending") {
+    throw new Error("Only pending approvals can be rejected.");
+  }
 
-  await audit(
-    "approval_rejected",
-    "approval",
-    id,
-    approval.reviewerId.toString()
-  );
+  await rejectDraft(item.draftId.toString(), reviewerId, comment);
 
-  return approval;
+  const updated = await approvalRepository.update(id, {
+    status: "rejected",
+    comment,
+    reviewedAt: new Date(),
+  });
+
+  if (!updated) return null;
+
+  await audit("approval_rejected", "approval", id, reviewerId);
+
+  return updated;
 }
 
-export async function deleteApproval(
-  id:string
-){
-  const approval =
-    await approvalRepository.findById(id);
+export async function deleteApproval(id: string) {
+  const item = await approvalRepository.findById(id);
+  if (!item) return null;
 
-  if(!approval){
-    return null;
-  }
-
-  await audit(
-    "approval_deleted",
-    "approval",
-    id,
-    approval.reviewerId.toString()
-  );
+  await audit("approval_deleted", "approval", id, item.reviewerId.toString());
 
   return approvalRepository.delete(id);
 }

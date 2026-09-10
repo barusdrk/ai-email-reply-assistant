@@ -10,7 +10,7 @@ import ToneSelector from "../components/ToneSelector.js";
 import LengthSelector from "../components/LengthSelector.js";
 import ProviderSelector from "../components/ProviderSelector.js";
 import { getSettings, updateSettings, type AISettings } from "../services/settings.js";
-import { getConnections, connectGmail, connectOutlook, disconnectGmail, disconnectOutlook } from "../services/accounts.js";
+import { getConnections, setActiveProvider, connectGmail, connectOutlook, disconnectGmail, disconnectOutlook, type EmailProvider } from "../services/accounts.js";
 import { getMe, updateProfile, changePassword, deleteAccount, type UserProfile } from "../services/users.js";
 import type { ReplyLength } from "../components/LengthSelector.js";
 
@@ -19,6 +19,8 @@ export default function Settings() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [gmailConnected, setGmailConnected] = useState(false);
   const [outlookConnected, setOutlookConnected] = useState(false);
+  const [activeEmailProvider, setActiveEmailProvider] = useState<EmailProvider | null>(null);
+  const [providerSaving, setProviderSaving] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -34,6 +36,7 @@ export default function Settings() {
         setUser(loadedUser);
         setGmailConnected(connections.gmail);
         setOutlookConnected(connections.outlook);
+        setActiveEmailProvider(connections.activeProvider);
       } catch (error) {
         setError(error instanceof Error ? error.message : "Failed to load settings.");
       }
@@ -65,11 +68,27 @@ export default function Settings() {
     }
   }
 
+  async function handleEmailProvider(provider: EmailProvider) {
+    try {
+      setProviderSaving(true);
+      await setActiveProvider(provider);
+      setActiveEmailProvider(provider);
+      setError("");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to select email provider.");
+    } finally {
+      setProviderSaving(false);
+    }
+  }
+
   async function handleGmail() {
     try {
       if (gmailConnected) {
         await disconnectGmail();
         setGmailConnected(false);
+        if (activeEmailProvider === "gmail") {
+          setActiveEmailProvider(null);
+        }
         return;
       }
       await connectGmail();
@@ -83,6 +102,9 @@ export default function Settings() {
       if (outlookConnected) {
         await disconnectOutlook();
         setOutlookConnected(false);
+        if (activeEmailProvider === "outlook") {
+          setActiveEmailProvider(null);
+        }
         return;
       }
       await connectOutlook();
@@ -102,34 +124,114 @@ export default function Settings() {
   }
 
   if (error && !settings) {
-    return <div className="p-6 text-red-600 dark:text-red-400">{error}</div>;
+    return <div className="p-6 text-(--danger-text)">{error}</div>;
   }
 
   if (!settings || !user) {
-    return <div className="p-6 dark:text-white">Loading settings...</div>;
+    return <div className="p-6 text-(--text)">Loading settings...</div>;
   }
 
   const lengthValue: ReplyLength = settings.defaultLength;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold dark:text-white">Settings</h1>
-      {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/30 dark:text-red-400">{error}</div>}
+      <h1 className="text-3xl font-bold text-(--text-h)">Settings</h1>
+
+      {error && (
+        <div className="rounded-lg border border-(--danger-text) bg-(--danger-bg) p-3 text-sm text-(--danger-text)">
+          {error}
+        </div>
+      )}
+
       <ProfileCard name={user.name} email={user.email} avatar={user.avatar ?? ""} onSave={saveProfile} />
       <AppearanceCard />
+
       <div className="grid gap-4 md:grid-cols-3">
-        <ProviderSelector value={settings.provider} onChange={(provider) => { void save({ provider }); }} />
+        <ProviderSelector value={settings.provider} onChange={(provider) => void save({ provider })} />
         <ToneSelector value={settings.defaultReplyTone} onChange={(value) => { if (value !== "default") void save({ defaultReplyTone: value }); }} label="Default Reply Tone" />
         <LengthSelector value={lengthValue} onChange={(defaultLength) => { if (defaultLength !== "default") void save({ defaultLength }); }} label="Default Reply Length" />
       </div>
-      <SignatureCard value={settings.signature ?? ""} onChange={(signature) => { void save({ signature }); }} />
-      <ConnectedAccountsCard gmailConnected={gmailConnected} outlookConnected={outlookConnected} onConnectGmail={handleGmail} onConnectOutlook={handleOutlook} />
+
+      <SignatureCard value={settings.signature ?? ""} onChange={(signature) => void save({ signature })} />
+
+      <ConnectedAccountsCard
+        gmailConnected={gmailConnected}
+        outlookConnected={outlookConnected}
+        onConnectGmail={handleGmail}
+        onConnectOutlook={handleOutlook}
+      />
+
+      <div className="rounded-xl border border-(--border) bg-(--surface) p-5">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-(--text-h)">Email sending provider</h2>
+          <p className="mt-1 text-sm text-(--text-secondary)">
+            Choose which connected account to use when sending sample emails.
+            Real Gmail and Outlook emails always use their original provider.
+          </p>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <button
+            type="button"
+            disabled={!gmailConnected || providerSaving}
+            onClick={() => void handleEmailProvider("gmail")}
+            className={`rounded-lg border p-4 text-left transition ${
+              activeEmailProvider === "gmail"
+                ? "border-(--accent) bg-(--bg-secondary)"
+                : "border-(--border) hover:bg-(--surface-hover)"
+            } disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-(--text-h)">Gmail</span>
+              {activeEmailProvider === "gmail" && (
+                <span className="text-sm font-medium text-(--accent)">
+                  Active
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-(--text-secondary)">
+              {gmailConnected ? "Connected" : "Not connected"}
+            </p>
+          </button>
+
+          <button
+            type="button"
+            disabled={!outlookConnected || providerSaving}
+            onClick={() => void handleEmailProvider("outlook")}
+            className={`rounded-lg border p-4 text-left transition ${
+              activeEmailProvider === "outlook"
+                ? "border-(--accent) bg-(--bg-secondary)"
+                : "border-(--border) hover:bg-(--surface-hover)"
+            } disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-medium text-(--text-h)">Outlook</span>
+              {activeEmailProvider === "outlook" && (
+                <span className="text-sm font-medium text-(--accent)">
+                  Active
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-sm text-(--text-secondary)">
+              {outlookConnected ? "Connected" : "Not connected"}
+            </p>
+          </button>
+        </div>
+
+        {!activeEmailProvider && (
+          <p className="mt-3 text-sm text-amber-600 dark:text-amber-400">
+            Select a connected provider before sending sample emails.
+          </p>
+        )}
+      </div>
+
       <NotificationsCard
         emailNotifications={settings.emailNotifications}
-        onEmailNotificationsChange={(emailNotifications) => { void save({ emailNotifications }); }}
+        onEmailNotificationsChange={(emailNotifications) => void save({ emailNotifications })}
         desktopNotifications={settings.desktopNotifications}
-        onDesktopNotificationsChange={(desktopNotifications) => { void save({ desktopNotifications }); }}
+        onDesktopNotificationsChange={(desktopNotifications) => void save({ desktopNotifications })}
       />
+
       <SecurityCard onChangePassword={async (currentPassword, newPassword) => { await changePassword(currentPassword, newPassword); }} />
       <DangerZoneCard onDeleteAccount={handleDeleteAccount} />
     </div>

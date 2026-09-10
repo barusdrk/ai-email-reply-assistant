@@ -13,31 +13,12 @@ function getClient() {
 
 function isSupportedModel(id: string): boolean {
   const lower = id.toLowerCase();
-
   if (!lower.startsWith("claude-")) return false;
 
-  const excluded = [
-    "instant",
-    "embedding",
-    "embed",
-    "moderation",
-    "audio",
-    "speech",
-    "image",
-    "vision",
-  ];
+  const excluded = ["instant", "embedding", "embed", "moderation", "audio", "speech", "image", "vision"];
+  if (excluded.some((name) => lower.includes(name))) return false;
 
-  if (excluded.some((name) => lower.includes(name))) {
-    return false;
-  }
-
-  if (
-    !lower.includes("opus") &&
-    !lower.includes("sonnet") &&
-    !lower.includes("haiku")
-  ) {
-    return false;
-  }
+  if (!lower.includes("opus") && !lower.includes("sonnet") && !lower.includes("haiku")) return false;
 
   return true;
 }
@@ -73,34 +54,22 @@ function modelScore(id: string): number {
 function isPreviewModel(id: string): boolean {
   const lower = id.toLowerCase();
 
-  return [
-    "preview",
-    "experimental",
-    "beta",
-    "test",
-  ].some((name) => lower.includes(name));
+  return ["preview", "experimental", "beta", "test"].some((name) =>
+    lower.includes(name)
+  );
 }
 
 export async function resolveClaudeModel(): Promise<string> {
   const now = Date.now();
 
-  if (cachedModel && now - cachedAt < CACHE_TTL) {
-    return cachedModel;
-  }
+  if (cachedModel && now - cachedAt < CACHE_TTL) return cachedModel;
 
   const configuredModel = env.CLAUDE_MODEL?.trim();
 
-  if (
-    configuredModel &&
-    configuredModel.toLowerCase() !== "latest"
-  ) {
+  if (configuredModel) {
     cachedModel = configuredModel;
     cachedAt = now;
-
-    console.log(
-      `Claude model configured: ${configuredModel}`
-    );
-
+    console.log(`Claude model configured: ${configuredModel}`);
     return configuredModel;
   }
 
@@ -111,33 +80,22 @@ export async function resolveClaudeModel(): Promise<string> {
     .filter((id): id is string => Boolean(id))
     .filter(isSupportedModel)
     .filter((id) => !isPreviewModel(id))
-    .map((id) => ({
-      id,
-      score: modelScore(id),
-    }))
+    .map((id) => ({ id, score: modelScore(id) }))
     .filter((model) => model.score > 0)
     .sort((a, b) => {
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-
+      if (b.score !== a.score) return b.score - a.score;
       return b.id.localeCompare(a.id);
     });
 
   const model = candidates[0]?.id;
 
   if (!model) {
-    throw new Error(
-      "No compatible Claude production text model was found."
-    );
+    throw new Error("No compatible Claude production text model was found.");
   }
 
   cachedModel = model;
   cachedAt = now;
-
-  console.log(
-    `Claude model resolved: ${model}`
-  );
+  console.log(`Claude model resolved: ${model}`);
 
   return model;
 }

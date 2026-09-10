@@ -1,4 +1,4 @@
-import { ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 
 interface SignatureInputProps {
   value: string;
@@ -6,26 +6,16 @@ interface SignatureInputProps {
   disabled?: boolean;
 }
 
-export default function SignatureInput({
-  value,
-  onChange,
-  disabled = false,
-}: SignatureInputProps) {
-  const handleChange = (
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
+export default function SignatureInput({ value, onChange, disabled = false }: SignatureInputProps) {
+  const handleChange = (event: ChangeEvent<HTMLInputElement>) => {
     onChange(event.target.value);
   };
 
   return (
     <div className="space-y-2">
-      <label
-        htmlFor="signature"
-        className="block text-sm font-semibold text-gray-700 dark:text-gray-200"
-      >
+      <label htmlFor="signature" className="block text-sm font-semibold text-(--text)">
         Email Signature
       </label>
-
       <input
         id="signature"
         type="text"
@@ -33,30 +23,9 @@ export default function SignatureInput({
         onChange={handleChange}
         disabled={disabled}
         placeholder="Customer Support"
-        className="
-          w-full
-          rounded-lg
-          border
-          border-gray-300
-          bg-white
-          px-4
-          py-2
-          text-gray-900
-          shadow-sm
-          focus:border-blue-500
-          focus:outline-none
-          focus:ring-2
-          focus:ring-blue-500
-          disabled:cursor-not-allowed
-          disabled:bg-gray-100
-          dark:border-gray-700
-          dark:bg-gray-800
-          dark:text-white
-          dark:disabled:bg-gray-900
-        "
+        className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-2 text-(--text) shadow-sm outline-none transition placeholder:text-(--placeholder) focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60"
       />
-
-      <p className="text-xs text-gray-500 dark:text-gray-400">
+      <p className="text-xs text-(--text-secondary)">
         This signature will be appended to every AI-generated email.
       </p>
     </div>

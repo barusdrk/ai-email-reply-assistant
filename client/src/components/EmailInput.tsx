@@ -1,4 +1,4 @@
-import { ChangeEvent } from "react";
+import type { ChangeEvent } from "react";
 
 interface EmailInputProps {
   value: string;
@@ -11,21 +11,15 @@ export default function EmailInput({
   onChange,
   disabled = false,
 }: EmailInputProps) {
-  const handleChange = (
-    event: ChangeEvent<HTMLTextAreaElement>
-  ) => {
+  const handleChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
     onChange(event.target.value);
   };
 
   return (
     <div className="space-y-2">
-      <label
-        htmlFor="customer-email"
-        className="block text-sm font-semibold text-gray-700 dark:text-gray-200"
-      >
+      <label htmlFor="customer-email" className="block text-sm font-semibold text-(--text-h)">
         Customer Email
       </label>
-
       <textarea
         id="customer-email"
         rows={12}
@@ -33,27 +27,7 @@ export default function EmailInput({
         onChange={handleChange}
         disabled={disabled}
         placeholder="Paste the customer's email here..."
-        className="
-          w-full
-          rounded-lg
-          border
-          border-gray-300
-          bg-white
-          px-4
-          py-3
-          text-gray-900
-          shadow-sm
-          focus:border-blue-500
-          focus:outline-none
-          focus:ring-2
-          focus:ring-blue-500
-          disabled:cursor-not-allowed
-          disabled:bg-gray-100
-          dark:border-gray-700
-          dark:bg-gray-800
-          dark:text-white
-          dark:disabled:bg-gray-900
-        "
+        className="w-full rounded-lg border border-(--border) bg-(--surface) px-4 py-3 text-(--text) shadow-sm focus:border-(--accent) focus:outline-none focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:bg-(--bg-secondary) dark:disabled:bg-(--surface)"
       />
     </div>
   );

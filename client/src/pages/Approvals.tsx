@@ -1,155 +1,248 @@
 import { useState } from "react";
 import ApprovalCard from "../components/ApprovalCard.js";
 import { useApprovals } from "../hooks/useApprovals.js";
-import { updateDraft } from "../services/drafts.js";
+import { updateDraft, submitForApproval } from "../services/drafts.js";
 import type { Draft } from "../types/index.js";
 
 export default function Approvals() {
-  const {
-    approvals,
-    loading,
-    error,
-    approve,
-    reject,
-    refresh,
-  } = useApprovals();
+  const { approvals, loading, error, approve, reject, refresh } = useApprovals();
+  const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
+  const [editedReply, setEditedReply] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [rejectingDraft, setRejectingDraft] = useState<Draft | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
+  const [resubmittingId, setResubmittingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
 
-  const [editingDraft, setEditingDraft] =
-    useState<Draft | null>(null);
-  const [editedReply, setEditedReply] =
-    useState("");
-  const [saving, setSaving] =
-    useState(false);
+  const actionInProgress = saving || rejecting || approvingId !== null || resubmittingId !== null;
 
   function openEdit(draft: Draft) {
+    setActionError("");
     setEditingDraft(draft);
     setEditedReply(draft.reply);
   }
 
   function closeEdit() {
+    if (saving) return;
     setEditingDraft(null);
     setEditedReply("");
   }
 
-  async function saveEdit() {
-    if (!editingDraft?.id || !editedReply.trim()) {
-      return;
-    }
+  function openReject(draft: Draft) {
+    setActionError("");
+    setRejectingDraft(draft);
+    setRejectionReason("");
+  }
 
+  function closeReject() {
+    if (rejecting) return;
+    setRejectingDraft(null);
+    setRejectionReason("");
+  }
+
+  async function handleApprove(id: string) {
+    try {
+      setApprovingId(id);
+      setActionError("");
+      await approve(id);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to approve draft.";
+      setActionError(message);
+      console.error("Failed to approve draft:", error);
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
+  async function saveEdit() {
+    if (!editingDraft?.id || !editedReply.trim()) return;
     try {
       setSaving(true);
-
-      await updateDraft(
-        editingDraft.id,
-        editedReply.trim()
-      );
-
+      setActionError("");
+      await updateDraft(editingDraft.id, editedReply.trim());
       await refresh();
       closeEdit();
     } catch (error) {
-      console.error(
-        "Failed to update draft:",
-        error
-      );
+      const message = error instanceof Error ? error.message : "Failed to update draft.";
+      setActionError(message);
+      console.error("Failed to update draft:", error);
     } finally {
       setSaving(false);
     }
   }
 
+  async function handleResubmit(id: string) {
+    try {
+      setResubmittingId(id);
+      setActionError("");
+      await submitForApproval(id);
+      await refresh();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to resubmit draft.";
+      setActionError(message);
+      console.error("Failed to resubmit draft:", error);
+    } finally {
+      setResubmittingId(null);
+    }
+  }
+
+  async function submitReject() {
+    if (!rejectingDraft?.id) return;
+    try {
+      setRejecting(true);
+      setActionError("");
+      await reject(rejectingDraft.id, rejectionReason.trim() || undefined);
+      closeReject();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to reject draft.";
+      setActionError(message);
+      console.error("Failed to reject draft:", error);
+    } finally {
+      setRejecting(false);
+    }
+  }
+
   if (loading) {
-    return (
-      <div className="p-6">
-        Loading approvals...
-      </div>
-    );
+    return <div className="p-6 text-(--text)">Loading approvals...</div>;
   }
 
   if (error) {
-    return (
-      <div className="p-6 text-red-600">
-        {error}
-      </div>
-    );
+    return <div className="p-6 text-(--danger-text)">{error}</div>;
   }
+
+  const escalatedCount = approvals.filter((draft) => draft.status === "escalated").length;
+  const pendingCount = approvals.filter((draft) => draft.status === "pending").length;
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold dark:text-white">
-          Approval Queue
-        </h1>
-        <p className="mt-2 text-gray-600 dark:text-gray-400">
-          Review AI replies before they are sent.
-        </p>
+        <h1 className="text-3xl font-bold text-(--text-h)">Approval Queue</h1>
+        <p className="mt-2 text-(--text-secondary)">Review AI replies before they are sent.</p>
       </div>
 
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="rounded-xl border border-(--border) bg-(--surface) p-4">
+          <p className="text-sm text-(--text-secondary)">Pending Approval</p>
+          <p className="mt-1 text-2xl font-bold text-(--text-h)">{pendingCount}</p>
+        </div>
+        <div className="rounded-xl border border-(--danger) bg-(--error-bg) p-4">
+          <p className="text-sm text-(--danger-text)">Human Review Required</p>
+          <p className="mt-1 text-2xl font-bold text-(--danger-text)">{escalatedCount}</p>
+        </div>
+      </div>
+
+      {actionError && (
+        <div className="rounded-lg border border-(--danger) bg-(--error-bg) p-4 text-sm text-(--danger-text)">
+          {actionError}
+        </div>
+      )}
+
       {approvals.length === 0 ? (
-        <div className="rounded-xl border bg-white p-8 text-center text-gray-500 dark:bg-gray-800 dark:text-gray-400">
+        <div className="rounded-xl border border-(--border) bg-(--surface) p-8 text-center text-(--text-secondary)">
           No replies waiting for approval.
         </div>
       ) : (
         <div className="grid gap-6">
           {approvals.map((draft) => (
-            <ApprovalCard
-              key={draft.id}
-              draft={draft}
-              onApprove={() => {
-                void approve(draft.id);
-              }}
-              onReject={() => {
-                void reject(draft.id);
-              }}
-              onEdit={() => {
-                openEdit(draft);
-              }}
-            />
+            <div key={draft.id} className="space-y-3">
+              <ApprovalCard
+                draft={draft}
+                onApprove={() => void handleApprove(draft.id)}
+                onReject={() => openReject(draft)}
+                onEdit={() => openEdit(draft)}
+                disabled={actionInProgress}
+                approving={approvingId === draft.id}
+              />
+              {draft.status === "escalated" && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => void handleResubmit(draft.id)}
+                    disabled={actionInProgress}
+                    className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {resubmittingId === draft.id ? "Resubmitting..." : "Mark Reviewed & Resubmit"}
+                  </button>
+                </div>
+              )}
+            </div>
           ))}
         </div>
       )}
 
       {editingDraft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-xl bg-white p-6 shadow-xl dark:bg-gray-800">
-            <h2 className="text-xl font-bold dark:text-white">
-              Edit Draft Reply
-            </h2>
-
-            <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
-              {editingDraft.subject}
-            </p>
-
+          <div className="w-full max-w-2xl rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl">
+            <h2 className="text-xl font-bold text-(--text-h)">Edit Draft Reply</h2>
+            <p className="mt-2 text-sm text-(--text-secondary)">{editingDraft.subject}</p>
             <textarea
               value={editedReply}
-              onChange={(event) => {
-                setEditedReply(event.target.value);
-              }}
-              className="mt-4 min-h-64 w-full rounded-lg border border-gray-300 p-3 outline-none focus:border-blue-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
+              onChange={(event) => setEditedReply(event.target.value)}
+              disabled={saving}
+              className="mt-4 min-h-64 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60"
             />
-
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
                 onClick={closeEdit}
                 disabled={saving}
-                className="rounded-lg border border-gray-300 px-4 py-2 dark:border-gray-600 dark:text-white"
+                className="rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
               >
                 Cancel
               </button>
-
               <button
                 type="button"
-                onClick={() => {
-                  void saveEdit();
-                }}
-                disabled={
-                  saving ||
-                  !editedReply.trim()
-                }
-                className="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={() => void saveEdit()}
+                disabled={saving || !editedReply.trim()}
+                className="rounded-lg bg-(--accent) px-4 py-2 font-medium text-(--accent-contrast) hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {saving
-                  ? "Saving..."
-                  : "Save Changes"}
+                {saving ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {rejectingDraft && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="reject-draft-title"
+            className="w-full max-w-lg rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl"
+          >
+            <h2 id="reject-draft-title" className="text-xl font-bold text-(--text-h)">
+              Reject Draft
+            </h2>
+            <p className="mt-2 text-sm text-(--text-secondary)">{rejectingDraft.subject}</p>
+            <p className="mt-4 text-sm text-(--text)">
+              Are you sure you want to reject this draft? You can optionally provide a reason for the rejection.
+            </p>
+            <textarea
+              value={rejectionReason}
+              onChange={(event) => setRejectionReason(event.target.value)}
+              placeholder="Optional rejection reason..."
+              disabled={rejecting}
+              className="mt-4 min-h-32 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none placeholder:text-(--text-secondary) focus:border-(--danger) focus:ring-2 focus:ring-(--danger) disabled:cursor-not-allowed disabled:opacity-60"
+            />
+            <div className="mt-6 flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeReject}
+                disabled={rejecting}
+                className="rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => void submitReject()}
+                disabled={rejecting}
+                className="rounded-lg bg-(--danger) px-4 py-2 font-medium text-(--danger-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {rejecting ? "Rejecting..." : "Reject Draft"}
               </button>
             </div>
           </div>

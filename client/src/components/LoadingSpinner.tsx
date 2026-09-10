@@ -7,21 +7,8 @@ export default function LoadingSpinner({
 }: LoadingSpinnerProps) {
   return (
     <div className="flex flex-col items-center justify-center gap-4 py-10">
-      <div
-        className="
-          h-12
-          w-12
-          animate-spin
-          rounded-full
-          border-4
-          border-blue-600
-          border-t-transparent
-        "
-      />
-
-      <p className="text-sm text-gray-600 dark:text-gray-300">
-        {message}
-      </p>
+      <div className="h-12 w-12 animate-spin rounded-full border-4 border-(--accent) border-t-transparent" />
+      <p className="text-sm text-(--text-secondary)">{message}</p>
     </div>
   );
 }

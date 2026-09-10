@@ -1,90 +1,101 @@
-import api from "./api.js";
-import type {
-  Email,
-  ReplyRequest,
-} from "../types/index.js";
+import API from "./api.js";
+import type { ReplyTone } from "../types/settings.js";
+import type { ReplyLengthValue } from "../components/LengthSelector.js";
+
+export type EmailProvider = "gmail" | "outlook" | "sample";
+export type SendEmailProvider = EmailProvider;
 
 export interface ApiEmail {
-  id: string;
   _id?: string;
-  subject: string;
-  from: string;
+  id?: string;
+  provider: EmailProvider;
+  threadId?: string;
+  subject?: string;
+  from?: string;
+  senderName?: string;
+  senderEmail?: string;
   preview?: string;
   body?: string;
-  receivedAt?: string;
-  createdAt?: string;
+  receivedAt?: string | Date;
+  createdAt?: string | Date;
   unread?: boolean;
-  provider?: "gmail" | "outlook";
-  status?: string;
 }
 
 export interface InboxResponse {
   emails: ApiEmail[];
+  total: number;
   page: number;
+  limit: number;
   hasMore: boolean;
 }
 
-export interface SyncInboxResponse {
-  synced: number;
-  message?: string;
+export interface EmailResponse {
+  email: ApiEmail;
 }
 
-export async function getInbox(
-  page = 1,
-  limit = 20
-): Promise<InboxResponse> {
-  const response =
-    await api.get<InboxResponse>("/emails", {
-      params: {
-        page,
-        limit,
-      },
-    });
-
-  return response.data;
+export interface GenerateReplyInput {
+  email: string;
+  tone?: ReplyTone;
+  length?: ReplyLengthValue;
 }
 
-export async function getEmail(
-  id: string
-): Promise<Email> {
-  const response =
-    await api.get<Email>(`/emails/${id}`);
-
-  return response.data;
+export interface GenerateReplyResponse {
+  reply: string;
 }
 
-export async function generateReply(
-  request: ReplyRequest
-): Promise<{ reply: string }> {
-  const response =
-    await api.post<{ reply: string }>(
-      `/emails/${request.email}/reply`,
-      {
-        tone: request.tone,
-        length: request.length,
-      }
-    );
-
-  return response.data;
+export interface SendEmailInput {
+  provider: SendEmailProvider;
+  to: string;
+  subject: string;
+  body: string;
+  emailId: string;
+  threadId?: string;
+  originalMessageId?: string;
 }
 
-export async function syncInbox(
-  provider?: "gmail" | "outlook"
-): Promise<SyncInboxResponse> {
-  const response =
-    await api.post<SyncInboxResponse>(
-      "/emails/sync",
-      provider ? { provider } : {}
-    );
-
-  return response.data;
+export interface SendEmailResponse {
+  provider: "gmail" | "outlook";
+  id?: string;
+  messageId?: string;
+  threadId?: string;
+  sent: boolean;
+  policyCheck?: {
+    compliant: boolean;
+    score: number;
+    violations: string[];
+    warnings: string[];
+    suggestions: string[];
+  };
 }
 
-export async function loadSampleEmails(): Promise<ApiEmail[]> {
-  const response =
-    await api.post<ApiEmail[]>(
-      "/emails/sample"
-    );
+export async function getInbox(page = 1, limit = 50): Promise<InboxResponse> {
+  const { data } = await API.get<InboxResponse>("/emails", {
+    params: { page, limit },
+  });
+  return data;
+}
 
-  return response.data;
+export async function getEmail(id: string): Promise<ApiEmail> {
+  const { data } = await API.get<EmailResponse>(`/emails/${id}`);
+  return data.email;
+}
+
+export async function syncInbox(): Promise<unknown> {
+  const { data } = await API.post("/emails/sync");
+  return data;
+}
+
+export async function loadSampleEmails(): Promise<unknown> {
+  const { data } = await API.post("/emails/sample");
+  return data;
+}
+
+export async function generateReply(input: GenerateReplyInput): Promise<GenerateReplyResponse> {
+  const { data } = await API.post<GenerateReplyResponse>("/reply", input);
+  return data;
+}
+
+export async function sendEmail(input: SendEmailInput): Promise<SendEmailResponse> {
+  const { data } = await API.post<SendEmailResponse>("/emails/send", input);
+  return data;
 }

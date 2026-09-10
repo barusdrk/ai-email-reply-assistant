@@ -17,7 +17,6 @@ export const env = {
   MONGODB_URI: required("MONGODB_URI"),
   REDIS_URL: optional("REDIS_URL"),
   JWT_SECRET: required("JWT_SECRET"),
-  USE_MOCK_AI: process.env.USE_MOCK_AI === "true",
   OPENAI_API_KEY: optional("OPENAI_API_KEY"),
   OPENAI_MODEL: optional("OPENAI_MODEL"),
   GEMINI_API_KEY: optional("GEMINI_API_KEY"),

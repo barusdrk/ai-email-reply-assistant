@@ -8,64 +8,27 @@ interface Props {
   onConnectOutlook: () => void;
 }
 
-export default function ConnectedAccountsCard({
-  gmailConnected,
-  outlookConnected,
-  onConnectGmail,
-  onConnectOutlook,
-}: Props) {
+export default function ConnectedAccountsCard({ gmailConnected, outlookConnected, onConnectGmail, onConnectOutlook }: Props) {
   return (
-    <section className="rounded-xl border bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <h2 className="mb-4 text-lg font-semibold dark:text-white">
-        Connected Accounts
-      </h2>
-
+    <section className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
+      <h2 className="mb-4 text-lg font-semibold text-(--text-h)">Connected Accounts</h2>
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <span className="dark:text-white">
-            Gmail
-          </span>
-
+          <span className="text-(--text)">Gmail</span>
           <div className="flex items-center gap-3">
-            <span
-              className={
-                gmailConnected
-                  ? "text-green-600"
-                  : "text-gray-500"
-              }
-            >
-              {gmailConnected
-                ? "Connected"
-                : "Not connected"}
+            <span className={gmailConnected ? "text-green-600" : "text-(--text-secondary)"}>
+              {gmailConnected ? "Connected" : "Not connected"}
             </span>
-
-            <GmailConnectButton
-              onConnect={onConnectGmail}
-            />
+            <GmailConnectButton onConnect={onConnectGmail} />
           </div>
         </div>
-
         <div className="flex items-center justify-between">
-          <span className="dark:text-white">
-            Outlook
-          </span>
-
+          <span className="text-(--text)">Outlook</span>
           <div className="flex items-center gap-3">
-            <span
-              className={
-                outlookConnected
-                  ? "text-green-600"
-                  : "text-gray-500"
-              }
-            >
-              {outlookConnected
-                ? "Connected"
-                : "Not connected"}
+            <span className={outlookConnected ? "text-green-600" : "text-(--text-secondary)"}>
+              {outlookConnected ? "Connected" : "Not connected"}
             </span>
-
-            <OutlookConnectButton
-              onConnect={onConnectOutlook}
-            />
+            <OutlookConnectButton onConnect={onConnectOutlook} />
           </div>
         </div>
       </div>

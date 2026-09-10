@@ -10,12 +10,7 @@ interface Props {
   onGenerated: (reply: string) => void;
 }
 
-export default function ReplyGenerator({
-  email,
-  tone,
-  length,
-  onGenerated,
-}: Props) {
+export default function ReplyGenerator({ email, tone, length, onGenerated }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -24,32 +19,15 @@ export default function ReplyGenerator({
       setError("Select an email first.");
       return;
     }
-
     try {
       setLoading(true);
       setError("");
-
-      const response = await API.post("/reply", {
-        email,
-        tone,
-        length,
-      });
-
+      const response = await API.post("/reply", { email, tone, length });
       const reply = response.data?.reply ?? "";
-
-      if (!reply) {
-        throw new Error(
-          "The server returned an empty reply."
-        );
-      }
-
+      if (!reply) throw new Error("The server returned an empty reply.");
       onGenerated(reply);
     } catch (error) {
-      setError(
-        error instanceof Error
-          ? error.message
-          : "Failed to generate reply."
-      );
+      setError(error instanceof Error ? error.message : "Failed to generate reply.");
     } finally {
       setLoading(false);
     }
@@ -57,22 +35,10 @@ export default function ReplyGenerator({
 
   return (
     <div className="space-y-3">
-      <button
-        type="button"
-        onClick={generateReply}
-        disabled={loading || !email.trim()}
-        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading
-          ? "Generating..."
-          : "Generate Reply"}
+      <button type="button" onClick={generateReply} disabled={loading || !email.trim()} className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-50">
+        {loading ? "Generating..." : "Generate Reply"}
       </button>
-
-      {error && (
-        <p className="text-sm text-red-600 dark:text-red-400">
-          {error}
-        </p>
-      )}
+      {error && <p className="text-sm text-(--danger)">{error}</p>}
     </div>
   );
 }

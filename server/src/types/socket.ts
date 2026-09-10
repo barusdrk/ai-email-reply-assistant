@@ -1,4 +1,4 @@
-import type { DraftRecord } from "./draft.js";
+import type { Draft } from "./draft.js";
 import type { ApprovalStatus } from "./approval.js";
 import type { EmailRecord } from "./email.js";
 import type { NotificationType } from "./notification.js";
@@ -19,7 +19,7 @@ export interface InboxSyncPayload {
 }
 
 export interface DraftReadyPayload {
-  draft:DraftRecord;
+  draft:Draft;
 }
 
 export interface ApprovalPayload {

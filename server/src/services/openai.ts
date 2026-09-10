@@ -1,30 +1,10 @@
 import { subscriptionRepository } from "../repositories/SubscriptionRepository.js";
-import {
-  createAIProvider,
-  type AIProviderName,
-} from "../ai/factory.js";
-import type {
-  ReplyLength,
-  Tone,
-} from "../ai/types.js";
-import type { AIProvider } from "../ai/types.js";
+import { createAIProvider, type AIProviderName } from "../ai/factory.js";
+import type { AIProvider, GenerateReplyInput, ReplyLength, Tone } from "../ai/types.js";
 
-type Plan =
-  | "free"
-  | "starter"
-  | "pro";
+type Plan = "free" | "starter" | "pro";
 
-export interface GenerateReplyInput {
-  userId: string;
-  email: string;
-  tone?: Tone;
-  length?: ReplyLength;
-  signature?: string;
-}
-
-function getProviderName(
-  plan: Plan
-): AIProviderName {
+function getProviderName(plan: Plan): AIProviderName {
   switch (plan) {
     case "pro":
       return "openai";
@@ -35,14 +15,8 @@ function getProviderName(
   }
 }
 
-async function getUserProvider(
-  userId: string
-): Promise<AIProvider> {
-  const subscription =
-    await subscriptionRepository.findByUser(
-      userId
-    );
-
+async function getUserProvider(userId: string): Promise<AIProvider> {
+  const subscription = await subscriptionRepository.findByUser(userId);
   const plan: Plan =
     subscription?.plan === "pro"
       ? "pro"
@@ -50,56 +24,34 @@ async function getUserProvider(
         ? "starter"
         : "free";
 
-  return createAIProvider(
-    getProviderName(plan)
-  );
+  return createAIProvider(getProviderName(plan));
 }
 
-export async function generateReply(
-  input: GenerateReplyInput
-): Promise<string> {
-  const provider =
-    await getUserProvider(input.userId);
-
-  return provider.generateReply({
+export async function generateReply(input: GenerateReplyInput): Promise<string> {
+  const provider = await getUserProvider(input.userId ?? "");
+    return provider.generateReply({
     email: input.email,
-    tone:
-      input.tone ??
-      "professional",
-    length:
-      input.length ??
-      "medium",
-    signature:
-      input.signature,
+    tone: input.tone ?? "professional",
+    length: input.length ?? "medium",
+    signature: input.signature,
+    knowledgeBase: input.knowledgeBase,
+    conversationHistory: input.conversationHistory,
   });
 }
 
-export async function summarizeEmail(
-  userId: string,
-  email: string
-): Promise<string> {
-  const provider =
-    await getUserProvider(userId);
-
-  return provider.summarize({
-    text: email,
-  });
+export async function summarizeEmail(userId: string, email: string): Promise<string> {
+  const provider = await getUserProvider(userId);
+  return provider.summarize({ text: email });
 }
 
-export async function classifyEmail(
-  userId: string,
-  email: string
-): Promise<string> {
-  const provider =
-    await getUserProvider(userId);
-
-  const result =
-    await provider.summarize({
-      text:
-        `Classify the following email into one short category such as ` +
-        `"support", "sales", "billing", "feedback", "urgent", or "other". ` +
-        `Return only the category.\n\n${email}`,
-    });
+export async function classifyEmail(userId: string, email: string): Promise<string> {
+  const provider = await getUserProvider(userId);
+  const result = await provider.summarize({
+    text:
+      `Classify the following email into one short category such as ` +
+      `"support", "sales", "billing", "feedback", "urgent", or "other". ` +
+      `Return only the category.\n\n${email}`,
+  });
 
   return result.trim();
 }

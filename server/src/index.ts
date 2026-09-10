@@ -17,6 +17,8 @@ import profileRoutes from "./routes/profile.js";
 import billingRoutes from "./routes/billing.js";
 import stripeWebhookRoutes from "./routes/stripeWebhook.js";
 import dashboardRoutes from "./routes/dashboard.js";
+import orderRoutes from "./routes/orders.js";
+import knowledgeBaseRoutes from "./routes/knowledgeBase.js";
 import { initializeWebSocket } from "./services/websocket.js";
 
 dotenv.config();
@@ -40,9 +42,7 @@ const corsOptions = {
   credentials: true,
 };
 
-const io = new Server(server, {
-  cors: corsOptions,
-});
+const io = new Server(server, { cors: corsOptions });
 
 initializeWebSocket(io);
 
@@ -56,14 +56,11 @@ app.use(cors(corsOptions));
 app.use(express.json({ limit: "10mb" }));
 
 app.get("/", (_req: Request, res: Response) => {
-  res.json({
-    message: "AI Email Reply Assistant API",
-  });
+  res.json({ message: "AI Email Reply Assistant API" });
 });
 
 app.get("/health", (_req: Request, res: Response) => {
   const databaseConnected = mongoose.connection.readyState === 1;
-
   res.status(databaseConnected ? 200 : 503).json({
     status: databaseConnected ? "ok" : "error",
     database: databaseConnected ? "connected" : "disconnected",
@@ -81,13 +78,14 @@ app.use("/api/settings", settingsRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/billing", billingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/orders", orderRoutes);
+app.use("/api/knowledge-base", knowledgeBaseRoutes);
 
 const PORT = Number(process.env.PORT ?? 3001);
 
 async function start() {
   try {
     await connectDatabase();
-
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
     });

@@ -1,62 +1,160 @@
-import type { Draft } from "../types/index.js";
+import { AlertTriangle, CheckCircle2, Clock, Pencil, Send, Trash2 } from "lucide-react";
+import type { Draft, ConfidenceLevel } from "../types/draft.js";
 
 interface DraftCardProps {
   draft: Draft;
   onOpen: () => void;
   onEdit: () => void;
+  onSend: () => void;
   onDelete: () => void;
+  sending?: boolean;
+}
+
+function confidenceClasses(level: ConfidenceLevel) {
+  if (level === "high") return "bg-(--success-bg) text-(--success-text)";
+  if (level === "medium") return "bg-(--warning-bg) text-(--warning-text)";
+  return "bg-(--error-bg) text-(--error-text)";
+}
+
+function confidenceIcon(level: ConfidenceLevel) {
+  if (level === "high") return <CheckCircle2 size={15} />;
+  if (level === "medium") return <Clock size={15} />;
+  return <AlertTriangle size={15} />;
 }
 
 export default function DraftCard({
   draft,
   onOpen,
   onEdit,
+  onSend,
   onDelete,
+  sending = false,
 }: DraftCardProps) {
+  const confidence = draft.confidence;
+  const lowConfidence = confidence?.level === "low";
+  const canSend = draft.status === "approved";
+
   return (
-    <div className="rounded-xl border border-gray-300 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-semibold dark:text-white">
+    <article className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h2 className="truncate text-lg font-semibold text-(--text-h)">
             {draft.subject || "Untitled Draft"}
           </h2>
-          <p className="text-sm text-gray-500">
+          <p className="mt-1 truncate text-sm text-(--text-secondary)">
             {draft.customer || "No recipient"}
           </p>
         </div>
-        <span className="rounded bg-yellow-100 px-3 py-1 text-sm font-medium text-yellow-800">
+
+        <span
+          className={`shrink-0 rounded px-3 py-1 text-sm font-medium capitalize ${
+            draft.status === "escalated"
+              ? "bg-(--error-bg) text-(--danger-text)"
+              : draft.status === "approved"
+                ? "bg-(--success-bg) text-(--success-text)"
+                : "bg-(--warning-bg) text-(--warning-text)"
+          }`}
+        >
           {draft.status}
         </span>
       </div>
-      <p className="mt-4 whitespace-pre-wrap text-gray-700 dark:text-gray-300">
+
+      {draft.status === "escalated" && (
+        <div className="mt-4 rounded-lg border border-(--danger) bg-(--error-bg) p-3 text-(--danger-text)">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <AlertTriangle size={16} />
+            <span>Human Review Required</span>
+          </div>
+          <p className="mt-2 text-sm">
+            This reply requires human review before it can be approved.
+          </p>
+          {draft.escalationReasons && draft.escalationReasons.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs">
+              {draft.escalationReasons.map((reason, index) => (
+                <li key={`${reason}-${index}`}>• {reason}</li>
+              ))}
+            </ul>
+          )}
+          {draft.escalatedAt && (
+            <p className="mt-2 text-xs">
+              Escalated {new Date(draft.escalatedAt).toLocaleString()}
+            </p>
+          )}
+        </div>
+      )}
+
+      {confidence && (
+        <div className={`mt-4 rounded-lg p-3 ${confidenceClasses(confidence.level)}`}>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              {confidenceIcon(confidence.level)}
+              <span>AI confidence: {confidence.score}/100</span>
+            </div>
+            <span className="text-xs font-semibold uppercase">
+              {confidence.level}
+            </span>
+          </div>
+
+          {lowConfidence && (
+            <p className="mt-2 text-sm">
+              Human review recommended before approval.
+            </p>
+          )}
+
+          {confidence.reasons.length > 0 && (
+            <ul className="mt-2 space-y-1 text-xs">
+              {confidence.reasons.slice(0, 3).map((reason, index) => (
+                <li key={`${reason}-${index}`}>• {reason}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+
+      <p className="mt-4 line-clamp-4 whitespace-pre-wrap text-sm text-(--text)">
         {draft.reply}
       </p>
-      <p className="mt-4 text-sm text-gray-500">
-        Created {new Date(draft.createdAt).toLocaleString()}
-      </p>
-      <div className="mt-6 flex flex-wrap gap-3">
+
+      <div className="mt-5 flex flex-wrap gap-2 border-t border-(--border) pt-4">
         <button
           type="button"
           onClick={onOpen}
-          className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:bg-(--accent-hover)"
         >
           Open
         </button>
+
         <button
           type="button"
           onClick={onEdit}
-          className="rounded bg-yellow-600 px-4 py-2 text-white hover:bg-yellow-700"
+          disabled={draft.status === "sent" || sending}
+          className="inline-flex items-center gap-2 rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
         >
+          <Pencil size={15} />
           Edit
         </button>
+
+        <button
+          type="button"
+          onClick={onSend}
+          disabled={!canSend || sending}
+          title={!canSend ? "Only approved drafts can be sent." : undefined}
+          className="inline-flex items-center gap-2 rounded-lg bg-(--success) px-4 py-2 text-sm font-medium text-(--success-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Send size={15} />
+          {sending ? "Sending..." : "Send"}
+        </button>
+
         <button
           type="button"
           onClick={onDelete}
-          className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700"
+          disabled={sending}
+          className="inline-flex items-center gap-2 rounded-lg bg-(--error-bg) px-4 py-2 text-sm font-medium text-(--error-text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
+          <Trash2 size={15} />
           Delete
         </button>
       </div>
-    </div>
+    </article>
   );
 }

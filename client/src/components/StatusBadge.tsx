@@ -1,61 +1,37 @@
-export type Status =
-  | "draft"
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "sent";
+export type Status = "draft" | "pending" | "approved" | "rejected" | "sent";
 
 interface StatusBadgeProps {
   status: Status;
 }
 
-const STATUS_STYLES: Record<
-  Status,
-  {
-    label: string;
-    className: string;
-  }
-> = {
+const STATUS_STYLES: Record<Status, { label: string; className: string }> = {
   draft: {
     label: "Draft",
-    className:
-      "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100",
+    className: "bg-(--bg-secondary) text-(--text)",
   },
-
   pending: {
     label: "Pending Approval",
-    className:
-      "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+    className: "bg-(--info-bg) text-(--info-text)",
   },
-
   approved: {
     label: "Approved",
-    className:
-      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+    className: "bg-(--success-bg) text-(--success-text)",
   },
-
   rejected: {
     label: "Rejected",
-    className:
-      "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+    className: "bg-(--danger-bg) text-(--danger-text)",
   },
-
   sent: {
     label: "Sent",
-    className:
-      "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+    className: "bg-(--accent-light) text-(--accent)",
   },
 };
 
-export default function StatusBadge({
-  status,
-}: StatusBadgeProps) {
+export default function StatusBadge({ status }: StatusBadgeProps) {
   const config = STATUS_STYLES[status];
 
   return (
-    <span
-      className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${config.className}`}
-    >
+    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${config.className}`}>
       {config.label}
     </span>
   );

@@ -1,28 +1,29 @@
-export type AIProviderName =
-  | "openai"
-  | "gemini"
-  | "groq"
-  | "claude"
-  | "mock";
+export type AIProviderName = "openai" | "gemini" | "groq" | "claude";
+export type Tone = "professional" | "friendly" | "formal" | "empathetic" | "concise" | "enthusiastic";
+export type ReplyLength = "short" | "medium" | "long";
 
-export type Tone =
-  | "professional"
-  | "friendly"
-  | "formal"
-  | "empathetic"
-  | "concise"
-  | "enthusiastic";
+export interface KnowledgeBaseContext {
+  title: string;
+  content: string;
+  category?: string;
+  tags?: string[];
+}
 
-export type ReplyLength =
-  | "short"
-  | "medium"
-  | "long";
+export interface ConversationContext {
+  role: "customer" | "company";
+  subject: string;
+  content: string;
+  timestamp: string;
+}
 
 export interface GenerateReplyInput {
+  userId?: string;
   email: string;
   tone: Tone;
   length: ReplyLength;
   signature?: string;
+  knowledgeBase?: KnowledgeBaseContext[];
+  conversationHistory?: ConversationContext[];
 }
 
 export interface SummarizeInput {
@@ -35,16 +36,13 @@ export interface ClassifyInput {
 
 export interface AIProvider {
   readonly name: AIProviderName;
+  generateReply(input: GenerateReplyInput): Promise<string>;
+  summarize(input: SummarizeInput): Promise<string>;
+  classify(input: ClassifyInput): Promise<string>;
+}
 
-  generateReply(
-    input: GenerateReplyInput
-  ): Promise<string>;
-
-  summarize(
-    input: SummarizeInput
-  ): Promise<string>;
-
-  classify(
-    input: ClassifyInput
-  ): Promise<string>;
+export interface ConfidenceScore {
+  score: number;
+  level: "high" | "medium" | "low";
+  reasons: string[];
 }

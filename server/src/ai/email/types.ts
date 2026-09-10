@@ -1,6 +1,4 @@
-export type EmailProviderName =
-  | "gmail"
-  | "outlook";
+export type EmailProviderName = "gmail" | "outlook";
 
 export interface EmailMessage {
   id: string;
@@ -30,22 +28,14 @@ export interface EmailTokens {
 
 export interface EmailProvider {
   getAuthUrl(): string;
+  exchangeCode(code: string): Promise<EmailTokens>;
+  listMessages(accessToken: string): Promise<EmailMessage[]>;
+  getMessage(accessToken: string, id: string): Promise<EmailMessage>;
+  sendMessage(accessToken: string, message: SendEmailInput): Promise<void>;
+}
 
-  exchangeCode(
-    code: string
-  ): Promise<EmailTokens>;
-
-  listMessages(
-    accessToken: string
-  ): Promise<EmailMessage[]>;
-
-  getMessage(
-    accessToken: string,
-    id: string
-  ): Promise<EmailMessage>;
-
-  sendMessage(
-    accessToken: string,
-    message: SendEmailInput
-  ): Promise<void>;
+export interface ConfidenceScore {
+  score: number;
+  level: "high" | "medium" | "low";
+  reasons: string[];
 }

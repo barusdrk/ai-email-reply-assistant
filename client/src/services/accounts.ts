@@ -1,8 +1,11 @@
 import API from "./api.js";
 
+export type EmailProvider = "gmail" | "outlook";
+
 export interface ConnectedAccounts {
   gmail: boolean;
   outlook: boolean;
+  activeProvider: EmailProvider | null;
 }
 
 export async function getConnections(): Promise<ConnectedAccounts> {
@@ -10,11 +13,20 @@ export async function getConnections(): Promise<ConnectedAccounts> {
   return {
     gmail: Boolean(data.gmail),
     outlook: Boolean(data.outlook),
+    activeProvider:
+      data.activeProvider === "gmail" || data.activeProvider === "outlook"
+        ? data.activeProvider
+        : null,
   };
+}
+
+export async function setActiveProvider(provider: EmailProvider): Promise<void> {
+  await API.put("/accounts/provider", { provider });
 }
 
 export async function connectGmail(): Promise<void> {
   const { data } = await API.get<{ url: string }>("/accounts/gmail/connect");
+  console.log("Google OAuth URL:", data.url);
   window.location.href = data.url;
 }
 

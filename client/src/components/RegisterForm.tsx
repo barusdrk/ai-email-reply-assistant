@@ -1,169 +1,52 @@
-import {
-  FormEvent,
-  useState,
-} from "react";
+import { type FormEvent, useState } from "react";
 
 interface RegisterFormProps {
-  onSubmit: (
-    name: string,
-    email: string,
-    password: string,
-    confirmPassword: string
-  ) => Promise<void>;
-
+  onSubmit: (name: string, email: string, password: string, confirmPassword: string) => Promise<void>;
   loading?: boolean;
-
   error?: string;
 }
 
-export default function RegisterForm({
-  onSubmit,
-  loading = false,
-  error,
-}: RegisterFormProps) {
-  const [name, setName] =
-    useState("");
+export default function RegisterForm({ onSubmit, loading = false, error }: RegisterFormProps) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
-  const [email, setEmail] =
-    useState("");
-
-  const [password, setPassword] =
-    useState("");
-
-  const [confirmPassword, setConfirmPassword] =
-    useState("");
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
-    await onSubmit(
-      name,
-      email,
-      password,
-      confirmPassword
-    );
+    await onSubmit(name, email, password, confirmPassword);
   }
 
+  const inputClass = "w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) placeholder:text-(--placeholder) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60";
+
   return (
-    <div className="mx-auto w-full max-w-md rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
-      <h1 className="mb-2 text-center text-3xl font-bold text-gray-900 dark:text-white">
-        Create Account
-      </h1>
-
-      <p className="mb-8 text-center text-gray-600 dark:text-gray-300">
-        Register to use the AI Email Reply Assistant
-      </p>
-
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-5"
-      >
+    <div className="mx-auto w-full max-w-md rounded-xl border border-(--border) bg-(--surface) p-8 shadow-lg">
+      <h1 className="mb-2 text-center text-3xl font-bold text-(--text-h)">Create Account</h1>
+      <p className="mb-8 text-center text-(--text-secondary)">Register to use the AI Email Reply Assistant</p>
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label
-            htmlFor="register-name"
-            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200"
-          >
-            Name
-          </label>
-
-          <input
-            id="register-name"
-            type="text"
-            required
-            autoComplete="name"
-            disabled={loading}
-            value={name}
-            onChange={(e) =>
-              setName(e.target.value)
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          />
+          <label htmlFor="register-name" className="mb-2 block text-sm font-medium text-(--text)">Name</label>
+          <input id="register-name" type="text" required autoComplete="name" disabled={loading} value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
         </div>
-
         <div>
-          <label
-            htmlFor="register-email"
-            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200"
-          >
-            Email
-          </label>
-
-          <input
-            id="register-email"
-            type="email"
-            required
-            autoComplete="email"
-            disabled={loading}
-            value={email}
-            onChange={(e) =>
-              setEmail(e.target.value)
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          />
+          <label htmlFor="register-email" className="mb-2 block text-sm font-medium text-(--text)">Email</label>
+          <input id="register-email" type="email" required autoComplete="email" disabled={loading} value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
         </div>
-
         <div>
-          <label
-            htmlFor="register-password"
-            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200"
-          >
-            Password
-          </label>
-
-          <input
-            id="register-password"
-            type="password"
-            required
-            autoComplete="new-password"
-            disabled={loading}
-            value={password}
-            onChange={(e) =>
-              setPassword(e.target.value)
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          />
+          <label htmlFor="register-password" className="mb-2 block text-sm font-medium text-(--text)">Password</label>
+          <input id="register-password" type="password" required autoComplete="new-password" disabled={loading} value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
         </div>
-
         <div>
-          <label
-            htmlFor="confirm-password"
-            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200"
-          >
-            Confirm Password
-          </label>
-
-          <input
-            id="confirm-password"
-            type="password"
-            required
-            autoComplete="new-password"
-            disabled={loading}
-            value={confirmPassword}
-            onChange={(e) =>
-              setConfirmPassword(
-                e.target.value
-              )
-            }
-            className="w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white"
-          />
+          <label htmlFor="confirm-password" className="mb-2 block text-sm font-medium text-(--text)">Confirm Password</label>
+          <input id="confirm-password" type="password" required autoComplete="new-password" disabled={loading} value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={inputClass} />
         </div>
-
         {error && (
-          <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
+          <div className="rounded-lg border border-(--danger-text) bg-(--danger-bg) px-4 py-3 text-sm text-(--danger-text)">
             {error}
           </div>
         )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-        >
-          {loading
-            ? "Creating Account..."
-            : "Create Account"}
+        <button type="submit" disabled={loading} className="w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-60">
+          {loading ? "Creating Account..." : "Create Account"}
         </button>
       </form>
     </div>

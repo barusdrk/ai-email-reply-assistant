@@ -1,60 +1,33 @@
-import {
-  type FormEvent,
-  useState,
-} from "react";
+import { type FormEvent, useState } from "react";
 
 interface LoginFormProps {
-  onSubmit: (
-    email: string,
-    password: string
-  ) => Promise<void>;
-
+  onSubmit: (email: string, password: string) => Promise<void>;
   loading?: boolean;
-
   error?: string;
 }
 
-export default function LoginForm({
-  onSubmit,
-  loading = false,
-  error,
-}: LoginFormProps) {
-  const [email, setEmail] =
-    useState("");
+export default function LoginForm({ onSubmit, loading = false, error }: LoginFormProps) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [password, setPassword] =
-    useState("");
-
-  async function handleSubmit(
-    event: FormEvent<HTMLFormElement>
-  ) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     await onSubmit(email, password);
   }
 
   return (
-    <div className="mx-auto w-full max-w-md rounded-xl bg-white p-8 shadow-lg dark:bg-gray-800">
-      <h1 className="mb-2 text-center text-3xl font-bold text-gray-900 dark:text-white">
+    <div className="mx-auto w-full max-w-md rounded-xl bg-(--surface) p-8 shadow-lg">
+      <h1 className="mb-2 text-center text-3xl font-bold text-(--text-h)">
         AI Email Reply Assistant
       </h1>
-
-      <p className="mb-8 text-center text-gray-600 dark:text-gray-300">
+      <p className="mb-8 text-center text-(--text-secondary)">
         Sign in to continue
       </p>
-
-      <form
-        onSubmit={handleSubmit}
-        className="space-y-5"
-      >
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label
-            htmlFor="email"
-            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200"
-          >
+          <label htmlFor="email" className="mb-2 block text-sm font-medium text-(--text)">
             Email Address
           </label>
-
           <input
             id="email"
             type="email"
@@ -62,39 +35,14 @@ export default function LoginForm({
             required
             disabled={loading}
             value={email}
-            onChange={(event) =>
-              setEmail(event.target.value)
-            }
-            className="
-              w-full
-              rounded-lg
-              border
-              border-gray-300
-              bg-white
-              px-4
-              py-3
-              text-gray-900
-              outline-none
-              transition
-              focus:border-blue-500
-              focus:ring-2
-              focus:ring-blue-500
-              disabled:bg-gray-100
-              dark:border-gray-700
-              dark:bg-gray-900
-              dark:text-white
-            "
+            onChange={(event) => setEmail(event.target.value)}
+            className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:opacity-50"
           />
         </div>
-
         <div>
-          <label
-            htmlFor="password"
-            className="mb-2 block text-sm font-medium text-gray-700 dark:text-gray-200"
-          >
+          <label htmlFor="password" className="mb-2 block text-sm font-medium text-(--text)">
             Password
           </label>
-
           <input
             id="password"
             type="password"
@@ -102,61 +50,24 @@ export default function LoginForm({
             required
             disabled={loading}
             value={password}
-            onChange={(event) =>
-              setPassword(event.target.value)
-            }
-            className="
-              w-full
-              rounded-lg
-              border
-              border-gray-300
-              bg-white
-              px-4
-              py-3
-              text-gray-900
-              outline-none
-              transition
-              focus:border-blue-500
-              focus:ring-2
-              focus:ring-blue-500
-              disabled:bg-gray-100
-              dark:border-gray-700
-              dark:bg-gray-900
-              dark:text-white
-            "
+            onChange={(event) => setPassword(event.target.value)}
+            className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:opacity-50"
           />
         </div>
-
         {error && (
-          <div className="rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-700 dark:bg-red-900/30 dark:text-red-300">
+          <div className="rounded-lg border border-(--danger-text) bg-(--danger-bg) px-4 py-3 text-sm text-(--danger-text)">
             {error}
           </div>
         )}
-
         <button
           type="submit"
           disabled={loading}
-          className="
-            w-full
-            rounded-lg
-            bg-blue-600
-            px-4
-            py-3
-            font-semibold
-            text-white
-            transition
-            hover:bg-blue-700
-            disabled:cursor-not-allowed
-            disabled:opacity-60
-          "
+          className="w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading
-            ? "Signing In..."
-            : "Sign In"}
+          {loading ? "Signing In..." : "Sign In"}
         </button>
       </form>
-
-      <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
+      <p className="mt-6 text-center text-sm text-(--text-secondary)">
         Demo account:
         <br />
         demo@example.com

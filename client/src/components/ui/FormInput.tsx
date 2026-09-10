@@ -17,19 +17,16 @@ export default function FormInput({
 }: Props) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-medium text-gray-900 dark:text-white">
+      <label className="mb-2 block text-sm font-medium text-(--text-h)">
         {label}
       </label>
-
       <input
         type={type}
         value={value}
         placeholder={placeholder}
         readOnly={readOnly}
-        onChange={(e) =>
-          onChange(e.target.value)
-        }
-        className="w-full rounded-lg border px-3 py-2 bg-white text-gray-900 placeholder-gray-400 dark:border-gray-700 dark:bg-gray-800 dark:text-white dark:placeholder-gray-500"
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-(--border) bg-(--surface) px-3 py-2 text-(--text) placeholder:text-(--text-secondary) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent)"
       />
     </div>
   );

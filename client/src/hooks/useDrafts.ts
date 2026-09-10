@@ -1,15 +1,12 @@
-import {
-  useCallback,
-  useEffect,
-  useState,
-} from "react";
-import type { Draft } from "../types/index.js";
+import { useCallback, useEffect, useState } from "react";
+import type { Draft, DraftProvider } from "../types/index.js";
 import {
   getDrafts,
   createDraft,
   updateDraft,
   deleteDraft,
   submitForApproval,
+  sendDraft,
 } from "../services/drafts.js";
 
 export function useDrafts() {
@@ -39,10 +36,12 @@ export function useDrafts() {
 
   async function addDraft(
     emailId: string,
+    provider: DraftProvider,
     reply: string
   ) {
     await createDraft({
       emailId,
+      provider,
       customer: "",
       subject: "",
       reply,
@@ -68,6 +67,10 @@ export function useDrafts() {
     await loadDrafts();
   }
 
+  async function send(draftId: string) {
+    await sendDraft(draftId);
+  }
+
   return {
     drafts,
     loading,
@@ -77,5 +80,6 @@ export function useDrafts() {
     editDraft,
     removeDraft,
     submit,
+    send,
   };
 }

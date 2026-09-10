@@ -1,45 +1,34 @@
-import type {
-  Tone,
-  ReplyLength,
-} from "../templates/tones.js";
+export type DraftProvider = "gmail" | "outlook" | "sample";
+export type DraftTone = "professional" | "friendly" | "formal" | "concise" | "empathetic" | "enthusiastic";
+export type DraftLength = "short" | "medium" | "long";
+export type DraftStatus = "pending" | "approved" | "rejected" | "sent" | "escalated";
+export type ConfidenceLevel = "high" | "medium" | "low";
 
-export type DraftStatus =
-  | "draft"
-  | "pending"
-  | "approved"
-  | "rejected"
-  | "scheduled"
-  | "sent";
+export interface DraftConfidence {
+  score: number;
+  level: ConfidenceLevel;
+  reasons: string[];
+}
 
-export interface DraftRecord {
-  id?: string;
-  userId: string;
+export interface Draft {
+  id: string;
+  _id?: string;
+  userId?: string;
   emailId: string;
+  provider: DraftProvider;
+  subject: string;
+  customer: string;
   reply: string;
-  tone: Tone;
-  length: ReplyLength;
+  tone: DraftTone;
+  length: DraftLength;
   status: DraftStatus;
-  approvedBy?: string;
-  scheduledFor?: Date;
-  sentAt?: Date;
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
-export interface CreateDraftInput {
-  userId: string;
-  emailId: string;
-  reply: string;
-  tone: Tone;
-  length: ReplyLength;
-}
-
-export interface UpdateDraftInput {
-  reply?: string;
-  tone?: Tone;
-  length?: ReplyLength;
-  status?: DraftStatus;
-  approvedBy?: string;
-  scheduledFor?: Date;
-  sentAt?: Date;
+  confidence?: DraftConfidence;
+  escalatedAt?: string;
+  escalationReason?: string;
+  escalationReasons?: string[];
+  approvedAt?: string;
+  rejectionReason?: string;
+  sentAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

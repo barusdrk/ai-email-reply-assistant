@@ -14,38 +14,11 @@ export default function GmailConnectButton({
       type="button"
       disabled={loading || connected}
       onClick={onConnect}
-      className="
-        flex
-        w-full
-        items-center
-        justify-center
-        gap-3
-        rounded-lg
-        border
-        border-gray-300
-        bg-white
-        px-5
-        py-3
-        text-gray-900
-        shadow-sm
-        transition
-        hover:bg-gray-100
-        disabled:cursor-not-allowed
-        disabled:opacity-60
-        dark:border-gray-700
-        dark:bg-gray-800
-        dark:text-white
-        dark:hover:bg-gray-700
-      "
+      className="flex w-full items-center justify-center gap-3 rounded-lg border border-(--border) bg-(--surface) px-5 py-3 text-(--text) shadow-sm transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="text-xl">📧</span>
-
       <span className="font-medium">
-        {loading
-          ? "Connecting..."
-          : connected
-          ? "Gmail Connected"
-          : "Connect Gmail"}
+        {loading ? "Connecting..." : connected ? "Gmail Connected" : "Connect Gmail"}
       </span>
     </button>
   );
