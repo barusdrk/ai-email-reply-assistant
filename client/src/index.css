@@ -88,6 +88,10 @@ select {
   font: inherit;
 }
 
+button {
+  cursor: pointer;
+}
+
 input,
 textarea,
 select {
