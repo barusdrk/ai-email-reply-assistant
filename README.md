@@ -663,26 +663,26 @@ POST /api/billing/upgrade
 
 ## Free
 
-- Bring your own OpenAI key
-- Bring your own Gemini key
-- Unlimited AI usage using your own keys
+* Bring your own OpenAI key
+* Bring your own Gemini key
+* Unlimited AI usage using your own keys
 
 ---
 
 ## Starter
 
-- Platform-managed API keys
-- Higher usage limits
-- Faster responses
+* Platform-managed API keys
+* Higher usage limits
+* Faster responses
 
 ---
 
 ## Pro
 
-- Unlimited platform AI
-- Priority processing
-- Premium support
-- Advanced analytics
+* Unlimited platform AI
+* Priority processing
+* Premium support
+* Advanced analytics
 
 ---
 
