@@ -170,7 +170,7 @@ ai-email-reply-assistant/
 
 # Installation
 
-Clone the repository.
+Fork and clone the repository.
 
 ```bash
 git clone https://github.com/YOUR_USERNAME/ai-email-reply-assistant.git
@@ -184,7 +184,7 @@ Install dependencies.
 npm install
 ```
 
-Install frontend dependencies.
+Install frontend dependencies. From root directory:
 
 ```bash
 cd client
@@ -192,7 +192,7 @@ cd client
 npm install
 ```
 
-Install backend dependencies.
+Install backend dependencies. From client directory:
 
 ```bash
 cd ../server
@@ -204,16 +204,10 @@ npm install
 
 # Environment Variables
 
-Create:
+From server directory, create:
 
-```
-server/.env
-```
-
-using:
-
-```
-server/.env.example
+```bash
+cp .env.example .env
 ```
 
 ---
