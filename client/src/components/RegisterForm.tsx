@@ -45,7 +45,7 @@ export default function RegisterForm({ onSubmit, loading = false, error }: Regis
             {error}
           </div>
         )}
-        <button type="submit" disabled={loading} className="w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-60">
+        <button type="submit" disabled={loading} className="w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? "Creating Account..." : "Create Account"}
         </button>
       </form>

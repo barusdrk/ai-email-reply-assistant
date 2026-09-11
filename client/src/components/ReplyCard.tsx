@@ -79,7 +79,7 @@ export default function ReplyCard({ reply, policyCheck, loading = false, onAppro
         </div>
       )}
       <div className="flex flex-wrap gap-3 border-t border-(--border) px-6 py-4">
-        <button type="button" onClick={copyReply} className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:bg-(--accent-hover)">Copy</button>
+        <button type="button" onClick={copyReply} className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:opacity-90">Copy</button>
         <button type="button" onClick={() => downloadPdf({ customerEmail: "", reply })} className="rounded bg-(--bg-secondary) px-4 py-2 text-(--text) hover:bg-(--surface-hover)">Download PDF</button>
         <button type="button" onClick={() => downloadDocx({ customerEmail: "", reply })} className="rounded bg-(--bg-secondary) px-4 py-2 text-(--text) hover:bg-(--surface-hover)">Download DOCX</button>
         {onApprove && (

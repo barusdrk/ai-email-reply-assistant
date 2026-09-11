@@ -53,7 +53,7 @@ export default function SettingsPage() {
         <button
           type="button"
           onClick={() => void save()}
-          className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:bg-(--accent-hover)"
+          className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:opacity-90"
         >
           Save
         </button>

@@ -140,7 +140,7 @@ export default function ReplyCard({
             type="button"
             onClick={() => void handleSaveDraft()}
             disabled={saving || sending || !hasReply}
-            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
           >
             {saving ? "Saving..." : "Save Draft"}
           </button>

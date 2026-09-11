@@ -35,7 +35,7 @@ export default function ReplyGenerator({ email, tone, length, onGenerated }: Pro
 
   return (
     <div className="space-y-3">
-      <button type="button" onClick={generateReply} disabled={loading || !email.trim()} className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-50">
+      <button type="button" onClick={generateReply} disabled={loading || !email.trim()} className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
         {loading ? "Generating..." : "Generate Reply"}
       </button>
       {error && <p className="text-sm text-(--danger)">{error}</p>}

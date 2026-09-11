@@ -62,7 +62,7 @@ export default function LoginForm({ onSubmit, loading = false, error }: LoginFor
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Signing In..." : "Sign In"}
         </button>

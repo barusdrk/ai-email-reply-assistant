@@ -119,7 +119,7 @@ export default function DraftCard({
         <button
           type="button"
           onClick={onOpen}
-          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:bg-(--accent-hover)"
+          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90"
         >
           Open
         </button>
@@ -128,7 +128,7 @@ export default function DraftCard({
           type="button"
           onClick={onEdit}
           disabled={draft.status === "sent" || sending}
-          className="inline-flex items-center gap-2 rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-(--warning) px-4 py-2 text-sm font-medium text-(--text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Pencil size={15} />
           Edit
@@ -149,7 +149,7 @@ export default function DraftCard({
           type="button"
           onClick={onDelete}
           disabled={sending}
-          className="inline-flex items-center gap-2 rounded-lg bg-(--error-bg) px-4 py-2 text-sm font-medium text-(--error-text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-(--danger) px-4 py-2 text-sm font-medium text-(--error-text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Trash2 size={15} />
           Delete

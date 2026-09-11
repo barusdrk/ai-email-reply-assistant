@@ -196,7 +196,7 @@ export default function Approvals() {
                 type="button"
                 onClick={() => void saveEdit()}
                 disabled={saving || !editedReply.trim()}
-                className="rounded-lg bg-(--accent) px-4 py-2 font-medium text-(--accent-contrast) hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-(--accent) px-4 py-2 font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </button>

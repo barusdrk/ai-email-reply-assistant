@@ -30,7 +30,7 @@ export default function PlanCard({ plan, currentPlan, onSelect }: Props) {
         className={`mt-6 w-full rounded-lg px-4 py-2 font-medium transition ${
           active
             ? "cursor-not-allowed bg-(--bg-secondary) text-(--text-secondary)"
-            : "bg-(--accent) text-(--accent-contrast) hover:bg-(--accent-hover)"
+            : "bg-(--accent) text-(--accent-contrast) hover:opacity-90"
         }`}
       >
         {active ? "Current Plan" : "Choose Plan"}

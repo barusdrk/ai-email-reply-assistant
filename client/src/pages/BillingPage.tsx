@@ -133,7 +133,7 @@ export default function BillingPage() {
                     type="button"
                     disabled={Boolean(checkoutPlan)}
                     onClick={() => void handleCheckout(plan.id as "starter" | "pro")}
-                    className="w-full rounded-lg bg-(--accent) px-4 py-3 font-medium text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-60"
+                    className="w-full rounded-lg bg-(--accent) px-4 py-3 font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {isProcessing ? "Redirecting to Stripe..." : `Choose ${plan.name}`}
                   </button>

@@ -58,7 +58,7 @@ export default function Login() {
         )}
 
         <div className="mt-6 text-center">
-          <button type="button" onClick={() => setShowRegister(!showRegister)} className="text-(--accent) hover:text-(--accent-hover) hover:underline">
+          <button type="button" onClick={() => setShowRegister(!showRegister)} className="text-(--accent) hover:text-opacity-90 hover:underline">
             {showRegister ? "Already have an account? Sign In" : "Create a new account"}
           </button>
         </div>

@@ -226,7 +226,7 @@ export default function Billing() {
                   current
                     ? "bg-(--bg-secondary) text-(--text-secondary)"
                     : plan.id === "pro"
-                      ? "bg-(--accent) text-(--accent-contrast) hover:bg-(--accent-hover)"
+                      ? "bg-(--accent) text-(--accent-contrast) hover:opacity-90"
                       : "border border-(--accent) text-(--accent) hover:bg-(--accent-light)"
                 }`}
               >

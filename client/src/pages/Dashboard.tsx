@@ -66,7 +66,7 @@ export default function Dashboard() {
         <div className="flex flex-wrap gap-4">
           <Link
             to="/inbox"
-            className="rounded-lg bg-(--accent) px-5 py-3 text-(--accent-contrast) hover:bg-(--accent-hover)"
+            className="rounded-lg bg-(--accent) px-5 py-3 text-(--accent-contrast) hover:opacity-90"
           >
             Open Inbox
           </Link>

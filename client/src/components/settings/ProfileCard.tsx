@@ -49,7 +49,7 @@ export default function ProfileCard({ name, email, avatar, onSave }: ProfileCard
         <FormInput label="Name" value={profileName} onChange={setProfileName} placeholder="Name" />
         <FormInput label="Email" value={profileEmail} onChange={setProfileEmail} placeholder="Email" />
         <FormInput label="Avatar URL" value={profileAvatar} onChange={setProfileAvatar} placeholder="https://example.com/avatar.jpg" />
-        <button type="button" onClick={handleSave} disabled={saving} className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:opacity-50">
+        <button type="button" onClick={handleSave} disabled={saving} className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) transition hover:opacity-90 disabled:opacity-50">
           {saving ? "Saving..." : "Save Profile"}
         </button>
       </div>
