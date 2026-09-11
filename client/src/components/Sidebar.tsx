@@ -41,7 +41,9 @@ export default function Sidebar() {
                   }`
                 }
               >
-                <span className="text-lg">{link.icon}</span>
+                <span className="flex w-6 shrink-0 justify-center text-lg">
+                  {link.icon}
+                </span>
                 <span className="font-medium">{link.label}</span>
               </NavLink>
             </li>
