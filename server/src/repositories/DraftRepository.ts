@@ -12,6 +12,10 @@ class DraftRepository {
     return DraftModel.findById(id);
   }
 
+  findByEmailId(emailId: string) {
+    return DraftModel.findOne({ emailId }).sort({ createdAt: -1 });
+  }
+
   create(data: Partial<DraftDocument>) {
     return DraftModel.create(data);
   }

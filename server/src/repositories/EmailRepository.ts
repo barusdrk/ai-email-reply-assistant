@@ -1,20 +1,18 @@
-import EmailModel, { type EmailDocument } from "../models/Email.js";
+import {Types} from "mongoose";
+import EmailModel, {type EmailDocument} from "../models/Email.js";
 
 class EmailRepository {
   findAll(userId: string) {
-    return EmailModel.find({ userId }).sort({ receivedAt: -1 });
+    return EmailModel.find({userId}).sort({receivedAt: -1});
   }
 
   async findPage(userId: string, page = 1, limit = 50) {
     const safePage = Math.max(1, page);
     const safeLimit = Math.min(Math.max(1, limit), 100);
-    const filter = { userId };
+    const filter = {userId};
     const [emails, total] = await Promise.all([
-      EmailModel.find(filter)
-        .sort({ receivedAt: -1 })
-        .skip((safePage - 1) * safeLimit)
-        .limit(safeLimit),
-      EmailModel.countDocuments(filter)
+      EmailModel.find(filter).sort({receivedAt: -1}).skip((safePage - 1) * safeLimit).limit(safeLimit),
+      EmailModel.countDocuments(filter),
     ]);
 
     return {
@@ -22,7 +20,7 @@ class EmailRepository {
       total,
       page: safePage,
       limit: safeLimit,
-      hasMore: safePage * safeLimit < total
+      hasMore: safePage * safeLimit < total,
     };
   }
 
@@ -30,13 +28,18 @@ class EmailRepository {
     return EmailModel.findById(id);
   }
 
-  findAllWithoutDraft() {
-    return EmailModel.find({
-      $or: [
-        { draftId: null },
-        { draftId: { $exists: false } }
-      ]
-    });
+  findByMessageId(userId: string, provider: EmailDocument["provider"], messageId: string) {
+    return EmailModel.findOne({userId, provider, messageId});
+  }
+
+  findAllWithoutDraft(userId?: string) {
+    const filter: Record<string, unknown> = {
+      $or: [{draftId: null}, {draftId: {$exists: false}}],
+    };
+
+    if (userId) filter.userId = userId;
+
+    return EmailModel.find(filter).sort({receivedAt: -1});
   }
 
   create(data: Partial<EmailDocument>) {
@@ -45,70 +48,34 @@ class EmailRepository {
 
   upsert(messageId: string, data: Partial<EmailDocument>) {
     return EmailModel.findOneAndUpdate(
-      {
-        userId: data.userId,
-        provider: data.provider,
-        messageId
-      },
-      {
-        $set: data
-      },
-      {
-        new: true,
-        upsert: true
-      }
+      {userId: data.userId, provider: data.provider, messageId},
+      {$set: data},
+      {new: true, upsert: true},
     );
   }
 
-  async bulkUpsert(
-    emails: Partial<EmailDocument>[]
-  ): Promise<Awaited<ReturnType<typeof EmailModel.bulkWrite>>> {
+  async bulkUpsert(emails: Partial<EmailDocument>[]) {
     const operations = emails
-      .filter(
-        (email) =>
-          email.userId &&
-          email.provider &&
-          email.messageId
-      )
+      .filter((email) => Boolean(email.userId && email.provider && email.messageId))
       .map((email) => ({
         updateOne: {
           filter: {
             userId: email.userId,
             provider: email.provider,
-            messageId: email.messageId
+            messageId: email.messageId,
           },
-          update: {
-            $set: email
-          },
-          upsert: true
-        }
+          update: {$set: email},
+          upsert: true,
+        },
       }));
 
-    if (operations.length === 0) {
-      return EmailModel.bulkWrite([]);
-    }
+    if (operations.length === 0) return EmailModel.bulkWrite([]);
 
-    return EmailModel.bulkWrite(
-      operations,
-      {
-        ordered: false
-      }
-    );
+    return EmailModel.bulkWrite(operations, {ordered: false});
   }
 
-  update(
-    id: string,
-    data: Partial<EmailDocument>
-  ) {
-    return EmailModel.findByIdAndUpdate(
-      id,
-      {
-        $set: data
-      },
-      {
-        new: true
-      }
-    );
+  update(id: string, data: Partial<EmailDocument>) {
+    return EmailModel.findByIdAndUpdate(id, {$set: data}, {new: true});
   }
 
   delete(id: string) {
@@ -116,6 +83,4 @@ class EmailRepository {
   }
 }
 
-export const emailRepository =
-  new EmailRepository();
-  
+export const emailRepository = new EmailRepository();

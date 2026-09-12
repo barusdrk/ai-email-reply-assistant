@@ -21,6 +21,8 @@ export interface InboxEmail {
   senderEmail: string;
   preview: string;
   body: string;
+  unread: boolean;
+  archived: boolean;
   receivedAt?: Date;
 }
 
@@ -34,11 +36,7 @@ function getOAuthClient() {
   if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET || !env.GOOGLE_CALLBACK_URL) {
     throw new Error("Google OAuth is not configured.");
   }
-  return new google.auth.OAuth2(
-    env.GOOGLE_CLIENT_ID,
-    env.GOOGLE_CLIENT_SECRET,
-    env.GOOGLE_CALLBACK_URL
-  );
+  return new google.auth.OAuth2(env.GOOGLE_CLIENT_ID, env.GOOGLE_CLIENT_SECRET, env.GOOGLE_CALLBACK_URL);
 }
 
 function encodeBase64Url(value: string): string {
@@ -59,11 +57,12 @@ function parseReferences(value: string): string[] {
 
 function extractBody(payload: any): string {
   if (!payload) return "";
-  if (payload.body?.data) return decodeBase64(payload.body.data);
+  if (payload.mimeType === "text/plain" && payload.body?.data) return decodeBase64(payload.body.data);
   for (const part of payload.parts ?? []) {
     const body = extractBody(part);
     if (body) return body;
   }
+  if (payload.body?.data) return decodeBase64(payload.body.data);
   return "";
 }
 
@@ -78,10 +77,7 @@ function parseSender(from: string): { name: string; email: string } {
   const emailMatch = from.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
   if (emailMatch) {
     const email = emailMatch[0].trim();
-    return {
-      name: from.replace(email, "").trim(),
-      email,
-    };
+    return { name: from.replace(email, "").trim(), email };
   }
   return { name: from.trim(), email: "" };
 }
@@ -149,17 +145,16 @@ async function getAccessToken(userId: string): Promise<string> {
   const account = await connectedAccountRepository.findByProvider(userId, "gmail");
   if (!account?.accessToken) throw new Error("Gmail is not connected.");
 
-  if (account.expiresAt && account.expiresAt.getTime() <= Date.now() && account.refreshToken) {
+  const refreshBuffer = 60 * 1000;
+  if (account.expiresAt && account.expiresAt.getTime() <= Date.now() + refreshBuffer && account.refreshToken) {
     const client = getOAuthClient();
     client.setCredentials({ refresh_token: account.refreshToken });
     const { credentials } = await client.refreshAccessToken();
     if (!credentials.access_token) throw new Error("Unable to refresh Gmail access token.");
-
     await connectedAccountRepository.update(String(account._id), {
       accessToken: credentials.access_token,
       expiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : undefined,
     });
-
     return credentials.access_token;
   }
 
@@ -176,13 +171,11 @@ async function getGmailClient(userId: string) {
 export async function listEmails(userId: string, maxResults = 100): Promise<InboxEmail[]> {
   const gmail = await getGmailClient(userId);
   const limit = Math.min(100, Math.max(1, maxResults));
-
   const response = await gmail.users.messages.list({
     userId: "me",
     maxResults: limit,
     labelIds: ["INBOX"],
   });
-
   const messages = (response.data.messages ?? []).filter((message) => Boolean(message.id));
 
   return Promise.all(
@@ -192,9 +185,9 @@ export async function listEmails(userId: string, maxResults = 100): Promise<Inbo
         id: message.id!,
         format: "full",
       });
-
       const payload = result.data.payload;
       const headers = payload?.headers;
+      const labelIds = result.data.labelIds ?? [];
       const internalDate = result.data.internalDate;
       const from = getHeader(headers, "From");
       const sender = parseSender(from);
@@ -212,6 +205,8 @@ export async function listEmails(userId: string, maxResults = 100): Promise<Inbo
         senderEmail: sender.email,
         preview: result.data.snippet ?? "",
         body: extractBody(payload),
+        unread: labelIds.includes("UNREAD"),
+        archived: !labelIds.includes("INBOX"),
         receivedAt: internalDate ? new Date(Number(internalDate)) : new Date(),
       };
     })
@@ -231,7 +226,6 @@ export async function sendEmail(
 ): Promise<{ id: string; threadId: string }> {
   const gmail = await getGmailClient(userId);
   const subject = options.subject.startsWith("Re:") ? options.subject : `Re: ${options.subject}`;
-
   const headers = [
     `To: ${options.to}`,
     `Subject: ${subject}`,
@@ -242,7 +236,6 @@ export async function sendEmail(
   if (options.references?.length) headers.push(`References: ${options.references.join(" ")}`);
 
   const message = [...headers, "", options.reply].join("\r\n");
-
   const result = await gmail.users.messages.send({
     userId: "me",
     requestBody: {

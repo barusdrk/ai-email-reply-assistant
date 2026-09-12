@@ -1,10 +1,5 @@
-import {
-  Types,
-  type AnyBulkWriteOperation,
-} from "mongoose";
-import EmailModel, {
-  type EmailDocument,
-} from "../models/Email.js";
+import {Types} from "mongoose";
+import EmailModel, {type EmailDocument} from "../models/Email.js";
 
 const sampleEmails = [
   {
@@ -37,71 +32,51 @@ Thank you.`,
 
 function parseSender(from: string) {
   const match = from.match(/^\s*(.*?)\s*<([^<>@\s]+@[^<>@\s]+)>\s*$/);
-
-  if (match) {
-    return {
-      senderName: match[1].trim(),
-      senderEmail: match[2].trim(),
-    };
-  }
-
-  return {
-    senderName: "",
-    senderEmail: from.trim(),
-  };
+  if (match) return {senderName: match[1].trim(), senderEmail: match[2].trim()};
+  return {senderName: "", senderEmail: from.trim()};
 }
 
 export async function loadSampleEmails(userId: string) {
-  if (!Types.ObjectId.isValid(userId)) {
-    throw new Error("Invalid user ID.");
-  }
+  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
 
   const objectId = new Types.ObjectId(userId);
-
-  const operations: AnyBulkWriteOperation<EmailDocument>[] =
-    sampleEmails.map((email, index) => {
-      const { senderName, senderEmail } = parseSender(email.from);
-
-      return {
-        updateOne: {
-          filter: {
-            userId: objectId,
-            messageId: email.messageId,
-          },
-          update: {
-            $set: {
-              userId: objectId,
-              provider: "sample" as const,
-              messageId: email.messageId,
-              messageIdHeader: "",
-              references: [],
-              threadId: null,
-              subject: email.subject,
-              from: email.from,
-              senderName,
-              senderEmail,
-              preview: email.preview,
-              body: email.body,
-              isSample: true,
-              unread: true,
-              archived: false,
-              receivedAt: new Date(
-                Date.now() - index * 60 * 60 * 1000
-              ),
-            },
-          },
-          upsert: true,
+  const operations = sampleEmails.map((email, index) => {
+    const {senderName, senderEmail} = parseSender(email.from);
+    const data: Partial<EmailDocument> = {
+      userId: objectId,
+      provider: "sample",
+      messageId: email.messageId,
+      messageIdHeader: "",
+      references: [],
+      threadId: "",
+      subject: email.subject,
+      from: email.from,
+      senderName,
+      senderEmail,
+      preview: email.preview,
+      body: email.body,
+      isSample: true,
+      unread: true,
+      archived: false,
+      receivedAt: new Date(Date.now() - index * 60 * 60 * 1000),
+    };
+    return {
+      updateOne: {
+        filter: {
+          userId: objectId,
+          messageId: email.messageId,
         },
-      };
-    });
+        update: {$set: data},
+        upsert: true,
+      },
+    };
+  });
 
-  await EmailModel.bulkWrite(operations);
+  await EmailModel.bulkWrite(operations, {ordered: false});
 
   return EmailModel.find({
     userId: objectId,
     provider: "sample",
     isSample: true,
-  }).sort({
-    receivedAt: -1,
-  });
+  }).sort({receivedAt: -1});
 }

@@ -9,6 +9,7 @@ import { checkReplyPolicy, type PolicyCheckResult } from "./policyChecker.js";
 import { determineEscalation } from "./escalation.js";
 import { getConversationHistory } from "./conversationMemory.js";
 import { determineAutomaticAction } from "./automaticActions.js";
+import { emailRepository } from "../repositories/EmailRepository.js";
 
 export type DraftTone = "professional" | "friendly" | "formal" | "concise" | "empathetic" | "enthusiastic";
 export type DraftLength = "short" | "medium" | "long";
@@ -181,7 +182,7 @@ export async function createDraft(data: CreateDraftData) {
     reasons: automaticAction.reasons,
   });
 
-  return draftRepository.create({
+  const createdDraft = await draftRepository.create({
     userId: data.userId as any,
     emailId: data.emailId as any,
     provider: data.provider,
@@ -222,6 +223,12 @@ export async function createDraft(data: CreateDraftData) {
         ? automaticAction.reasons.join(" ")
         : undefined,
   });
+
+  await emailRepository.update(data.emailId, {
+    draftId: createdDraft._id,
+  });
+
+  return createdDraft;
 }
 
 export async function updateDraft(id: string, data: UpdateDraftData) {
