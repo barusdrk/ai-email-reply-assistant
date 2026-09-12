@@ -300,7 +300,7 @@ export default function KnowledgeBase() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-(--accent) px-5 py-3 text-sm font-medium text-(--accent-contrast) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-2 rounded-lg bg-(--accent) px-5 py-3 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {editingId ? <Edit3 size={17} /> : <Plus size={17} />}
             {saving
