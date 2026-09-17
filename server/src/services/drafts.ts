@@ -1,108 +1,32 @@
-import { Types } from "mongoose";
-import { draftRepository } from "../repositories/DraftRepository.js";
-import EmailModel from "../models/Email.js";
-import { generateReply } from "./openai.js";
-import { sendEmail } from "./sendEmail.js";
-import { searchKnowledgeBase } from "./knowledgeBase.js";
-import { scoreReplyConfidence } from "./confidenceScoring.js";
-import { checkReplyPolicy, type PolicyCheckResult } from "./policyChecker.js";
-import { determineEscalation } from "./escalation.js";
-import { getConversationHistory } from "./conversationMemory.js";
-import { determineAutomaticAction } from "./automaticActions.js";
-import { emailRepository } from "../repositories/EmailRepository.js";
+import {Types} from "mongoose";
+import {draftRepository} from "../repositories/DraftRepository.js";
+import {emailRepository} from "../repositories/EmailRepository.js";
+import {generateReply} from "./openai.js";
+import {determineAutomaticAction} from "./automaticActions.js";
+import {analyzeDraftSupport, applySupportDecision, evaluateDraftPolicy, scoreDraftConfidence} from "./draftSupport.js";
+import {requestApproval} from "./approval.js";
+import {approveDraft, rejectDraft, submitDraft} from "./draftApproval.js";
+import {sendDraft} from "./draftSending.js";
+import {isValidObjectId} from "./draftValidation.js";
+import type {CreateDraftData, DraftStatus, UpdateDraftData} from "./draftTypes.js";
 
-export type DraftTone = "professional" | "friendly" | "formal" | "concise" | "empathetic" | "enthusiastic";
-export type DraftLength = "short" | "medium" | "long";
-export type DraftStatus = "pending" | "approved" | "rejected" | "sent" | "escalated";
-export type Provider = "gmail" | "outlook" | "sample";
+const SUPPORT_CATEGORIES = ["general_support", "billing", "technical", "account", "sales", "refund", "cancellation", "shipping", "complaint", "other"] as const;
+type SupportCategory = (typeof SUPPORT_CATEGORIES)[number];
 
-interface CreateDraftData {
-  userId: string;
-  emailId: string;
-  provider: Provider;
-  subject: string;
-  customer: string;
-  email?: string;
-  reply?: string;
-  tone?: DraftTone;
-  length?: DraftLength;
+function normalizeSupportCategory(category: string): SupportCategory {
+  return (SUPPORT_CATEGORIES as readonly string[]).includes(category) ? category as SupportCategory : "general_support";
 }
 
-interface UpdateDraftData {
-  reply?: string;
-  tone?: DraftTone;
-  length?: DraftLength;
-  status?: DraftStatus;
+function toObjectId(value: string): Types.ObjectId {
+  if (!isValidObjectId(value)) throw new Error("Invalid object ID.");
+  return new Types.ObjectId(value);
 }
 
-function isValidEmail(value: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-}
-
-function isValidObjectId(value: string): boolean {
-  return Types.ObjectId.isValid(value);
-}
-
-async function getSourceEmail(userId: string, emailId: string) {
-  if (!isValidObjectId(userId)) throw new Error("Invalid user ID.");
-  if (!isValidObjectId(emailId)) throw new Error("Invalid source email ID.");
-
-  const sourceEmail = await EmailModel.findOne({
-    _id: new Types.ObjectId(emailId),
-    userId: new Types.ObjectId(userId),
-  }).lean();
-
-  if (!sourceEmail) throw new Error("Source email not found.");
-  return sourceEmail;
-}
-
-async function evaluateDraftPolicy(
-  userId: string,
-  email: string,
-  reply: string,
-  knowledgeBase?: Awaited<ReturnType<typeof searchKnowledgeBase>>
-): Promise<PolicyCheckResult> {
-  const customerEmail = email.trim();
-  const draftReply = reply.trim();
-
-  if (!customerEmail) {
-    throw new Error("The original customer email has no body, so the reply cannot be policy checked.");
-  }
-
-  if (!draftReply) {
-    throw new Error("A reply is required.");
-  }
-
-  const context =
-    knowledgeBase ??
-    await searchKnowledgeBase(userId, customerEmail);
-
-  return checkReplyPolicy({
-    email: customerEmail,
-    reply: draftReply,
-    knowledgeBase: context ?? [],
-  });
-}
-
-async function scoreDraftConfidence(
-  userId: string,
-  email: string,
-  reply: string,
-  knowledgeBase?: Awaited<ReturnType<typeof searchKnowledgeBase>>
-) {
-  const customerEmail = email.trim();
-  const draftReply = reply.trim();
-
-  if (!customerEmail) throw new Error("The original customer email has no body, so the draft cannot be scored.");
-  if (!draftReply) throw new Error("A reply is required.");
-
-  const context = knowledgeBase ?? await searchKnowledgeBase(userId, customerEmail);
-
-  return scoreReplyConfidence({
-    email: customerEmail,
-    reply: draftReply,
-    knowledgeBase: context ?? [],
-  });
+function getDraftStatus(action: "auto_approve" | "pending" | "escalate" | "blocked"): DraftStatus {
+  if (action === "escalate") return "escalated";
+  if (action === "auto_approve") return "approved";
+  if (action === "blocked") return "rejected";
+  return "pending";
 }
 
 export function drafts(userId: string, status?: DraftStatus) {
@@ -114,119 +38,79 @@ export function draft(id: string) {
 }
 
 export async function createDraft(data: CreateDraftData) {
+  if (!isValidObjectId(data.userId)) throw new Error("Invalid user ID.");
+  if (!isValidObjectId(data.emailId)) throw new Error("Invalid source email ID.");
   const tone = data.tone ?? "professional";
   const length = data.length ?? "medium";
-  const sourceEmail = await getSourceEmail(data.userId, data.emailId);
-  const customerEmailBody = sourceEmail.body?.trim() || data.email?.trim() || "";
+  const customer = data.customer.trim();
+  if (!customer) throw new Error("Customer information is required.");
 
-  if (!customerEmailBody) {
-    throw new Error("The original customer email has no body, so the draft cannot be scored.");
+  const support = await analyzeDraftSupport(data.userId, data.emailId, customer, tone, length);
+  let reply = data.reply?.trim() || support.supportResult.reply.trim();
+
+  if (!reply) {
+    reply = await generateReply({
+      userId: data.userId,
+      email: support.customerEmailBody,
+      tone,
+      length,
+      knowledgeBase: support.knowledgeBase ?? [],
+      conversationHistory: support.conversationHistory.map((message) => ({
+        role: message.role,
+        subject: message.subject,
+        content: message.content,
+        timestamp: message.timestamp ? message.timestamp.toISOString() : "unknown",
+      })),
+    });
   }
 
-  const conversationHistory = sourceEmail.threadId
-    ? await getConversationHistory(data.userId, sourceEmail.threadId, data.emailId)
-    : [];
+  reply = reply.trim();
+  if (!reply) throw new Error("AI generated an empty reply.");
 
-  const knowledgeBase = await searchKnowledgeBase(
-    data.userId,
-    customerEmailBody
+  const confidence = await scoreDraftConfidence(data.userId, support.customerEmailBody, reply, support.knowledgeBase);
+  const policy = await evaluateDraftPolicy(data.userId, support.customerEmailBody, reply, support.knowledgeBase);
+  const automaticAction = applySupportDecision(
+    determineAutomaticAction(support.customerEmailBody, confidence, policy),
+    support.supportResult,
   );
 
-  const reply = data.reply?.trim()
-    ? data.reply.trim()
-    : await generateReply({
-        userId: data.userId,
-        email: customerEmailBody,
-        tone,
-        length,
-        knowledgeBase: knowledgeBase ?? [],
-        conversationHistory: conversationHistory.map((message) => ({
-          role: message.role,
-          subject: message.subject,
-          content: message.content,
-          timestamp: message.timestamp
-            ? message.timestamp.toISOString()
-            : "unknown",
-        })),
-      });
-
-  if (!reply.trim()) throw new Error("AI generated an empty reply.");
-
-  const confidence = await scoreDraftConfidence(
-    data.userId,
-    customerEmailBody,
-    reply,
-    knowledgeBase
-  );
-
-  console.log("Draft confidence:", {
-    score: confidence.score,
-    level: confidence.level,
-  });
-
-  const policy = await evaluateDraftPolicy(
-    data.userId,
-    customerEmailBody,
-    reply,
-    knowledgeBase
-  );
-
-  const automaticAction = determineAutomaticAction(
-    customerEmailBody,
-    confidence,
-    policy
-  );
-
-  console.log("Automatic action:", {
-    action: automaticAction.action,
-    reasons: automaticAction.reasons,
-  });
+  const supportCategory = normalizeSupportCategory(support.supportResult.category);
+  const policyIssues = [...support.supportResult.policyIssues, ...policy.violations].filter(Boolean);
 
   const createdDraft = await draftRepository.create({
-    userId: data.userId as any,
-    emailId: data.emailId as any,
+    userId: toObjectId(data.userId),
+    emailId: toObjectId(data.emailId),
     provider: data.provider,
-    subject: data.subject,
-    customer: data.customer.trim(),
+    subject: data.subject.trim(),
+    customer,
     reply,
     tone,
     length,
-    status:
-      automaticAction.action === "escalate"
-        ? "escalated"
-        : automaticAction.action === "auto_approve"
-          ? "approved"
-          : automaticAction.action === "blocked"
-            ? "rejected"
-            : "pending",
+    status: getDraftStatus(automaticAction.action),
     confidence,
+    supportCategory,
+    supportSentiment: support.supportResult.sentiment,
+    supportConfidence: support.supportResult.confidence,
+    supportDecision: support.supportResult.decision,
+    supportNeedsHuman: support.supportResult.needsHuman,
+    supportReason: support.supportResult.reason,
+    supportSuggestedActions: support.supportResult.suggestedActions,
+    supportMissingInformation: support.supportResult.missingInformation,
+    supportPolicyIssues: policyIssues,
     automaticAction: automaticAction.action,
     automaticActionReasons: automaticAction.reasons,
-    escalatedAt:
-      automaticAction.action === "escalate"
-        ? new Date()
-        : undefined,
-    escalationReason:
-      automaticAction.action === "escalate"
-        ? automaticAction.reasons[0]
-        : undefined,
-    escalationReasons:
-      automaticAction.action === "escalate"
-        ? automaticAction.reasons
-        : [],
-    approvedAt:
-      automaticAction.action === "auto_approve"
-        ? new Date()
-        : undefined,
-    rejectionReason:
-      automaticAction.action === "blocked"
-        ? automaticAction.reasons.join(" ")
-        : undefined,
+    escalatedAt: automaticAction.action === "escalate" ? new Date() : undefined,
+    escalationReason: automaticAction.action === "escalate" ? automaticAction.reasons[0] : undefined,
+    escalationReasons: automaticAction.action === "escalate" ? automaticAction.reasons : [],
+    approvedAt: automaticAction.action === "auto_approve" ? new Date() : undefined,
+    rejectionReason: automaticAction.action === "blocked" ? automaticAction.reasons.join(" ") : undefined,
   });
 
-  await emailRepository.update(data.emailId, {
-    draftId: createdDraft._id,
-  });
+  await emailRepository.update(data.emailId, {draftId: createdDraft._id});
+
+  if (automaticAction.action === "pending" || automaticAction.action === "escalate") {
+    await requestApproval(createdDraft._id.toString(), data.userId);
+  }
 
   return createdDraft;
 }
@@ -235,178 +119,61 @@ export async function updateDraft(id: string, data: UpdateDraftData) {
   const savedDraft = await draftRepository.findById(id);
   if (!savedDraft) return null;
   if (savedDraft.status === "sent") throw new Error("Sent drafts cannot be edited.");
+  if (data.reply === undefined) return draftRepository.update(id, data);
 
-  const update: UpdateDraftData & {
-    confidence?: Awaited<ReturnType<typeof scoreDraftConfidence>>;
-    escalatedAt?: Date;
-    escalationReason?: string;
-    escalationReasons?: string[];
-  } = { ...data };
+  const userId = savedDraft.userId.toString();
+  const emailId = savedDraft.emailId.toString();
+  const tone = data.tone ?? savedDraft.tone;
+  const length = data.length ?? savedDraft.length;
+  const reply = data.reply.trim();
 
-  if (data.reply !== undefined) {
-    const sourceEmail = await getSourceEmail(
-      savedDraft.userId.toString(),
-      savedDraft.emailId.toString()
-    );
-    const customerEmailBody = sourceEmail.body?.trim() || "";
-
-    update.confidence = await scoreDraftConfidence(
-      savedDraft.userId.toString(),
-      customerEmailBody,
-      data.reply
-    );
-
-    const escalation = determineEscalation(
-      customerEmailBody,
-      update.confidence
-    );
-
-    update.status = escalation.escalated ? "escalated" : "pending";
-    update.escalatedAt = escalation.escalated ? new Date() : undefined;
-    update.escalationReason = escalation.escalated
-      ? escalation.reasons[0]
-      : undefined;
-    update.escalationReasons = escalation.reasons;
-
-    console.log("Updated draft confidence:", {
-      score: update.confidence.score,
-      level: update.confidence.level,
-    });
-
-    if (escalation.escalated) {
-      console.log("Draft automatically escalated after edit:", escalation.reasons);
-    }
-  }
-
-  return draftRepository.update(id, update);
-}
-
-export async function approveDraft(id: string, userId: string) {
-  const savedDraft = await draftRepository.findById(id);
-  if (!savedDraft) return null;
-  if (savedDraft.userId.toString() !== userId) throw new Error("Unauthorized.");
-
-  if (savedDraft.status === "escalated") {
-    throw new Error("This draft requires human review before it can be approved.");
-  }
-
-  if (savedDraft.status !== "pending") {
-    throw new Error("Only pending drafts can be approved.");
-  }
-
-  const sourceEmail = await getSourceEmail(
-    userId,
-    savedDraft.emailId.toString()
-  );
-
-  await evaluateDraftPolicy(
-    userId,
-    sourceEmail.body ?? "",
-    savedDraft.reply ?? ""
-  ).then((result) => {
-    if (!result.compliant || result.violations.length > 0) {
-      const details = result.violations.length
-        ? result.violations.join(" ")
-        : "The reply is not compliant.";
-
-      throw new Error(`Policy check failed: ${details}`);
-    }
-  });
-
-  return draftRepository.update(id, {
-    status: "approved",
-    approvedAt: new Date(),
-    rejectionReason: undefined,
-  });
-}
-
-export async function rejectDraft(id: string, userId: string, reason?: string) {
-  const savedDraft = await draftRepository.findById(id);
-  if (!savedDraft) return null;
-  if (savedDraft.userId.toString() !== userId) throw new Error("Unauthorized.");
-  if (savedDraft.status === "sent") throw new Error("Sent drafts cannot be rejected.");
-  if (savedDraft.status === "rejected") throw new Error("Draft is already rejected.");
-
-  const rejectionReason = reason?.trim();
-
-  return draftRepository.update(id, {
-    status: "rejected",
-    rejectionReason: rejectionReason || undefined,
-  });
-}
-
-export async function sendDraft(id: string, userId: string) {
-  const savedDraft = await draftRepository.findById(id);
-  if (!savedDraft) throw new Error("Draft not found.");
-  if (savedDraft.userId.toString() !== userId) throw new Error("Unauthorized.");
-  if (savedDraft.status !== "approved") throw new Error("Only approved drafts can be sent.");
-
-  const customer = savedDraft.customer?.trim() ?? "";
-  const subject = savedDraft.subject?.trim() ?? "";
-  const reply = savedDraft.reply?.trim() ?? "";
-
-  if (!customer || !isValidEmail(customer)) throw new Error("A valid recipient email is required.");
-  if (!subject) throw new Error("A subject is required.");
   if (!reply) throw new Error("A reply is required.");
 
-  const sourceEmail = await getSourceEmail(
-    userId,
-    savedDraft.emailId.toString()
+  const support = await analyzeDraftSupport(userId, emailId, savedDraft.customer, tone, length);
+  const confidence = await scoreDraftConfidence(userId, support.customerEmailBody, reply, support.knowledgeBase);
+  const policy = await evaluateDraftPolicy(userId, support.customerEmailBody, reply, support.knowledgeBase);
+  const automaticAction = applySupportDecision(
+    determineAutomaticAction(support.customerEmailBody, confidence, policy),
+    support.supportResult,
   );
 
-  await evaluateDraftPolicy(
-    userId,
-    sourceEmail.body ?? "",
-    savedDraft.reply ?? ""
-  ).then((result) => {
-    if (!result.compliant || result.violations.length > 0) {
-      const details = result.violations.length
-        ? result.violations.join(" ")
-        : "The reply is not compliant.";
+  const supportCategory = normalizeSupportCategory(support.supportResult.category);
+  const policyIssues = [...support.supportResult.policyIssues, ...policy.violations].filter(Boolean);
 
-      throw new Error(`Policy check failed: ${details}`);
-    }
-  });
-
-  await sendEmail({
-    userId,
-    provider: savedDraft.provider,
-    to: customer,
-    subject,
+  const updatedDraft = await draftRepository.update(id, {
+    ...data,
     reply,
-    threadId: sourceEmail.threadId ?? undefined,
-    inReplyTo: savedDraft.provider === "gmail"
-      ? sourceEmail.messageIdHeader || undefined
-      : undefined,
-    references: savedDraft.provider === "gmail"
-      ? sourceEmail.references ?? []
-      : undefined,
-    originalMessageId: savedDraft.provider === "outlook"
-      ? sourceEmail.messageId
-      : undefined,
+    tone,
+    length,
+    confidence,
+    supportCategory,
+    supportSentiment: support.supportResult.sentiment,
+    supportConfidence: support.supportResult.confidence,
+    supportDecision: support.supportResult.decision,
+    supportNeedsHuman: support.supportResult.needsHuman,
+    supportReason: support.supportResult.reason,
+    supportSuggestedActions: support.supportResult.suggestedActions,
+    supportMissingInformation: support.supportResult.missingInformation,
+    supportPolicyIssues: policyIssues,
+    automaticAction: automaticAction.action,
+    automaticActionReasons: automaticAction.reasons,
+    status: getDraftStatus(automaticAction.action),
+    escalatedAt: automaticAction.action === "escalate" ? new Date() : undefined,
+    escalationReason: automaticAction.action === "escalate" ? automaticAction.reasons[0] : undefined,
+    escalationReasons: automaticAction.action === "escalate" ? automaticAction.reasons : [],
+    approvedAt: automaticAction.action === "auto_approve" ? new Date() : undefined,
+    rejectionReason: automaticAction.action === "blocked" ? automaticAction.reasons.join(" ") : undefined,
   });
 
-  return draftRepository.update(id, {
-    status: "sent",
-    sentAt: new Date(),
-  });
+  if (updatedDraft && (automaticAction.action === "pending" || automaticAction.action === "escalate")) {
+    await requestApproval(updatedDraft._id.toString(), userId);
+  }
+
+  return updatedDraft;
 }
+
+export {approveDraft, rejectDraft, sendDraft, submitDraft};
 
 export function deleteDraft(id: string) {
   return draftRepository.delete(id);
-}
-
-export async function submitDraft(id: string, userId: string) {
-  const savedDraft = await draftRepository.findById(id);
-  if (!savedDraft) return null;
-  if (savedDraft.userId.toString() !== userId) throw new Error("Unauthorized.");
-  if (savedDraft.status === "sent") throw new Error("Sent drafts cannot be submitted.");
-
-  return draftRepository.update(id, {
-    status: "pending",
-    rejectionReason: undefined,
-    escalatedAt: undefined,
-    escalationReason: undefined,
-    escalationReasons: [],
-  });
 }

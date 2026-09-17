@@ -20,6 +20,10 @@ import dashboardRoutes from "./routes/dashboard.js";
 import orderRoutes from "./routes/orders.js";
 import knowledgeBaseRoutes from "./routes/knowledgeBase.js";
 import { initializeWebSocket } from "./services/websocket.js";
+import supportRoutes from "./routes/support.js";
+import crmRoutes from "./routes/crm.js";
+import automaticActionRoutes from "./routes/automaticActions.js";
+
 
 dotenv.config();
 
@@ -80,6 +84,9 @@ app.use("/api/billing", billingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/orders", orderRoutes);
 app.use("/api/knowledge-base", knowledgeBaseRoutes);
+app.use("/api/support", supportRoutes);
+app.use("/api/crm", crmRoutes);
+app.use("/api/automation",automaticActionRoutes);
 
 const PORT = Number(process.env.PORT ?? 3001);
 

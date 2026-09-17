@@ -1,4 +1,3 @@
-import {Types} from "mongoose";
 import EmailModel, {type EmailDocument} from "../models/Email.js";
 
 class EmailRepository {
@@ -14,7 +13,6 @@ class EmailRepository {
       EmailModel.find(filter).sort({receivedAt: -1}).skip((safePage - 1) * safeLimit).limit(safeLimit),
       EmailModel.countDocuments(filter),
     ]);
-
     return {
       emails,
       total,
@@ -32,13 +30,25 @@ class EmailRepository {
     return EmailModel.findOne({userId, provider, messageId});
   }
 
+  findConversation(userId: string, threadId: string, currentEmailId?: string, limit = 20) {
+    const safeLimit = Math.min(Math.max(1, limit), 100);
+    const filter: Record<string, unknown> = {
+      userId,
+      threadId: threadId.trim(),
+    };
+    if (currentEmailId) filter._id = {$ne: currentEmailId};
+    return EmailModel.find(filter)
+      .select("subject body senderEmail from receivedAt createdAt")
+      .sort({receivedAt: -1, createdAt: -1})
+      .limit(safeLimit)
+      .lean();
+  }
+
   findAllWithoutDraft(userId?: string) {
     const filter: Record<string, unknown> = {
       $or: [{draftId: null}, {draftId: {$exists: false}}],
     };
-
     if (userId) filter.userId = userId;
-
     return EmailModel.find(filter).sort({receivedAt: -1});
   }
 
@@ -68,9 +78,7 @@ class EmailRepository {
           upsert: true,
         },
       }));
-
     if (operations.length === 0) return EmailModel.bulkWrite([]);
-
     return EmailModel.bulkWrite(operations, {ordered: false});
   }
 

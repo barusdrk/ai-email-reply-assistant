@@ -1,16 +1,13 @@
-import { Types } from "mongoose";
+import {Types} from "mongoose";
 import EmailModel from "../models/Email.js";
-import { customerRepository } from "../repositories/CustomerRepository.js";
+import {customerRepository} from "../repositories/CustomerRepository.js";
 
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
 export async function identifyCustomer(emailId: string, userId: string) {
-  if (
-    !Types.ObjectId.isValid(emailId) ||
-    !Types.ObjectId.isValid(userId)
-  ) {
+  if (!Types.ObjectId.isValid(emailId) || !Types.ObjectId.isValid(userId)) {
     throw new Error("Invalid email or user ID.");
   }
 
@@ -24,9 +21,7 @@ export async function identifyCustomer(emailId: string, userId: string) {
   }
 
   const senderEmail = normalizeEmail(
-    (email.senderEmail || email.from.match(
-      /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i
-    )?.[0]) ?? ""
+    (email.senderEmail || email.from.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]) ?? ""
   );
 
   if (!senderEmail) {
@@ -42,6 +37,10 @@ export async function identifyCustomer(emailId: string, userId: string) {
     email: senderEmail,
     name: email.senderName,
   });
+
+  if (!customer) {
+    throw new Error("Unable to identify or create customer.");
+  }
 
   await EmailModel.updateOne(
     {

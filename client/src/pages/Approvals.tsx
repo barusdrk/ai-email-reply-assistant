@@ -1,15 +1,16 @@
 import { useState } from "react";
 import ApprovalCard from "../components/ApprovalCard.js";
 import { useApprovals } from "../hooks/useApprovals.js";
-import { updateDraft, submitForApproval } from "../services/drafts.js";
-import type { Draft } from "../types/index.js";
+import { updateDraft } from "../services/drafts.js";
+import { submitApproval } from "../services/approval.js";
+import type { Approval, Draft } from "../types/index.js";
 
 export default function Approvals() {
   const { approvals, loading, error, approve, reject, refresh } = useApprovals();
   const [editingDraft, setEditingDraft] = useState<Draft | null>(null);
   const [editedReply, setEditedReply] = useState("");
   const [saving, setSaving] = useState(false);
-  const [rejectingDraft, setRejectingDraft] = useState<Draft | null>(null);
+  const [rejectingApproval, setRejectingApproval] = useState<Approval | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [rejecting, setRejecting] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -30,23 +31,23 @@ export default function Approvals() {
     setEditedReply("");
   }
 
-  function openReject(draft: Draft) {
+  function openReject(approval: Approval) {
     setActionError("");
-    setRejectingDraft(draft);
+    setRejectingApproval(approval);
     setRejectionReason("");
   }
 
   function closeReject() {
     if (rejecting) return;
-    setRejectingDraft(null);
+    setRejectingApproval(null);
     setRejectionReason("");
   }
 
-  async function handleApprove(id: string) {
+  async function handleApprove(approvalId: string) {
     try {
-      setApprovingId(id);
+      setApprovingId(approvalId);
       setActionError("");
-      await approve(id);
+      await approve(approvalId);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to approve draft.";
       setActionError(message);
@@ -73,27 +74,27 @@ export default function Approvals() {
     }
   }
 
-  async function handleResubmit(id: string) {
-    try {
-      setResubmittingId(id);
+  async function handleResubmit(approvalId:string){
+    try{
+      setResubmittingId(approvalId);
       setActionError("");
-      await submitForApproval(id);
+      await submitApproval(approvalId);
       await refresh();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Failed to resubmit draft.";
+    }catch(error){
+      const message=error instanceof Error?error.message:"Failed to resubmit draft.";
       setActionError(message);
-      console.error("Failed to resubmit draft:", error);
-    } finally {
+      console.error("Failed to resubmit draft:",error);
+    }finally{
       setResubmittingId(null);
     }
   }
 
   async function submitReject() {
-    if (!rejectingDraft?.id) return;
+    if (!rejectingApproval?.id) return;
     try {
       setRejecting(true);
       setActionError("");
-      await reject(rejectingDraft.id, rejectionReason.trim() || undefined);
+      await reject(rejectingApproval.id, rejectionReason.trim() || undefined);
       closeReject();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to reject draft.";
@@ -112,8 +113,8 @@ export default function Approvals() {
     return <div className="p-6 text-(--danger-text)">{error}</div>;
   }
 
-  const escalatedCount = approvals.filter((draft) => draft.status === "escalated").length;
-  const pendingCount = approvals.filter((draft) => draft.status === "pending").length;
+  const escalatedCount = approvals.filter((approval) => approval.draft.status === "escalated").length;
+  const pendingCount = approvals.filter((approval) => approval.status === "pending").length;
 
   return (
     <div className="space-y-6">
@@ -145,42 +146,56 @@ export default function Approvals() {
         </div>
       ) : (
         <div className="grid gap-6">
-          {approvals.map((draft) => (
-            <div key={draft.id} className="space-y-3">
-              <ApprovalCard
-                draft={draft}
-                onApprove={() => void handleApprove(draft.id)}
-                onReject={() => openReject(draft)}
-                onEdit={() => openEdit(draft)}
-                disabled={actionInProgress}
-                approving={approvingId === draft.id}
-              />
-              {draft.status === "escalated" && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => void handleResubmit(draft.id)}
-                    disabled={actionInProgress}
-                    className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {resubmittingId === draft.id ? "Resubmitting..." : "Mark Reviewed & Resubmit"}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+          {approvals.map((approval) => {
+            const draft = approval.draft;
+            const escalated = draft.status === "escalated";
+
+            return (
+              <div key={approval.id} className="space-y-3">
+                <ApprovalCard
+                  draft={draft}
+                  onApprove={() => void handleApprove(approval.id)}
+                  onReject={() => openReject(approval)}
+                  onEdit={() => openEdit(draft)}
+                  disabled={actionInProgress}
+                  approving={approvingId === approval.id}
+                />
+
+                {escalated && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleResubmit(approval.id)}
+                      disabled={actionInProgress}
+                      className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {resubmittingId === approval.id ? "Resubmitting..." : "Mark Reviewed & Resubmit"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
       {editingDraft && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-2xl rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl">
-            <h2 className="text-xl font-bold text-(--text-h)">Edit Draft Reply</h2>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-draft-title"
+            className="w-full max-w-2xl rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl"
+          >
+            <h2 id="edit-draft-title" className="text-xl font-bold text-(--text-h)">
+              Edit Draft Reply
+            </h2>
             <p className="mt-2 text-sm text-(--text-secondary)">{editingDraft.subject}</p>
             <textarea
               value={editedReply}
               onChange={(event) => setEditedReply(event.target.value)}
               disabled={saving}
+              aria-label="Draft reply"
               className="mt-4 min-h-64 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60"
             />
             <div className="mt-6 flex justify-end gap-3">
@@ -205,7 +220,7 @@ export default function Approvals() {
         </div>
       )}
 
-      {rejectingDraft && (
+      {rejectingApproval && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div
             role="dialog"
@@ -216,7 +231,9 @@ export default function Approvals() {
             <h2 id="reject-draft-title" className="text-xl font-bold text-(--text-h)">
               Reject Draft
             </h2>
-            <p className="mt-2 text-sm text-(--text-secondary)">{rejectingDraft.subject}</p>
+            <p className="mt-2 text-sm text-(--text-secondary)">
+              {rejectingApproval.draft.subject}
+            </p>
             <p className="mt-4 text-sm text-(--text)">
               Are you sure you want to reject this draft? You can optionally provide a reason for the rejection.
             </p>
@@ -225,6 +242,7 @@ export default function Approvals() {
               onChange={(event) => setRejectionReason(event.target.value)}
               placeholder="Optional rejection reason..."
               disabled={rejecting}
+              aria-label="Rejection reason"
               className="mt-4 min-h-32 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none placeholder:text-(--text-secondary) focus:border-(--danger) focus:ring-2 focus:ring-(--danger) disabled:cursor-not-allowed disabled:opacity-60"
             />
             <div className="mt-6 flex justify-end gap-3">

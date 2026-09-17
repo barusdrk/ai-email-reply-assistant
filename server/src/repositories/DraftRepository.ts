@@ -1,11 +1,11 @@
-import type { DeleteResult } from "mongodb";
-import DraftModel, { type DraftDocument, type DraftStatus } from "../models/Draft.js";
+import type {DeleteResult} from "mongodb";
+import DraftModel, {type Draft, type DraftStatus} from "../models/Draft.js";
 
 class DraftRepository {
   findAll(userId: string, status?: DraftStatus) {
-    const filter: { userId: string; status?: DraftStatus } = { userId };
+    const filter: {userId: string; status?: DraftStatus} = {userId};
     if (status) filter.status = status;
-    return DraftModel.find(filter).sort({ createdAt: -1 });
+    return DraftModel.find(filter).sort({createdAt: -1});
   }
 
   findById(id: string) {
@@ -13,15 +13,34 @@ class DraftRepository {
   }
 
   findByEmailId(emailId: string) {
-    return DraftModel.findOne({ emailId }).sort({ createdAt: -1 });
+    return DraftModel.findOne({emailId}).sort({createdAt: -1});
   }
 
-  create(data: Partial<DraftDocument>) {
+  create(data: Partial<Draft>) {
     return DraftModel.create(data);
   }
 
-  update(id: string, data: Partial<DraftDocument>) {
-    return DraftModel.findByIdAndUpdate(id, { $set: data }, { new: true });
+  update(id: string, data: Partial<Draft>) {
+    return DraftModel.findByIdAndUpdate(id, {$set: data}, {new: true, runValidators: true});
+  }
+
+  async claimForAutomaticSend(id: string, userId: string) {
+    return DraftModel.findOneAndUpdate(
+      {
+        _id: id,
+        userId,
+        status: "approved",
+        automaticAction: "auto_approve",
+      },
+      {
+        $set: {
+          status: "sending",
+        },
+      },
+      {
+        new: true,
+      },
+    );
   }
 
   delete(id: string) {
@@ -29,7 +48,7 @@ class DraftRepository {
   }
 
   deleteOlderThan(date: Date): Promise<DeleteResult> {
-    return DraftModel.deleteMany({ createdAt: { $lt: date } });
+    return DraftModel.deleteMany({createdAt: {$lt: date}});
   }
 }
 
