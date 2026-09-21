@@ -101,7 +101,7 @@ export default function ReplyCard({
     setMessage("");
 
     try {
-      const result = await sendEmail({
+      await sendEmail({
         provider,
         to: customer.trim(),
         subject,
@@ -110,13 +110,7 @@ export default function ReplyCard({
         threadId,
       });
 
-      if (provider === "sample") {
-        setMessage(
-          `Email sent successfully via ${result.provider === "gmail" ? "Gmail" : "Outlook"}.`
-        );
-      } else {
-        setMessage("Email sent successfully.");
-      }
+      setMessage("Email sent successfully.");
     } catch (error) {
       setMessage(
         error instanceof Error
@@ -168,12 +162,6 @@ export default function ReplyCard({
       {!hasReply && (
         <p className="mt-3 text-sm text-(--text-secondary)">
           Generate a reply to enable Save Draft and Send Email.
-        </p>
-      )}
-
-      {hasReply && provider === "sample" && (
-        <p className="mt-3 text-sm text-(--text-secondary)">
-          This is a sample email. It will be sent using your connected Gmail or Outlook account.
         </p>
       )}
 

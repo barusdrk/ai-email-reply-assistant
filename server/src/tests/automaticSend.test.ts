@@ -52,6 +52,7 @@ const baseDraft={
   status:"approved",
   automaticAction:"auto_approve",
   automaticActionReasons:["High AI confidence: 92/100."],
+  automaticSendInProgress:false,
 };
 
 const baseEmail={
@@ -121,18 +122,23 @@ describe("sendAutomatically",()=>{
     );
 
     expect(sendOutlookEmail).not.toHaveBeenCalled();
+    expect(draftRepository.claimForAutomaticSend).toHaveBeenCalledWith(
+      draftId.toString(),
+      userId,
+    );
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
       expect.objectContaining({
         status:"sent",
         sentAt:expect.any(Date),
+        automaticSendInProgress:false,
       }),
     );
     expect(emailRepository.update).toHaveBeenCalledWith(
       emailId.toString(),
-      expect.objectContaining({
+      {
         draftId,
-      }),
+      },
     );
     expect(notify).toHaveBeenCalledWith(
       userId,
@@ -355,7 +361,10 @@ describe("sendAutomatically",()=>{
     expect(sendOutlookEmail).not.toHaveBeenCalled();
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
-      {status:"approved"},
+      {
+        automaticSendInProgress:false,
+        status:"approved",
+      },
     );
   });
 
@@ -365,12 +374,13 @@ describe("sendAutomatically",()=>{
       customer:"",
     };
 
+    vi.mocked(draftRepository.findById).mockResolvedValue(draftWithoutCustomer as any);
+    claimedDraft=draftWithoutCustomer;
+
     vi.mocked(emailRepository.findById).mockResolvedValue({
       ...baseEmail,
       senderEmail:"",
     } as any);
-    vi.mocked(draftRepository.findById).mockResolvedValue(draftWithoutCustomer as any);
-    claimedDraft=draftWithoutCustomer;
 
     await expect(
       sendAutomatically(userId,draftId.toString()),
@@ -380,7 +390,10 @@ describe("sendAutomatically",()=>{
     expect(sendOutlookEmail).not.toHaveBeenCalled();
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
-      {status:"approved"},
+      {
+        automaticSendInProgress:false,
+        status:"approved",
+      },
     );
   });
 
@@ -401,7 +414,10 @@ describe("sendAutomatically",()=>{
     expect(sendOutlookEmail).not.toHaveBeenCalled();
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
-      {status:"approved"},
+      {
+        automaticSendInProgress:false,
+        status:"approved",
+      },
     );
   });
 
@@ -422,31 +438,21 @@ describe("sendAutomatically",()=>{
     expect(sendOutlookEmail).not.toHaveBeenCalled();
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
-      {status:"approved"},
+      {
+        automaticSendInProgress:false,
+        status:"approved",
+      },
     );
   });
 
-  it("does not send sample-provider drafts",async()=>{
-    vi.mocked(draftRepository.findById).mockResolvedValue({
-      ...baseDraft,
-      provider:"sample",
-    } as any);
-
-    await expect(
-      sendAutomatically(userId,draftId.toString()),
-    ).rejects.toThrow("Sample drafts cannot be sent automatically.");
-
-    expect(sendGmailEmail).not.toHaveBeenCalled();
-    expect(sendOutlookEmail).not.toHaveBeenCalled();
-    expect(draftRepository.claimForAutomaticSend).not.toHaveBeenCalled();
-    expect(draftRepository.update).not.toHaveBeenCalled();
-  });
-
   it("rejects unsupported providers",async()=>{
-    vi.mocked(draftRepository.findById).mockResolvedValue({
+    const unsupportedDraft={
       ...baseDraft,
       provider:"unknown",
-    } as any);
+    };
+
+    vi.mocked(draftRepository.findById).mockResolvedValue(unsupportedDraft as any);
+    claimedDraft=unsupportedDraft;
 
     await expect(
       sendAutomatically(userId,draftId.toString()),
@@ -454,11 +460,57 @@ describe("sendAutomatically",()=>{
 
     expect(sendGmailEmail).not.toHaveBeenCalled();
     expect(sendOutlookEmail).not.toHaveBeenCalled();
-    expect(draftRepository.claimForAutomaticSend).not.toHaveBeenCalled();
-    expect(draftRepository.update).not.toHaveBeenCalled();
+    expect(draftRepository.claimForAutomaticSend).toHaveBeenCalledWith(
+      draftId.toString(),
+      userId,
+    );
+    expect(draftRepository.update).toHaveBeenCalledWith(
+      draftId.toString(),
+      {
+        automaticSendInProgress:false,
+      },
+    );
   });
 
-  it("does not mark the draft as sent when Gmail sending fails",async()=>{
+  it("does not send when the automatic-send claim is lost",async()=>{
+    vi.mocked(draftRepository.claimForAutomaticSend).mockResolvedValue(null);
+    vi.mocked(draftRepository.findById)
+      .mockResolvedValueOnce(baseDraft as any)
+      .mockResolvedValueOnce({
+        ...baseDraft,
+        automaticSendInProgress:true,
+      } as any);
+
+    await expect(
+      sendAutomatically(userId,draftId.toString()),
+    ).rejects.toThrow("Draft is no longer available for automatic sending.");
+
+    expect(sendGmailEmail).not.toHaveBeenCalled();
+    expect(sendOutlookEmail).not.toHaveBeenCalled();
+    expect(draftRepository.claimForAutomaticSend).toHaveBeenCalledWith(
+      draftId.toString(),
+      userId,
+    );
+  });
+
+  it("does not send when the draft becomes sent before it can be claimed",async()=>{
+    vi.mocked(draftRepository.claimForAutomaticSend).mockResolvedValue(null);
+    vi.mocked(draftRepository.findById)
+      .mockResolvedValueOnce(baseDraft as any)
+      .mockResolvedValueOnce({
+        ...baseDraft,
+        status:"sent",
+      } as any);
+
+    await expect(
+      sendAutomatically(userId,draftId.toString()),
+    ).rejects.toThrow("Draft has already been sent.");
+
+    expect(sendGmailEmail).not.toHaveBeenCalled();
+    expect(sendOutlookEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not send when Gmail sending fails",async()=>{
     vi.mocked(sendGmailEmail).mockRejectedValue(
       new Error("Gmail send failed."),
     );
@@ -470,13 +522,16 @@ describe("sendAutomatically",()=>{
     expect(sendGmailEmail).toHaveBeenCalledTimes(1);
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
-      {status:"approved"},
+      {
+        automaticSendInProgress:false,
+        status:"approved",
+      },
     );
     expect(emailRepository.update).not.toHaveBeenCalled();
     expect(notify).not.toHaveBeenCalled();
   });
 
-  it("does not mark the draft as sent when Outlook sending fails",async()=>{
+  it("does not send when Outlook sending fails",async()=>{
     const outlookDraft={
       ...baseDraft,
       provider:"outlook",
@@ -502,13 +557,16 @@ describe("sendAutomatically",()=>{
     expect(sendOutlookEmail).toHaveBeenCalledTimes(1);
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
-      {status:"approved"},
+      {
+        automaticSendInProgress:false,
+        status:"approved",
+      },
     );
     expect(emailRepository.update).not.toHaveBeenCalled();
     expect(notify).not.toHaveBeenCalled();
   });
 
-  it("does not mark the draft as sent when the draft update fails after provider sending",async()=>{
+  it("does not mark the draft as sent when the final draft update fails",async()=>{
     vi.mocked(draftRepository.update).mockResolvedValue(null);
 
     await expect(
@@ -534,7 +592,9 @@ describe("sendAutomatically",()=>{
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
       expect.objectContaining({
+        status:"sent",
         sentAt:expect.any(Date),
+        automaticSendInProgress:false,
       }),
     );
   });
@@ -563,13 +623,15 @@ describe("sendAutomatically",()=>{
   });
 
   it("atomically claims an approved draft before sending",async()=>{
-    const sendingDraft={
+    const claimed={
       ...baseDraft,
-      status:"sending",
+      automaticSendInProgress:true,
     };
 
+    claimedDraft=claimed;
+
     vi.mocked(draftRepository.claimForAutomaticSend).mockResolvedValue(
-      sendingDraft as any,
+      claimed as any,
     );
 
     const result=await sendAutomatically(userId,draftId.toString());
@@ -588,33 +650,18 @@ describe("sendAutomatically",()=>{
       .mockResolvedValueOnce(baseDraft as any)
       .mockResolvedValueOnce({
         ...baseDraft,
-        status:"sending",
+        automaticSendInProgress:true,
       } as any);
 
     await expect(
       sendAutomatically(userId,draftId.toString()),
-    ).rejects.toThrow("Draft is already being sent.");
+    ).rejects.toThrow("Draft is no longer available for automatic sending.");
 
     expect(sendGmailEmail).not.toHaveBeenCalled();
+    expect(sendOutlookEmail).not.toHaveBeenCalled();
   });
 
-  it("does not send when the draft becomes sent before it can be claimed",async()=>{
-    vi.mocked(draftRepository.claimForAutomaticSend).mockResolvedValue(null);
-    vi.mocked(draftRepository.findById)
-      .mockResolvedValueOnce(baseDraft as any)
-      .mockResolvedValueOnce({
-        ...baseDraft,
-        status:"sent",
-      } as any);
-
-    await expect(
-      sendAutomatically(userId,draftId.toString()),
-    ).rejects.toThrow("Draft has already been sent.");
-
-    expect(sendGmailEmail).not.toHaveBeenCalled();
-  });
-
-  it("restores approved status when automatic sending fails",async()=>{
+  it("releases the automatic-send lock after Gmail failure",async()=>{
     vi.mocked(sendGmailEmail).mockRejectedValue(
       new Error("Gmail send failed."),
     );
@@ -626,37 +673,40 @@ describe("sendAutomatically",()=>{
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
       {
+        automaticSendInProgress:false,
         status:"approved",
       },
     );
   });
 
-  it("restores approved status when the original email is missing",async()=>{
-    vi.mocked(emailRepository.findById).mockResolvedValue(null);
+  it("releases the automatic-send lock after Outlook failure",async()=>{
+    const outlookDraft={
+      ...baseDraft,
+      provider:"outlook",
+    };
+
+    vi.mocked(draftRepository.findById).mockResolvedValue(outlookDraft as any);
+    claimedDraft=outlookDraft;
+
+    vi.mocked(emailRepository.findById).mockResolvedValue({
+      ...baseEmail,
+      provider:"outlook",
+    } as any);
+
+    vi.mocked(sendOutlookEmail).mockRejectedValue(
+      new Error("Outlook send failed."),
+    );
 
     await expect(
       sendAutomatically(userId,draftId.toString()),
-    ).rejects.toThrow("Original email not found.");
+    ).rejects.toThrow("Outlook send failed.");
 
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId.toString(),
       {
+        automaticSendInProgress:false,
         status:"approved",
       },
     );
-  });
-
-  it("rejects an already sending draft before attempting a claim",async()=>{
-    vi.mocked(draftRepository.findById).mockResolvedValue({
-      ...baseDraft,
-      status:"sending",
-    } as any);
-
-    await expect(
-      sendAutomatically(userId,draftId.toString()),
-    ).rejects.toThrow("Draft is already being sent.");
-
-    expect(draftRepository.claimForAutomaticSend).not.toHaveBeenCalled();
-    expect(sendGmailEmail).not.toHaveBeenCalled();
   });
 });

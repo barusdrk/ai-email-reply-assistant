@@ -24,8 +24,8 @@ import supportRoutes from "./routes/support.js";
 import crmRoutes from "./routes/crm.js";
 import automaticActionRoutes from "./routes/automaticActions.js";
 
-
 dotenv.config();
+console.log("GOOGLE_CALLBACK_URI:",process.env.GOOGLE_CALLBACK_URI);
 
 const app = express();
 const server = http.createServer(app);
@@ -75,7 +75,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/accounts", accountsRoutes);
 app.use("/api/reply", replyRoutes);
-app.use("/api/emails", emailRoutes);
+app.use("/api/email", emailRoutes);
 app.use("/api/drafts", draftRoutes);
 app.use("/api/approvals", approvalRoutes);
 app.use("/api/settings", settingsRoutes);

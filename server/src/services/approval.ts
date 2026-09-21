@@ -27,7 +27,7 @@ export async function requestApproval(draftId:string,reviewerId:string){
   if(draft.automaticAction!=="pending"&&draft.automaticAction!=="escalate")throw new Error("This draft does not require human approval.");
   if(!draft.emailId)throw new Error("Draft is not associated with an email.");
   if(!draft.userId)throw new Error("Draft is not associated with a requester.");
-  const existing=await approvalRepository.findPendingByDraft(draftId);
+  const existing=await approvalRepository.findPendingByDraft(draftId,reviewerId);
   if(existing)return existing;
   const item=await approvalRepository.create({
     draftId:draft._id,
@@ -50,7 +50,7 @@ export async function requestApproval(draftId:string,reviewerId:string){
 
 export async function approve(id:string,reviewerId:string){
   if(!isValidId(id)||!isValidId(reviewerId))return null;
-  const item=await approvalRepository.findByIdForReviewer(id,reviewerId);
+  const item=await approvalRepository.findByIdForReviewerAction(id,reviewerId);
   if(!item)return null;
   if(item.status!=="pending")throw new Error("Only pending approvals can be approved.");
   await approveDraft(item.draftId.toString(),reviewerId);
@@ -65,7 +65,7 @@ export async function approve(id:string,reviewerId:string){
 
 export async function reject(id:string,reviewerId:string,comment?:string){
   if(!isValidId(id)||!isValidId(reviewerId))return null;
-  const item=await approvalRepository.findByIdForReviewer(id,reviewerId);
+  const item=await approvalRepository.findByIdForReviewerAction(id,reviewerId);
   if(!item)return null;
   if(item.status!=="pending")throw new Error("Only pending approvals can be rejected.");
   const normalizedComment=typeof comment==="string"?comment.trim().slice(0,2000):"";
@@ -82,7 +82,7 @@ export async function reject(id:string,reviewerId:string,comment?:string){
 
 export async function submit(id:string,reviewerId:string){
   if(!isValidId(id)||!isValidId(reviewerId))return null;
-  const item=await approvalRepository.findByIdForReviewer(id,reviewerId);
+  const item=await approvalRepository.findByIdForReviewerAction(id,reviewerId);
   if(!item)return null;
   if(item.status!=="pending")throw new Error("Only pending approvals can be resubmitted.");
   const draft=await draftRepository.findById(item.draftId.toString());
@@ -101,7 +101,7 @@ export async function submit(id:string,reviewerId:string){
 
 export async function deleteApproval(id:string,reviewerId:string){
   if(!isValidId(id)||!isValidId(reviewerId))return null;
-  const item=await approvalRepository.findByIdForReviewer(id,reviewerId);
+  const item=await approvalRepository.findByIdForReviewerAction(id,reviewerId);
   if(!item)return null;
   await audit("approval_deleted","approval",id,reviewerId);
   return approvalRepository.delete(id);

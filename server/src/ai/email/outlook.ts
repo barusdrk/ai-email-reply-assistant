@@ -12,7 +12,7 @@ const AUTH_URL = `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/o
 const TOKEN_URL = `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
 
 function requireOutlookConfig() {
-  if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CALLBACK_URL) {
+  if (!env.MICROSOFT_CLIENT_ID || !env.MICROSOFT_CALLBACK_URI) {
     throw new Error("Microsoft Outlook OAuth is not configured.");
   }
 }
@@ -24,7 +24,7 @@ export class OutlookProvider implements EmailProvider {
     const params = new URLSearchParams({
       client_id: env.MICROSOFT_CLIENT_ID!,
       response_type: "code",
-      redirect_uri: env.MICROSOFT_CALLBACK_URL!,
+      redirect_uri: env.MICROSOFT_CALLBACK_URI!,
       response_mode: "query",
       scope: "openid profile offline_access User.Read Mail.Read Mail.Send",
     });
@@ -43,7 +43,7 @@ export class OutlookProvider implements EmailProvider {
       client_id: env.MICROSOFT_CLIENT_ID!,
       client_secret: env.MICROSOFT_CLIENT_SECRET,
       code,
-      redirect_uri: env.MICROSOFT_CALLBACK_URL!,
+      redirect_uri: env.MICROSOFT_CALLBACK_URI!,
       grant_type: "authorization_code",
       scope: "openid profile offline_access User.Read Mail.Read Mail.Send",
     });

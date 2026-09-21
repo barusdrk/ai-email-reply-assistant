@@ -3,7 +3,6 @@ import type {
   Response,
   NextFunction,
 } from "express";
-
 import {
   subscriptionRepository,
 } from "../repositories/SubscriptionRepository.js";
@@ -11,7 +10,8 @@ import {
 export type Plan =
   | "free"
   | "starter"
-  | "pro";
+  | "pro"
+  | "business";
 
 export function requirePlan(
   plans: Plan[]
@@ -24,8 +24,7 @@ export function requirePlan(
     try {
       if (!req.user) {
         return res.status(401).json({
-          message:
-            "Unauthorized.",
+          message: "Unauthorized.",
         });
       }
 
@@ -35,20 +34,14 @@ export function requirePlan(
         );
 
       const currentPlan: Plan =
-        subscription?.plan ??
-        "free";
+        subscription?.plan ?? "free";
 
-      if (
-        !plans.includes(
-          currentPlan
-        )
-      ) {
+      if (!plans.includes(currentPlan)) {
         return res.status(403).json({
           message:
             "Upgrade your plan to use this feature.",
           currentPlan,
-          requiredPlans:
-            plans,
+          requiredPlans: plans,
         });
       }
 

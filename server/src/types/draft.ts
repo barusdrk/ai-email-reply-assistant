@@ -1,4 +1,4 @@
-export type DraftProvider = "gmail" | "outlook" | "sample";
+export type DraftProvider = "gmail" | "outlook";
 export type DraftTone = "professional" | "friendly" | "formal" | "concise" | "empathetic" | "enthusiastic";
 export type DraftLength = "short" | "medium" | "long";
 export type DraftStatus = "pending" | "approved" | "rejected" | "sending" | "sent" | "escalated";

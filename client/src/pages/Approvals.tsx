@@ -74,17 +74,17 @@ export default function Approvals() {
     }
   }
 
-  async function handleResubmit(approvalId:string){
-    try{
+  async function handleResubmit(approvalId: string) {
+    try {
       setResubmittingId(approvalId);
       setActionError("");
       await submitApproval(approvalId);
       await refresh();
-    }catch(error){
-      const message=error instanceof Error?error.message:"Failed to resubmit draft.";
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to resubmit draft.";
       setActionError(message);
-      console.error("Failed to resubmit draft:",error);
-    }finally{
+      console.error("Failed to resubmit draft:", error);
+    } finally {
       setResubmittingId(null);
     }
   }
@@ -114,7 +114,7 @@ export default function Approvals() {
   }
 
   const escalatedCount = approvals.filter((approval) => approval.draft.status === "escalated").length;
-  const pendingCount = approvals.filter((approval) => approval.status === "pending").length;
+  const pendingCount = approvals.filter((approval) => approval.draft.status === "pending").length;
 
   return (
     <div className="space-y-6">

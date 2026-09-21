@@ -1,7 +1,7 @@
 export type DraftTone = "professional" | "friendly" | "formal" | "concise" | "empathetic" | "enthusiastic";
 export type DraftLength = "short" | "medium" | "long";
-export type DraftStatus = "pending" | "approved" | "rejected" | "sending" | "sent" | "escalated";
-export type Provider = "gmail" | "outlook" | "sample";
+export type DraftStatus = "pending" | "approved" | "rejected" | "sent" | "escalated";
+export type Provider = "gmail" | "outlook";
 
 export interface CreateDraftData {
   userId: string;
