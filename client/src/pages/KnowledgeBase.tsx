@@ -161,49 +161,50 @@ export default function KnowledgeBase(){
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-(--text-h)">
-          Knowledge Base
-        </h1>
-        <p className="mt-2 text-(--text-secondary)">
-          Manage company information used by the AI customer-support assistant.
-        </p>
-      </div>
+      <header className="flex items-center gap-3">
+        <div className="rounded-xl bg-(--accent) p-3 text-(--accent-contrast)">
+          <BookOpen size={22} />
+        </div>
 
-      {error&&(
-        <div className="rounded-lg border border-(--danger-text) bg-(--danger-bg) p-4 text-(--danger-text)">
-          <div className="flex items-center justify-between gap-4">
-            <span>{error}</span>
-            <button
-              type="button"
-              onClick={()=>setError("")}
-              className="rounded-lg p-1 transition hover:bg-(--bg-secondary)"
-              aria-label="Dismiss error"
-            >
-              <X size={16}/>
-            </button>
-          </div>
+        <div>
+          <h1 className="text-2xl font-bold">Knowledge Base</h1>
+          <p className="text-sm text-(--text-secondary)">
+            Manage company information used by the AI email assistant.
+          </p>
+        </div>
+      </header>
+
+      {error && (
+        <div className="flex items-center justify-between rounded-lg border border-(--danger-border) bg-(--danger-bg) px-4 py-3 text-sm text-(--danger-text)">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => setError("")}
+            className="rounded p-1 hover:bg-(--surface-hover)"
+          >
+            <X size={16} />
+          </button>
         </div>
       )}
 
       <section className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-(--text-h)">
-              {editingId?"Edit Article":"Create Article"}
+            <h2 className="text-lg font-semibold">
+              {editingId ? "Edit Article" : "Create Article"}
             </h2>
-            <p className="mt-1 text-sm text-(--text-secondary)">
-              Add company information the AI can use when answering customers.
+            <p className="text-sm text-(--text-secondary)">
+              Add information the AI can use when answering customers.
             </p>
           </div>
 
-          {editingId&&(
+          {editingId && (
             <button
               type="button"
               onClick={resetForm}
-              className="flex items-center gap-2 rounded-lg border border-(--border) px-3 py-2 text-sm text-(--text-h) transition hover:bg-(--bg-secondary)"
+              className="flex items-center gap-2 rounded-lg border border-(--border) px-3 py-2 text-sm hover:bg-(--surface-hover)"
             >
-              <X size={16}/>
+              <X size={16} />
               Cancel
             </button>
           )}
@@ -211,41 +212,42 @@ export default function KnowledgeBase(){
 
         <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="mb-2 block text-sm font-medium text-(--text-h)">
-              Title
-            </label>
+            <label className="mb-2 block text-sm font-medium">Title</label>
             <input
               value={form.title}
-              onChange={(event)=>updateField("title",event.target.value)}
+              onChange={(event) => updateField("title", event.target.value)}
               placeholder="Refund Policy"
-              className="w-full rounded-lg border border-(--border) bg-(--surface) px-4 py-3 text-(--text-h) outline-none transition placeholder:text-(--text-secondary) focus:border-(--accent) focus:ring-2 focus:ring-(--accent)/20"
+              className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
             />
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-medium text-(--text-h)">
-              Content
-            </label>
+            <label className="mb-2 block text-sm font-medium">Content</label>
             <textarea
               value={form.content}
-              onChange={(event)=>updateField("content",event.target.value)}
+              onChange={(event) => updateField("content", event.target.value)}
               placeholder="Customers can request a refund within 30 days of purchase..."
               rows={7}
-              className="w-full resize-y rounded-lg border border-(--border) bg-(--surface) px-4 py-3 text-(--text-h) outline-none transition placeholder:text-(--text-secondary) focus:border-(--accent) focus:ring-2 focus:ring-(--accent)/20"
+              className="w-full resize-y rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
             />
           </div>
 
           <div className="grid gap-5 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-medium text-(--text-h)">
+              <label className="mb-2 block text-sm font-medium">
                 Category
               </label>
               <select
                 value={form.category}
-                onChange={(event)=>updateField("category",event.target.value as KnowledgeBaseCategory)}
-                className="w-full rounded-lg border border-(--border) bg-(--surface) px-4 py-3 text-(--text-h) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent)/20"
+                onChange={(event) =>
+                  updateField(
+                    "category",
+                    event.target.value as KnowledgeBaseCategory,
+                  )
+                }
+                className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
               >
-                {CATEGORIES.map((category)=>(
+                {CATEGORIES.map((category) => (
                   <option key={category.value} value={category.value}>
                     {category.label}
                   </option>
@@ -254,27 +256,32 @@ export default function KnowledgeBase(){
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium text-(--text-h)">
-                Tags
-              </label>
+              <label className="mb-2 block text-sm font-medium">Tags</label>
               <input
-                value={(form.tags??[]).join(", ")}
-                onChange={(event)=>updateField(
-                  "tags",
-                  event.target.value.split(",").map((tag)=>tag.trim()).filter(Boolean),
-                )}
+                value={(form.tags ?? []).join(", ")}
+                onChange={(event) =>
+                  updateField(
+                    "tags",
+                    event.target.value
+                      .split(",")
+                      .map((tag) => tag.trim())
+                      .filter(Boolean),
+                  )
+                }
                 placeholder="refund, returns, money back"
-                className="w-full rounded-lg border border-(--border) bg-(--surface) px-4 py-3 text-(--text-h) outline-none transition placeholder:text-(--text-secondary) focus:border-(--accent) focus:ring-2 focus:ring-(--accent)/20"
+                className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
               />
             </div>
           </div>
 
-          <label className="flex cursor-pointer items-center gap-3 text-sm text-(--text-h)">
+          <label className="flex cursor-pointer items-center gap-3 text-sm">
             <input
               type="checkbox"
-              checked={form.active??true}
-              onChange={(event)=>updateField("active",event.target.checked)}
-              className="h-4 w-4 rounded border-(--border) accent-(--accent)"
+              checked={form.active ?? true}
+              onChange={(event) =>
+                updateField("active", event.target.checked)
+              }
+              className="h-4 w-4 rounded border-(--input-border) text-(--accent) focus:ring-(--accent)"
             />
             Active article
           </label>
@@ -284,8 +291,12 @@ export default function KnowledgeBase(){
             disabled={saving}
             className="flex items-center gap-2 rounded-lg bg-(--accent) px-5 py-3 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {editingId?<Edit3 size={17}/>:<Plus size={17}/>}
-            {saving?"Saving...":editingId?"Update Article":"Create Article"}
+            {editingId ? <Edit3 size={17} /> : <Plus size={17} />}
+            {saving
+              ? "Saving..."
+              : editingId
+                ? "Update Article"
+                : "Create Article"}
           </button>
         </form>
       </section>
@@ -293,56 +304,52 @@ export default function KnowledgeBase(){
       <section>
         <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-(--text-h)">
-              Articles
-            </h2>
-            <p className="mt-1 text-sm text-(--text-secondary)">
-              {articles.length} article{articles.length===1?"":"s"}
+            <h2 className="text-lg font-semibold">Articles</h2>
+            <p className="text-sm text-(--text-secondary)">
+              {articles.length} article{articles.length === 1 ? "" : "s"}
             </p>
           </div>
 
           <div className="relative w-full md:w-80">
             <Search
               size={17}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-(--text-secondary)"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-(--placeholder)"
             />
             <input
               value={search}
-              onChange={(event)=>setSearch(event.target.value)}
+              onChange={(event) => setSearch(event.target.value)}
               placeholder="Search knowledge base..."
-              className="w-full rounded-lg border border-(--border) bg-(--surface) py-3 pl-10 pr-4 text-sm text-(--text-h) outline-none transition placeholder:text-(--text-secondary) focus:border-(--accent) focus:ring-2 focus:ring-(--accent)/20"
+              className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) py-3 pl-10 pr-4 text-sm outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
             />
           </div>
         </div>
 
-        {loading?(
-          <div className="rounded-xl border border-(--border) bg-(--surface) p-8 text-center text-sm text-(--text-secondary) shadow-sm">
+        {loading ? (
+          <div className="rounded-xl border border-(--border) bg-(--surface) p-8 text-center text-sm text-(--text-secondary)">
             Loading knowledge base...
           </div>
-        ):articles.length===0?(
-          <div className="rounded-xl border border-(--border) bg-(--surface) p-10 text-center shadow-sm">
+        ) : articles.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-(--border) bg-(--surface) p-10 text-center">
             <BookOpen
               size={30}
               className="mx-auto mb-3 text-(--text-secondary)"
             />
-            <h3 className="font-semibold text-(--text-h)">
-              No articles found
-            </h3>
+            <h3 className="font-semibold">No articles found</h3>
             <p className="mt-1 text-sm text-(--text-secondary)">
               Create your first knowledge base article above.
             </p>
           </div>
-        ):(
+        ) : (
           <div className="space-y-4">
-            {articles.map((article)=>(
+            {articles.map((article) => (
               <article
                 key={article._id}
-                className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm"
+                className="rounded-xl border border-(--border) bg-(--surface) p-5 shadow-sm"
               >
-                <div className="flex flex-col gap-5 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0 flex-1">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                      <h3 className="text-lg font-semibold text-(--text-h)">
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <h3 className="text-lg font-semibold">
                         {article.title}
                       </h3>
 
@@ -353,11 +360,11 @@ export default function KnowledgeBase(){
                       <span
                         className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                           article.active
-                            ?"bg-(--success-bg) text-(--success-text)"
-                            :"bg-(--bg-secondary) text-(--text-secondary)"
+                            ? "bg-(--success-bg) text-(--success-text)"
+                            : "bg-(--bg-secondary) text-(--text-secondary)"
                         }`}
                       >
-                        {article.active?"Active":"Inactive"}
+                        {article.active ? "Active" : "Inactive"}
                       </span>
                     </div>
 
@@ -365,12 +372,12 @@ export default function KnowledgeBase(){
                       {article.content}
                     </p>
 
-                    {article.tags.length>0&&(
+                    {article.tags.length > 0 && (
                       <div className="mt-4 flex flex-wrap gap-2">
-                        {article.tags.map((tag)=>(
+                        {article.tags.map((tag) => (
                           <span
                             key={tag}
-                            className="rounded-md border border-(--border) bg-(--bg-secondary) px-2 py-1 text-xs text-(--text-secondary)"
+                            className="rounded-md border border-(--border) px-2 py-1 text-xs text-(--text-secondary)"
                           >
                             #{tag}
                           </span>
@@ -382,29 +389,29 @@ export default function KnowledgeBase(){
                   <div className="flex shrink-0 flex-wrap gap-2">
                     <button
                       type="button"
-                      onClick={()=>startEditing(article)}
-                      className="flex items-center gap-2 rounded-lg border border-(--border) px-3 py-2 text-sm text-(--text-h) transition hover:bg-(--bg-secondary)"
+                      onClick={() => startEditing(article)}
+                      className="flex items-center gap-2 rounded-lg border border-(--border) px-3 py-2 text-sm hover:bg-(--surface-hover)"
                     >
-                      <Edit3 size={15}/>
+                      <Edit3 size={15} />
                       Edit
                     </button>
 
                     <button
                       type="button"
-                      onClick={()=>void handleToggleActive(article)}
-                      className="rounded-lg border border-(--border) px-3 py-2 text-sm text-(--text-h) transition hover:bg-(--bg-secondary)"
+                      onClick={() => handleToggleActive(article)}
+                      className="rounded-lg border border-(--border) px-3 py-2 text-sm hover:bg-(--surface-hover)"
                     >
-                      {article.active?"Deactivate":"Activate"}
+                      {article.active ? "Deactivate" : "Activate"}
                     </button>
 
                     <button
                       type="button"
-                      onClick={()=>void handleDelete(article._id)}
-                      disabled={deletingId===article._id}
-                      className="flex items-center gap-2 rounded-lg border border-(--danger-text) px-3 py-2 text-sm text-(--danger-text) transition hover:bg-(--danger-bg) disabled:cursor-not-allowed disabled:opacity-60"
+                      onClick={() => handleDelete(article._id)}
+                      disabled={deletingId === article._id}
+                      className="flex items-center gap-2 rounded-lg border border-(--danger-border) px-3 py-2 text-sm text-(--danger-text) hover:bg-(--danger-bg) disabled:opacity-60"
                     >
-                      <Trash2 size={15}/>
-                      {deletingId===article._id?"Deleting...":"Delete"}
+                      <Trash2 size={15} />
+                      {deletingId === article._id ? "Deleting..." : "Delete"}
                     </button>
                   </div>
                 </div>
