@@ -9,16 +9,23 @@ export interface ApiEmail{
   _id?:string;
   id?:string;
   provider:EmailProvider;
+  direction?:"inbound"|"outbound";
   threadId?:string;
+  messageId?:string;
+  messageIdHeader?:string;
+  references?:string[];
   subject?:string;
   from?:string;
   senderName?:string;
   senderEmail?:string;
+  recipientName?:string;
+  recipientEmail?:string;
   preview?:string;
   body?:string;
   receivedAt?:string|Date;
   createdAt?:string|Date;
   unread?:boolean;
+  archived?:boolean;
 }
 
 export interface InboxResponse{
@@ -31,6 +38,20 @@ export interface InboxResponse{
 
 export interface EmailResponse{
   email:ApiEmail;
+}
+
+export interface NewEmailNotification{
+  id:string;
+  senderName?:string;
+  senderEmail?:string;
+  subject?:string;
+  preview?:string;
+  referenceId?:string;
+}
+
+export interface SyncInboxResponse{
+  emails:ApiEmail[];
+  newEmails:NewEmailNotification[];
 }
 
 export interface GenerateReplyInput{
@@ -81,8 +102,8 @@ export async function getEmail(id:string):Promise<ApiEmail>{
   return data.email;
 }
 
-export async function syncInbox(provider?:EmailProvider):Promise<unknown>{
-  const {data}=await API.post("/email/sync",provider?{provider}:{});
+export async function syncInbox(provider?:EmailProvider):Promise<SyncInboxResponse>{
+  const {data}=await API.post<SyncInboxResponse>("/email/sync",provider?{provider}:{});
   return data;
 }
 

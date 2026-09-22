@@ -226,7 +226,7 @@ export default function Billing(){
           return (
             <section
               key={plan.id}
-              className={`rounded-xl border bg-(--surface) p-6 shadow-sm ${
+              className={`flex h-full flex-col rounded-xl border bg-(--surface) p-6 shadow-sm ${
                 current
                   ?"border-(--accent) ring-2 ring-(--accent-light)"
                   :"border-(--border)"
@@ -282,7 +282,7 @@ export default function Billing(){
                 )}
               </div>
 
-              <ul className="mt-6 space-y-3">
+              <ul className="mt-6 flex-1 space-y-3">
                 {plan.features.map(feature=>(
                   <li
                     key={feature}

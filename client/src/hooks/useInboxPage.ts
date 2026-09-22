@@ -1,7 +1,9 @@
 import {useCallback,useEffect,useRef,useState} from "react";
 import type {InboxEmail} from "../components/InboxList.js";
 import type {EmailData} from "../components/EmailViewer.js";
-import {getInbox,syncInbox,type ApiEmail} from "../services/emails.js";
+import {getInbox,syncInbox,type ApiEmail,type NewEmailNotification} from "../services/emails.js";
+import {getSettings} from "../services/settings.js";
+import {showDesktopNotification} from "../services/notifications.js";
 
 const PAGE_SIZE=50;
 
@@ -11,7 +13,6 @@ function mapEmail(email:ApiEmail):InboxEmail{
   const match=from.match(/^(.*?)\s*<([^<>]+)>$/);
   const senderName=email.senderName?.trim()||(match?match[1].replace(/^["']|["']$/g,"").trim():"");
   const senderEmail=email.senderEmail?.trim()||(match?match[2].trim():from.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0]??"");
-
   return {
     id:email._id??email.id??"",
     from,
@@ -25,6 +26,25 @@ function mapEmail(email:ApiEmail):InboxEmail{
     provider:email.provider,
     threadId:email.threadId??"",
   };
+}
+
+async function notifyNewEmails(emails:NewEmailNotification[]):Promise<void>{
+  if(!emails.length)return;
+  try{
+    const settings=await getSettings();
+    if(!settings.desktopNotifications)return;
+    for(const email of emails){
+      const sender=email.senderName?.trim()||email.senderEmail?.trim()||"Customer";
+      const subject=email.subject?.trim()||"New customer message";
+      const body=`${sender}: ${subject}`;
+      showDesktopNotification("New customer message",{
+        body,
+        tag:`new-customer-message-${email.id}`,
+      });
+    }
+  }catch(error){
+    console.error("Failed to process desktop notification settings:",error);
+  }
 }
 
 export function useInboxPage(){
@@ -47,18 +67,14 @@ export function useInboxPage(){
     const nextEmails=(data.emails??[])
       .map(mapEmail)
       .filter((email)=>Boolean(email.id));
-
     setEmails((current)=>{
       if(!append)return nextEmails;
-
       const ids=new Set(current.map((email)=>email.id));
-
       return [
         ...current,
         ...nextEmails.filter((email)=>!ids.has(email.id)),
       ];
     });
-
     setPage(data.page??nextPage);
     setHasMore(data.hasMore??false);
   },[]);
@@ -72,9 +88,7 @@ export function useInboxPage(){
 
   const loadMore=useCallback(async()=>{
     if(loading||syncing||loadingMore||!hasMore)return;
-
     setLoadingMore(true);
-
     try{
       await loadPage(page+1,true);
     }catch(error){
@@ -87,9 +101,10 @@ export function useInboxPage(){
   const sync=useCallback(async()=>{
     setSyncing(true);
     setLoadingMore(false);
-
     try{
-      await syncInbox();
+      const result=await syncInbox();
+      const newEmails=Array.isArray(result?.newEmails)?result.newEmails:[];
+      await notifyNewEmails(newEmails);
       await refresh();
     }catch(error){
       console.error("Inbox sync failed:",error);
@@ -101,14 +116,8 @@ export function useInboxPage(){
 
   const handleScroll=useCallback(()=>{
     const container=scrollContainerRef.current;
-
     if(!container)return;
-
-    const distance=
-      container.scrollHeight-
-      container.scrollTop-
-      container.clientHeight;
-
+    const distance=container.scrollHeight-container.scrollTop-container.clientHeight;
     if(distance<=300)void loadMore();
   },[loadMore]);
 
@@ -119,21 +128,19 @@ export function useInboxPage(){
 
   useEffect(()=>{
     let cancelled=false;
-
     async function initialize(){
       setLoading(true);
       setSyncing(true);
-
       try{
-        await syncInbox();
-
+        const result=await syncInbox();
+        const newEmails=Array.isArray(result?.newEmails)?result.newEmails:[];
         if(!cancelled){
+          await notifyNewEmails(newEmails);
           await loadPage(1);
           scrollToTop();
         }
       }catch(error){
         console.error("Automatic inbox sync failed:",error);
-
         if(!cancelled){
           try{
             await loadPage(1);
@@ -148,9 +155,7 @@ export function useInboxPage(){
         }
       }
     }
-
     void initialize();
-
     return ()=>{
       cancelled=true;
     };

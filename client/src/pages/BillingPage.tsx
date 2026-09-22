@@ -234,7 +234,7 @@ export default function BillingPage() {
                 {plan.description}
               </p>
 
-              <div className="mt-6 space-y-3 text-sm text-(--text-secondary)">
+              <div className="mt-6 flex-1 space-y-3 text-sm text-(--text-secondary)">
                 <p className="font-medium text-(--text-h)">{plan.replies}</p>
 
                 {plan.features.map((feature) => (
