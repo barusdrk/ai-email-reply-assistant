@@ -5,7 +5,7 @@ import { createDraft } from "../services/drafts.js";
 interface DraftJob {
   userId: string;
   emailId: string;
-  provider: "gmail" | "outlook" | "sample";
+  provider: "gmail" | "outlook";
   subject: string;
   customer: string;
   email: string;

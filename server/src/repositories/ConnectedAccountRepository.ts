@@ -1,22 +1,16 @@
-import { Types } from "mongoose";
-import ConnectedAccount, {
-  type ConnectedAccountDocument,
-} from "../models/ConnectedAccount.js";
+import {Types} from "mongoose";
+import ConnectedAccount, {type ConnectedAccountDocument} from "../models/ConnectedAccount.js";
 
 type Provider = "gmail" | "outlook";
 
 function toObjectId(userId: string): Types.ObjectId {
-  if (!Types.ObjectId.isValid(userId)) {
-    throw new Error("Invalid user ID.");
-  }
+  if (!Types.ObjectId.isValid(userId)) throw new Error("Invalid user ID.");
   return new Types.ObjectId(userId);
 }
 
 class ConnectedAccountRepository {
   findAll() {
-    return ConnectedAccount
-      .find()
-      .sort({ createdAt: -1 });
+    return ConnectedAccount.find().sort({createdAt: -1});
   }
 
   findById(id: string) {
@@ -24,31 +18,19 @@ class ConnectedAccountRepository {
   }
 
   findByUser(userId: string) {
-    return ConnectedAccount
-      .find({
-        userId: toObjectId(userId),
-      })
-      .sort({ createdAt: -1 });
+    return ConnectedAccount.find({userId: toObjectId(userId)}).sort({createdAt: -1});
   }
 
   findByProvider(userId: string, provider: Provider) {
-    return ConnectedAccount.findOne({
-      userId: toObjectId(userId),
-      provider,
-    });
+    return ConnectedAccount.findOne({userId: toObjectId(userId), provider});
   }
 
   findOne(userId: string, provider: Provider) {
-    return ConnectedAccount.findOne({
-      userId: toObjectId(userId),
-      provider,
-    });
+    return ConnectedAccount.findOne({userId: toObjectId(userId), provider});
   }
 
   findConnected() {
-    return ConnectedAccount
-      .find({ connected: true })
-      .sort({ lastSyncAt: 1 });
+    return ConnectedAccount.find({connected: true}).sort({lastSyncAt: 1});
   }
 
   create(data: Partial<ConnectedAccountDocument>) {
@@ -57,31 +39,17 @@ class ConnectedAccountRepository {
 
   upsert(data: Partial<ConnectedAccountDocument>) {
     return ConnectedAccount.findOneAndUpdate(
-      {
-        userId: data.userId,
-        provider: data.provider,
-      },
-      {
-        $set: data,
-      },
-      {
-        new: true,
-        upsert: true,
-        runValidators: true,
-      }
+      {userId: data.userId, provider: data.provider},
+      {$set: data},
+      {new: true, upsert: true, runValidators: true}
     );
   }
 
   update(id: string, data: Partial<ConnectedAccountDocument>) {
     return ConnectedAccount.findByIdAndUpdate(
       id,
-      {
-        $set: data,
-      },
-      {
-        new: true,
-        runValidators: true,
-      }
+      {$set: data},
+      {new: true, runValidators: true}
     );
   }
 
@@ -90,18 +58,12 @@ class ConnectedAccountRepository {
   }
 
   remove(userId: string, provider: Provider) {
-    return ConnectedAccount.findOneAndDelete({
-      userId: toObjectId(userId),
-      provider,
-    });
+    return ConnectedAccount.findOneAndDelete({userId: toObjectId(userId), provider});
   }
 
   countByUser(userId: string) {
-    return ConnectedAccount.countDocuments({
-      userId: toObjectId(userId),
-    });
+    return ConnectedAccount.countDocuments({userId: toObjectId(userId)});
   }
 }
 
-export const connectedAccountRepository =
-  new ConnectedAccountRepository();
+export const connectedAccountRepository = new ConnectedAccountRepository();
