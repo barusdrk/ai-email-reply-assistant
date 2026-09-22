@@ -3,7 +3,6 @@ import {
   type Request,
   type Response,
 } from "express";
-import { auth } from "../middleware/auth.js";
 import {
   getSubscription,
   getPlan,
@@ -12,16 +11,12 @@ import {
   changePlan,
   type Plan,
 } from "../services/billing.js";
-import {
-  createCheckoutSession,
-} from "../services/stripe.js";
+import { createCheckoutSession } from "../services/stripe.js";
+import { auth } from "../middleware/auth.js";
 
 const router = Router();
 
-const PAID_PLANS = [
-  "starter",
-  "pro",
-] as const;
+const PAID_PLANS = ["starter", "pro"] as const;
 
 function isPaidPlan(
   plan: string
@@ -45,7 +40,9 @@ router.get(
       }
 
       const subscription =
-        await getSubscription(req.user.id);
+        await getSubscription(
+          req.user.id
+        );
 
       res.json(subscription);
     } catch (error) {
@@ -53,7 +50,7 @@ router.get(
         message:
           error instanceof Error
             ? error.message
-            : "Failed to load subscription.",
+            : "Failed to get subscription.",
       });
     }
   }
@@ -71,7 +68,9 @@ router.get(
       }
 
       const plan =
-        await getPlan(req.user.id);
+        await getPlan(
+          req.user.id
+        );
 
       res.json({ plan });
     } catch (error) {
@@ -79,7 +78,7 @@ router.get(
         message:
           error instanceof Error
             ? error.message
-            : "Failed to load plan.",
+            : "Failed to get plan.",
       });
     }
   }
@@ -97,7 +96,9 @@ router.get(
       }
 
       const provider =
-        await getAIProvider(req.user.id);
+        await getAIProvider(
+          req.user.id
+        );
 
       res.json({ provider });
     } catch (error) {
@@ -105,7 +106,7 @@ router.get(
         message:
           error instanceof Error
             ? error.message
-            : "Failed to load provider.",
+            : "Failed to get AI provider.",
       });
     }
   }
@@ -123,15 +124,19 @@ router.get(
       }
 
       const plan =
-        await getPlan(req.user.id);
+        await getPlan(
+          req.user.id
+        );
 
-      res.json(getPlanLimits(plan));
+      res.json(
+        getPlanLimits(plan)
+      );
     } catch (error) {
       res.status(500).json({
         message:
           error instanceof Error
             ? error.message
-            : "Failed to load limits.",
+            : "Failed to get plan limits.",
       });
     }
   }
@@ -148,12 +153,25 @@ router.post(
         return;
       }
 
-      const plan = req.body.plan as string;
+      if (
+        !req.body ||
+        typeof req.body !== "object"
+      ) {
+        res.status(400).json({
+          message: "Request body is required.",
+        });
+        return;
+      }
+
+      const plan =
+        typeof req.body.plan === "string"
+          ? req.body.plan
+          : "";
 
       if (!isPaidPlan(plan)) {
         res.status(400).json({
           message:
-            "Checkout is only available for Starter and Pro plans.",
+            "Stripe Checkout is only available for Starter and Pro plans.",
         });
         return;
       }
@@ -165,7 +183,10 @@ router.post(
           req.user.email
         );
 
-      res.json(session);
+      res.json({
+        id: session.id,
+        url: session.url,
+      });
     } catch (error) {
       res.status(500).json({
         message:
@@ -188,13 +209,23 @@ router.post(
         return;
       }
 
+      if (
+        !req.body ||
+        typeof req.body !== "object"
+      ) {
+        res.status(400).json({
+          message: "Request body is required.",
+        });
+        return;
+      }
+
       const plan =
         req.body.plan as Plan;
 
       if (plan !== "free") {
         res.status(400).json({
           message:
-            "Use Stripe Checkout to activate a paid plan.",
+            "Only changing to the Free plan is available through this endpoint.",
         });
         return;
       }
@@ -212,6 +243,35 @@ router.post(
           error instanceof Error
             ? error.message
             : "Failed to change plan.",
+      });
+    }
+  }
+);
+
+router.post(
+  "/business-contact",
+  async (req: Request, res: Response) => {
+    try {
+      if (!req.user) {
+        res.status(401).json({
+          message: "Unauthorized",
+        });
+        return;
+      }
+
+      console.log(
+        `Business sales request from ${req.user.email}`
+      );
+
+      res.json({
+        success: true,
+      });
+    } catch (error) {
+      res.status(500).json({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to submit business sales request.",
       });
     }
   }

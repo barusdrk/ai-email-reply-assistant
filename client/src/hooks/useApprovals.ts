@@ -1,52 +1,78 @@
-import { useCallback, useEffect, useState } from "react";
-import type { Draft } from "../types/index.js";
-import { getDrafts, approveDraft, rejectDraft, updateDraft } from "../services/drafts.js";
+import {useCallback,useEffect,useState} from "react";
+import type {Approval} from "../types/approval.js";
+import type {Draft} from "../types/draft.js";
+import {approveApproval,rejectApproval,getApprovals} from "../services/approval.js";
 
-export function useApprovals() {
-  const [approvals, setApprovals] = useState<Draft[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+function getId(value:unknown):string{
+  if(typeof value==="string")return value;
+  if(value&&typeof value==="object"&&"_id" in value){
+    const id=(value as {_id?:unknown})._id;
+    if(typeof id==="string")return id;
+  }
+  return "";
+}
 
-  const loadApprovals = useCallback(async () => {
-    try {
+function getDraft(value:unknown):Draft|null{
+  if(!value||typeof value!=="object")return null;
+  const draft=value as Draft & {_id?:string};
+  const id=draft.id||getId(draft._id);
+  if(!id)return null;
+  return {
+    ...draft,
+    id,
+  };
+}
+
+function normalizeApproval(value:Approval & {_id?:string}):Approval|null{
+  const id=value.id||getId(value._id);
+  const draft=getDraft(value.draft??value.draftId);
+  if(!id||!draft)return null;
+  return {
+    ...value,
+    id,
+    draft,
+    draftId:draft.id,
+  };
+}
+
+export function useApprovals(){
+  const [approvals,setApprovals]=useState<Approval[]>([]);
+  const [loading,setLoading]=useState(false);
+  const [error,setError]=useState("");
+
+  const loadApprovals=useCallback(async()=>{
+    try{
       setLoading(true);
       setError("");
-
-      const [pending, escalated] = await Promise.all([
-        getDrafts("pending"),
-        getDrafts("escalated"),
-      ]);
-
-      setApprovals(
-        [...escalated, ...pending].sort(
-          (a, b) =>
-            new Date(b.createdAt ?? 0).getTime() -
-            new Date(a.createdAt ?? 0).getTime()
-        )
-      );
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Unable to load approvals.");
-    } finally {
+      const data=await getApprovals();
+      const items:Approval[]=Array.isArray(data)?data:data?.approvals??[];
+      const normalized=items
+        .filter((approval)=>approval.status==="pending")
+        .map((approval)=>normalizeApproval(approval as Approval & {_id?:string}))
+        .filter((approval):approval is Approval=>approval!==null)
+        .sort((a,b)=>
+          new Date(b.requestedAt??0).getTime()-
+          new Date(a.requestedAt??0).getTime()
+        );
+      setApprovals(normalized);
+    }catch(error){
+      setError(error instanceof Error?error.message:"Unable to load approvals.");
+    }finally{
       setLoading(false);
     }
-  }, []);
+  },[]);
 
-  useEffect(() => {
+  useEffect(()=>{
     void loadApprovals();
-  }, [loadApprovals]);
+  },[loadApprovals]);
 
-  async function edit(id: string, reply: string) {
-    await updateDraft(id, reply);
+  async function approve(id:string){
+    await approveApproval(id);
     await loadApprovals();
   }
 
-  async function approve(id: string) {
-    await approveDraft(id);
-    await loadApprovals();
-  }
-
-  async function reject(id: string, reason?: string) {
-    await rejectDraft(id, reason);
+  async function reject(id:string,reason?:string){
+    await rejectApproval(id,reason);
     await loadApprovals();
   }
 
@@ -54,9 +80,8 @@ export function useApprovals() {
     approvals,
     loading,
     error,
-    edit,
     approve,
     reject,
-    refresh: loadApprovals,
+    refresh:loadApprovals,
   };
 }

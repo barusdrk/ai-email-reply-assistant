@@ -26,7 +26,6 @@ export default function Drafts() {
 
   async function saveEdit() {
     if (!editingDraft?.id || !editedReply.trim()) return;
-
     try {
       setSaving(true);
       await editDraft(editingDraft.id, editedReply.trim());
@@ -40,7 +39,6 @@ export default function Drafts() {
 
   async function handleSend(draft: Draft) {
     if (!draft.id || draft.status !== "approved") return;
-
     try {
       setSendingDraftId(draft.id);
       await send(draft.id);
@@ -53,7 +51,6 @@ export default function Drafts() {
 
   async function handleSubmit(draft: Draft) {
     if (!draft.id || draft.status !== "rejected") return;
-
     try {
       setSubmittingDraftId(draft.id);
       await submit(draft.id);
@@ -62,6 +59,40 @@ export default function Drafts() {
     } finally {
       setSubmittingDraftId(null);
     }
+  }
+
+  function getStatusMessage(draft: Draft) {
+    if (draft.status === "pending") {
+      return {
+        text: "This draft is waiting for human approval before it can be sent.",
+        className: "border-(--warning) bg-(--warning-bg) text-(--warning-text)",
+      };
+    }
+    if (draft.status === "escalated") {
+      return {
+        text: "This draft requires specialist review before it can be approved or sent.",
+        className: "border-(--danger-text) bg-(--danger-bg) text-(--danger-text)",
+      };
+    }
+    if (draft.status === "rejected") {
+      return {
+        text: "This draft was rejected and can be edited and resubmitted for approval.",
+        className: "border-(--border) bg-(--surface-secondary) text-(--text-secondary)",
+      };
+    }
+    if (draft.status === "approved") {
+      return {
+        text: "This draft has been approved and is ready to send.",
+        className: "border-(--success) bg-(--success-bg) text-(--success-text)",
+      };
+    }
+    if (draft.status === "sent") {
+      return {
+        text: "This draft has been sent.",
+        className: "border-(--border) bg-(--surface-secondary) text-(--text-secondary)",
+      };
+    }
+    return null;
   }
 
   if (loading) {
@@ -77,7 +108,7 @@ export default function Drafts() {
       <div>
         <h1 className="text-3xl font-bold text-(--text-h)">Draft Replies</h1>
         <p className="mt-2 text-(--text-secondary)">
-          AI-generated replies and approved responses.
+          AI-generated replies, human-reviewed responses, and approved messages.
         </p>
       </div>
 
@@ -87,33 +118,40 @@ export default function Drafts() {
         </div>
       ) : (
         <div className="grid gap-6">
-          {drafts.map((draft) => (
-            <div key={draft.id} className="space-y-3">
-              <DraftCard
-                draft={draft}
-                onOpen={() => navigate(`/drafts/${draft.id}`)}
-                onEdit={() => openEdit(draft)}
-                onSend={() => void handleSend(draft)}
-                onDelete={() => void removeDraft(draft.id)}
-                sending={sendingDraftId === draft.id}
-              />
+          {drafts.map((draft) => {
+            const statusMessage = getStatusMessage(draft);
+            return (
+              <div key={draft.id} className="space-y-3">
+                {statusMessage && (
+                  <div className={`rounded-lg border p-4 text-sm ${statusMessage.className}`}>
+                    {statusMessage.text}
+                  </div>
+                )}
 
-              {draft.status === "rejected" && (
-                <div className="flex justify-end">
-                  <button
-                    type="button"
-                    onClick={() => void handleSubmit(draft)}
-                    disabled={submittingDraftId !== null || sendingDraftId !== null}
-                    className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    {submittingDraftId === draft.id
-                      ? "Submitting..."
-                      : "Resubmit for Approval"}
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+                <DraftCard
+                  draft={draft}
+                  onOpen={() => navigate(`/drafts/${draft.id}`)}
+                  onEdit={() => openEdit(draft)}
+                  onSend={() => void handleSend(draft)}
+                  onDelete={() => void removeDraft(draft.id)}
+                  sending={sendingDraftId === draft.id}
+                />
+
+                {draft.status === "rejected" && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleSubmit(draft)}
+                      disabled={submittingDraftId !== null || sendingDraftId !== null}
+                      className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {submittingDraftId === draft.id ? "Submitting..." : "Resubmit for Approval"}
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 
@@ -121,17 +159,13 @@ export default function Drafts() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-2xl rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl">
             <h2 className="text-xl font-bold text-(--text-h)">Edit Draft Reply</h2>
-            <p className="mt-2 text-sm text-(--text-secondary)">
-              {editingDraft.subject}
-            </p>
-
+            <p className="mt-2 text-sm text-(--text-secondary)">{editingDraft.subject}</p>
             <textarea
               value={editedReply}
               onChange={(event) => setEditedReply(event.target.value)}
               disabled={saving}
               className="mt-4 min-h-64 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60"
             />
-
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
@@ -141,7 +175,6 @@ export default function Drafts() {
               >
                 Cancel
               </button>
-
               <button
                 type="button"
                 onClick={() => void saveEdit()}

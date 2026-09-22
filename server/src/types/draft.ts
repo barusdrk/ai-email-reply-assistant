@@ -1,8 +1,12 @@
-export type DraftProvider = "gmail" | "outlook" | "sample";
+export type DraftProvider = "gmail" | "outlook";
 export type DraftTone = "professional" | "friendly" | "formal" | "concise" | "empathetic" | "enthusiastic";
 export type DraftLength = "short" | "medium" | "long";
-export type DraftStatus = "pending" | "approved" | "rejected" | "sent" | "escalated";
+export type DraftStatus = "pending" | "approved" | "rejected" | "sending" | "sent" | "escalated";
 export type ConfidenceLevel = "high" | "medium" | "low";
+export type AutomaticAction = "auto_approve" | "pending" | "escalate" | "blocked";
+export type SupportCategory = "general_support" | "billing" | "technical" | "account" | "sales" | "refund" | "cancellation" | "shipping" | "complaint" | "other";
+export type SupportSentiment = "positive" | "neutral" | "negative" | "urgent";
+export type SupportDecision = "reply" | "human_review" | "reject";
 
 export interface DraftConfidence {
   score: number;
@@ -22,7 +26,18 @@ export interface Draft {
   tone: DraftTone;
   length: DraftLength;
   status: DraftStatus;
+  automaticAction?: AutomaticAction;
+  automaticActionReasons?: string[];
   confidence?: DraftConfidence;
+  supportCategory?: SupportCategory;
+  supportSentiment?: SupportSentiment;
+  supportConfidence?: number;
+  supportDecision?: SupportDecision;
+  supportNeedsHuman?: boolean;
+  supportReason?: string;
+  supportSuggestedActions?: string[];
+  supportMissingInformation?: string[];
+  supportPolicyIssues?: string[];
   escalatedAt?: string;
   escalationReason?: string;
   escalationReasons?: string[];

@@ -1,67 +1,28 @@
-import {
-  getDraft,
-} from "./drafts.js";
+import api from "./api.js";
 
-export async function approveDraft(
-  id: string
-) {
-  const draft =
-    await getDraft(id);
-
-  if (!draft) {
-    return undefined;
-  }
-
-  draft.status =
-    "approved";
-
-  return draft;
+export async function approveApproval(id:string){
+  const response=await api.patch(`/approvals/${id}/approve`);
+  return response.data;
 }
 
-export async function rejectDraft(
-  id: string
-) {
-  const draft =
-    await getDraft(id);
-
-  if (!draft) {
-    return undefined;
-  }
-
-  draft.status =
-    "rejected";
-
-  return draft;
+export async function rejectApproval(id:string,comment?:string){
+  const response=await api.patch(`/approvals/${id}/reject`,{
+    comment:comment?.trim()||undefined,
+  });
+  return response.data;
 }
 
-export async function submitForApproval(
-  id: string
-) {
-  const draft =
-    await getDraft(id);
-
-  if (!draft) {
-    return undefined;
-  }
-
-  draft.status =
-    "pending";
-
-  return draft;
+export async function submitApproval(id:string){
+  const response=await api.patch(`/approvals/${id}/submit`);
+  return response.data;
 }
 
-export async function markSent(
-  id: string
-) {
-  const draft =
-    await getDraft(id);
+export async function getApprovals(){
+  const response=await api.get("/approvals");
+  return response.data;
+}
 
-  if (!draft) {
-    return undefined;
-  }
-
-  draft.status =
-    "sent";
-
-  return draft;
+export async function getApproval(id:string){
+  const response=await api.get(`/approvals/${id}`);
+  return response.data;
 }

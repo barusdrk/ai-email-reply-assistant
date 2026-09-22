@@ -3,11 +3,12 @@ import API from "./api.js";
 export type Plan =
   | "free"
   | "starter"
-  | "pro";
+  | "pro"
+  | "business";
 
 export interface Subscription {
-  id: string;
-  plan: Plan;
+  id:string;
+  plan:Plan;
   status:
     | "active"
     | "cancelled"
@@ -15,53 +16,40 @@ export interface Subscription {
   provider:
     | "none"
     | "stripe";
-  currentPeriodStart?: string;
-  currentPeriodEnd?: string;
+  currentPeriodStart?:string;
+  currentPeriodEnd?:string;
 }
 
 export interface CheckoutSession {
-  id: string;
-  url: string;
+  id:string;
+  url:string;
 }
 
-export async function getSubscription(): Promise<Subscription> {
-  const { data } =
-    await API.get<Subscription>(
-      "/billing/subscription"
-    );
-
+export async function getSubscription():Promise<Subscription>{
+  const {data}=await API.get<Subscription>("/billing/subscription");
   return data;
 }
 
-export async function changePlan(
-  plan: "free"
-): Promise<Subscription> {
-  const { data } =
-    await API.post<Subscription>(
-      "/billing/change-plan",
-      { plan }
-    );
-
+export async function changePlan(plan:"free"):Promise<Subscription>{
+  const {data}=await API.post<Subscription>("/billing/change-plan",{plan});
   return data;
 }
 
-export async function cancelSubscription(): Promise<Subscription> {
-  const { data } =
-    await API.post<Subscription>(
-      "/billing/cancel"
-    );
-
+export async function cancelSubscription():Promise<Subscription>{
+  const {data}=await API.post<Subscription>("/billing/cancel");
   return data;
 }
 
 export async function createCheckout(
-  plan: Exclude<Plan, "free">
-): Promise<CheckoutSession> {
-  const { data } =
-    await API.post<CheckoutSession>(
-      "/billing/checkout",
-      { plan }
-    );
+  plan:"starter"|"pro"
+):Promise<CheckoutSession>{
+  const {data}=await API.post<CheckoutSession>("/billing/checkout",{plan});
+  return data;
+}
 
+export async function requestBusinessSales():Promise<{success:boolean}>{
+  const {data}=await API.post<{success:boolean}>(
+    "/billing/business-contact"
+  );
   return data;
 }

@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { BookOpen, Edit3, Plus, Search, Trash2, X } from "lucide-react";
+import {useEffect,useState} from "react";
+import {BookOpen,Edit3,Plus,Search,Trash2,X} from "lucide-react";
 import {
   createKnowledgeBaseArticle,
   deleteKnowledgeBaseArticle,
@@ -9,164 +9,153 @@ import {
   type KnowledgeBaseArticle,
   type KnowledgeBaseArticleInput,
   type KnowledgeBaseCategory,
-} from "../services/api";
+} from "../services/api.js";
 
-const CATEGORIES: { value: KnowledgeBaseCategory; label: string }[] = [
-  { value: "faq", label: "FAQ" },
-  { value: "product", label: "Product" },
-  { value: "billing", label: "Billing" },
-  { value: "refund", label: "Refund" },
-  { value: "cancellation", label: "Cancellation" },
-  { value: "shipping", label: "Shipping" },
-  { value: "account", label: "Account" },
-  { value: "technical", label: "Technical" },
-  { value: "policy", label: "Policy" },
-  { value: "general", label: "General" },
+const CATEGORIES:{value:KnowledgeBaseCategory;label:string}[]=[
+  {value:"faq",label:"FAQ"},
+  {value:"product",label:"Product"},
+  {value:"billing",label:"Billing"},
+  {value:"refund",label:"Refund"},
+  {value:"cancellation",label:"Cancellation"},
+  {value:"shipping",label:"Shipping"},
+  {value:"account",label:"Account"},
+  {value:"technical",label:"Technical"},
+  {value:"policy",label:"Policy"},
+  {value:"general",label:"General"},
 ];
 
-const EMPTY_FORM: KnowledgeBaseArticleInput = {
-  title: "",
-  content: "",
-  category: "general",
-  tags: [],
-  active: true,
+const EMPTY_FORM:KnowledgeBaseArticleInput={
+  title:"",
+  content:"",
+  category:"general",
+  tags:[],
+  active:true,
 };
 
-export default function KnowledgeBase() {
-  const [articles, setArticles] = useState<KnowledgeBaseArticle[]>([]);
-  const [form, setForm] = useState<KnowledgeBaseArticleInput>(EMPTY_FORM);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+export default function KnowledgeBase(){
+  const [articles,setArticles]=useState<KnowledgeBaseArticle[]>([]);
+  const [form,setForm]=useState<KnowledgeBaseArticleInput>(EMPTY_FORM);
+  const [editingId,setEditingId]=useState<string|null>(null);
+  const [search,setSearch]=useState("");
+  const [loading,setLoading]=useState(true);
+  const [saving,setSaving]=useState(false);
+  const [deletingId,setDeletingId]=useState<string|null>(null);
+  const [error,setError]=useState("");
 
-  async function loadArticles() {
-    try {
+  async function loadArticles(){
+    try{
       setLoading(true);
       setError("");
-      const data = search.trim()
-        ? await searchKnowledgeBase(search.trim())
-        : await getKnowledgeBaseArticles();
+      const data=search.trim()
+        ?await searchKnowledgeBase(search.trim())
+        :await getKnowledgeBaseArticles();
       setArticles(data);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load knowledge base.",
-      );
-    } finally {
+    }catch(err){
+      setError(err instanceof Error?err.message:"Failed to load knowledge base.");
+    }finally{
       setLoading(false);
     }
   }
 
-  useEffect(() => {
-    const timeout = window.setTimeout(() => {
-      loadArticles();
-    }, 300);
-    return () => window.clearTimeout(timeout);
-  }, [search]);
+  useEffect(()=>{
+    const timeout=window.setTimeout(()=>{
+      void loadArticles();
+    },300);
+    return ()=>window.clearTimeout(timeout);
+  },[search]);
 
-  function resetForm() {
-    setForm(EMPTY_FORM);
+  function resetForm(){
+    setForm({...EMPTY_FORM,tags:[]});
     setEditingId(null);
   }
 
-  function startEditing(article: KnowledgeBaseArticle) {
+  function startEditing(article:KnowledgeBaseArticle){
     setEditingId(article._id);
     setForm({
-      title: article.title,
-      content: article.content,
-      category: article.category,
-      tags: article.tags,
-      active: article.active,
+      title:article.title,
+      content:article.content,
+      category:article.category,
+      tags:article.tags,
+      active:article.active,
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    window.scrollTo({top:0,behavior:"smooth"});
   }
 
   function updateField<K extends keyof KnowledgeBaseArticleInput>(
-    field: K,
-    value: KnowledgeBaseArticleInput[K],
-  ) {
-    setForm((current) => ({ ...current, [field]: value }));
+    field:K,
+    value:KnowledgeBaseArticleInput[K],
+  ){
+    setForm((current)=>({...current,[field]:value}));
   }
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event:React.FormEvent<HTMLFormElement>){
     event.preventDefault();
-    if (!form.title.trim() || !form.content.trim()) {
+
+    if(!form.title.trim()||!form.content.trim()){
       setError("Title and content are required.");
       return;
     }
 
-    try {
+    try{
       setSaving(true);
       setError("");
 
-      const payload: KnowledgeBaseArticleInput = {
-        title: form.title.trim(),
-        content: form.content.trim(),
-        category: form.category,
-        tags: form.tags ?? [],
-        active: form.active ?? true,
+      const payload:KnowledgeBaseArticleInput={
+        title:form.title.trim(),
+        content:form.content.trim(),
+        category:form.category,
+        tags:form.tags??[],
+        active:form.active??true,
       };
 
-      if (editingId) {
-        await updateKnowledgeBaseArticle(editingId, payload);
-      } else {
+      if(editingId){
+        await updateKnowledgeBaseArticle(editingId,payload);
+      }else{
         await createKnowledgeBaseArticle(payload);
       }
 
       resetForm();
       await loadArticles();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to save knowledge base article.",
-      );
-    } finally {
+    }catch(err){
+      setError(err instanceof Error?err.message:"Failed to save knowledge base article.");
+    }finally{
       setSaving(false);
     }
   }
 
-  async function handleDelete(id: string) {
-    if (!window.confirm("Delete this knowledge base article?")) return;
+  async function handleDelete(id:string){
+    if(!window.confirm("Delete this knowledge base article?"))return;
 
-    try {
+    try{
       setDeletingId(id);
       setError("");
       await deleteKnowledgeBaseArticle(id);
 
-      if (editingId === id) resetForm();
+      if(editingId===id)resetForm();
 
       await loadArticles();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Failed to delete knowledge base article.",
-      );
-    } finally {
+    }catch(err){
+      setError(err instanceof Error?err.message:"Failed to delete knowledge base article.");
+    }finally{
       setDeletingId(null);
     }
   }
 
-  async function handleToggleActive(article: KnowledgeBaseArticle) {
-    try {
+  async function handleToggleActive(article:KnowledgeBaseArticle){
+    try{
       setError("");
 
-      await updateKnowledgeBaseArticle(article._id, {
-        title: article.title,
-        content: article.content,
-        category: article.category,
-        tags: article.tags,
-        active: !article.active,
+      await updateKnowledgeBaseArticle(article._id,{
+        title:article.title,
+        content:article.content,
+        category:article.category,
+        tags:article.tags,
+        active:!article.active,
       });
 
       await loadArticles();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update article status.",
-      );
+    }catch(err){
+      setError(err instanceof Error?err.message:"Failed to update article status.");
     }
   }
 
