@@ -1,29 +1,23 @@
-import {Schema,model,type InferSchemaType,type HydratedDocument} from "mongoose";
+import {Schema,model,type InferSchemaType,type HydratedDocument,Types} from "mongoose";
 
 export const DRAFT_TONES=["professional","friendly","formal","concise","empathetic","enthusiastic"] as const;
 export type DraftTone=(typeof DRAFT_TONES)[number];
-
 export const DRAFT_LENGTHS=["short","medium","long"] as const;
 export type DraftLength=(typeof DRAFT_LENGTHS)[number];
-
 export const DRAFT_STATUSES=["pending","approved","rejected","sent","escalated"] as const;
 export type DraftStatus=(typeof DRAFT_STATUSES)[number];
-
 export const DRAFT_PROVIDERS=["gmail","outlook"] as const;
 export type DraftProvider=(typeof DRAFT_PROVIDERS)[number];
-
 export const CONFIDENCE_LEVELS=["high","medium","low"] as const;
 export type ConfidenceLevel=(typeof CONFIDENCE_LEVELS)[number];
-
 export const AUTOMATIC_ACTIONS=["auto_approve","pending","escalate","blocked"] as const;
 export type AutomaticAction=(typeof AUTOMATIC_ACTIONS)[number];
-
+export const AUTOMATIC_SEND_PHASES=["idle","claimed","sending","completed","failed","recovery_required"] as const;
+export type AutomaticSendPhase=(typeof AUTOMATIC_SEND_PHASES)[number];
 export const SUPPORT_CATEGORIES=["general_support","billing","technical","account","sales","refund","cancellation","shipping","complaint","other"] as const;
 export type SupportCategory=(typeof SUPPORT_CATEGORIES)[number];
-
 export const SUPPORT_SENTIMENTS=["positive","neutral","negative","urgent"] as const;
 export type SupportSentiment=(typeof SUPPORT_SENTIMENTS)[number];
-
 export const SUPPORT_DECISIONS=["reply","human_review","reject"] as const;
 export type SupportDecision=(typeof SUPPORT_DECISIONS)[number];
 
@@ -40,6 +34,13 @@ const draftSchema=new Schema({
   automaticAction:{type:String,enum:AUTOMATIC_ACTIONS,default:"pending",index:true},
   automaticActionReasons:{type:[String],default:[]},
   automaticSendInProgress:{type:Boolean,default:false,index:true},
+  automaticSendPhase:{type:String,enum:AUTOMATIC_SEND_PHASES,default:"idle",index:true},
+  automaticSendAttempts:{type:Number,default:0,min:0},
+  automaticSendClaimedAt:Date,
+  automaticSendStartedAt:Date,
+  automaticSendLastAttemptAt:Date,
+  automaticSendLastError:{type:String,default:""},
+  automaticSendRecoveryRequired:{type:Boolean,default:false,index:true},
   confidence:{
     score:{type:Number,min:0,max:100,default:null},
     level:{type:String,enum:CONFIDENCE_LEVELS,default:null},
@@ -65,8 +66,14 @@ const draftSchema=new Schema({
 draftSchema.index({userId:1,status:1});
 draftSchema.index({userId:1,createdAt:-1});
 draftSchema.index({userId:1,automaticAction:1});
+draftSchema.index({automaticSendInProgress:1,automaticSendClaimedAt:1});
+draftSchema.index({automaticSendRecoveryRequired:1,createdAt:-1});
 
-export type Draft=InferSchemaType<typeof draftSchema>;
+export type Draft=InferSchemaType<typeof draftSchema>&{
+  _id:Types.ObjectId;
+  createdAt:Date;
+  updatedAt:Date;
+};
 export type DraftDocument=HydratedDocument<Draft>;
 
 export default model<Draft>("Draft",draftSchema);

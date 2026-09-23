@@ -125,6 +125,14 @@ export interface KnowledgeBaseArticleInput{
   active:boolean;
 }
 
+export interface PolicyCheckResult{
+  compliant:boolean;
+  score:number;
+  violations:string[];
+  warnings:string[];
+  suggestions:string[];
+}
+
 export async function getDashboardStats():Promise<DashboardStats>{
   const response=await API.get<{success:boolean;stats:DashboardStats}>("/dashboard");
   return response.data.stats;

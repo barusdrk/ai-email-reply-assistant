@@ -7,6 +7,10 @@ vi.mock("../repositories/DraftRepository.js", () => ({
   },
 }));
 
+vi.mock("../services/audit.js", () => ({
+  audit: vi.fn(),
+}));
+
 vi.mock("../services/draftSupport.js", () => ({
   analyzeDraftSupport: vi.fn(),
   evaluateDraftPolicy: vi.fn(),

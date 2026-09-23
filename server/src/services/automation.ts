@@ -7,7 +7,7 @@ import type {ConfidenceScore} from "../ai/types.js";
 import {checkReplyPolicy,type PolicyCheckResult} from "./policyChecker.js";
 import {determineEscalation} from "./escalation.js";
 
-export interface AutomationInput {
+export interface AutomationInput{
   userId:string;
   draftId:string;
   customerEmail?:string;
@@ -19,7 +19,7 @@ export interface AutomationInput {
   }[];
 }
 
-export interface AutomationResult {
+export interface AutomationResult{
   draftId:string;
   action:AutomaticAction;
   status:"approved"|"pending"|"escalated"|"blocked";
@@ -28,29 +28,28 @@ export interface AutomationResult {
   reasons:string[];
 }
 
-function toStatus(action:AutomaticAction):AutomationResult["status"] {
-  if(action==="auto_approve") return "approved";
-  if(action==="pending") return "pending";
-  if(action==="escalate") return "escalated";
+function toStatus(action:AutomaticAction):AutomationResult["status"]{
+  if(action==="auto_approve")return "approved";
+  if(action==="pending")return "pending";
+  if(action==="escalate")return "escalated";
   return "blocked";
 }
 
-function uniqueReasons(reasons:string[]):string[] {
+function uniqueReasons(reasons:string[]):string[]{
   return [...new Set(reasons.map((reason)=>reason.trim()).filter(Boolean))].slice(0,10);
 }
 
-export async function evaluateDraftAutomation(input:AutomationInput):Promise<AutomationResult|null> {
-  if(!Types.ObjectId.isValid(input.userId)) throw new Error("Invalid user ID.");
-  if(!Types.ObjectId.isValid(input.draftId)) throw new Error("Invalid draft ID.");
+export async function evaluateDraftAutomation(input:AutomationInput):Promise<AutomationResult|null>{
+  if(!Types.ObjectId.isValid(input.userId))throw new Error("Invalid user ID.");
+  if(!Types.ObjectId.isValid(input.draftId))throw new Error("Invalid draft ID.");
 
   const draft=await draftRepository.findById(input.draftId);
-  if(!draft) return null;
+  if(!draft)return null;
+  if(draft.userId.toString()!==input.userId)throw new Error("Unauthorized.");
+  if(draft.status==="sent")throw new Error("Sent drafts cannot be evaluated for automatic handling.");
 
-  if(draft.userId.toString()!==input.userId) throw new Error("Unauthorized.");
-  if(draft.status==="sent") throw new Error("Sent drafts cannot be evaluated for automatic handling.");
-
-  const customerEmail=(input.customerEmail?.trim()||draft.customer.trim());
-  if(!customerEmail) throw new Error("Customer email is required for automatic handling.");
+  const customerEmail=input.customerEmail?.trim()||draft.customer.trim();
+  if(!customerEmail)throw new Error("Customer email is required for automatic handling.");
 
   const confidence=await scoreReplyConfidence({
     email:customerEmail,
@@ -115,7 +114,11 @@ export async function evaluateDraftAutomation(input:AutomationInput):Promise<Aut
   await draftRepository.update(input.draftId,updateData);
 
   if(action==="pending"||action==="escalate"){
-    const existingApproval=await approvalRepository.findPendingByDraft(input.draftId);
+    const existingApproval=await approvalRepository.findPendingByDraft(
+      input.draftId,
+      input.userId,
+    );
+
     if(!existingApproval){
       await approvalRepository.create({
         draftId:draft._id,
@@ -128,7 +131,7 @@ export async function evaluateDraftAutomation(input:AutomationInput):Promise<Aut
     }
   }
 
-  return {
+  return{
     draftId:input.draftId,
     action,
     status,

@@ -7,6 +7,7 @@ import {analyzeDraftSupport,applySupportDecision,evaluateDraftPolicy,scoreDraftC
 import {requestApproval} from "./approval.js";
 import {approveDraft,rejectDraft,submitDraft as submitDraftService} from "./draftApproval.js";
 import {sendDraft} from "./draftSending.js";
+import {sendAutomatically} from "./automaticSend.js";
 import {isValidObjectId} from "./draftValidation.js";
 import type {CreateDraftData,DraftStatus,UpdateDraftData} from "./draftTypes.js";
 
@@ -40,12 +41,17 @@ export function draft(id:string){
 export async function createDraft(data:CreateDraftData){
   if(!isValidObjectId(data.userId))throw new Error("Invalid user ID.");
   if(!isValidObjectId(data.emailId))throw new Error("Invalid source email ID.");
+
   const tone=data.tone??"professional";
   const length=data.length??"medium";
   const customer=data.customer.trim();
+
   if(!customer)throw new Error("Customer information is required.");
+
   const support=await analyzeDraftSupport(data.userId,data.emailId,customer,tone,length);
+
   let reply=data.reply?.trim()||support.supportResult.reply.trim();
+
   if(!reply){
     reply=await generateReply({
       userId:data.userId,
@@ -61,16 +67,21 @@ export async function createDraft(data:CreateDraftData){
       })),
     });
   }
+
   reply=reply.trim();
+
   if(!reply)throw new Error("AI generated an empty reply.");
+
   const confidence=await scoreDraftConfidence(data.userId,support.customerEmailBody,reply,support.knowledgeBase);
   const policy=await evaluateDraftPolicy(data.userId,support.customerEmailBody,reply,support.knowledgeBase);
   const automaticAction=applySupportDecision(
     determineAutomaticAction(support.customerEmailBody,confidence,policy),
     support.supportResult,
   );
+
   const supportCategory=normalizeSupportCategory(support.supportResult.category);
   const policyIssues=[...support.supportResult.policyIssues,...policy.violations].filter(Boolean);
+
   const createdDraft=await draftRepository.create({
     userId:toObjectId(data.userId),
     emailId:toObjectId(data.emailId),
@@ -99,33 +110,52 @@ export async function createDraft(data:CreateDraftData){
     approvedAt:automaticAction.action==="auto_approve"?new Date():undefined,
     rejectionReason:automaticAction.action==="blocked"?automaticAction.reasons.join(" "):undefined,
   });
+
   await emailRepository.update(data.emailId,{draftId:createdDraft._id});
+
+  if(automaticAction.action==="auto_approve"){
+    try{
+      await sendAutomatically(data.userId,createdDraft._id.toString());
+    }catch(error){
+      console.error("Automatic draft sending failed:",error);
+    }
+    return (await draftRepository.findById(createdDraft._id.toString()))??createdDraft;
+  }
+
   if(automaticAction.action==="pending"||automaticAction.action==="escalate"){
     await requestApproval(createdDraft._id.toString(),data.userId);
   }
+
   return createdDraft;
 }
 
 export async function updateDraft(id:string,data:UpdateDraftData){
   const savedDraft=await draftRepository.findById(id);
   if(!savedDraft)return null;
+
   if(savedDraft.status==="sent")throw new Error("Sent drafts cannot be edited.");
   if(data.reply===undefined)return draftRepository.update(id,data);
+
   const userId=savedDraft.userId.toString();
   const emailId=savedDraft.emailId.toString();
   const tone=data.tone??savedDraft.tone;
   const length=data.length??savedDraft.length;
   const reply=data.reply.trim();
+
   if(!reply)throw new Error("A reply is required.");
+
   const support=await analyzeDraftSupport(userId,emailId,savedDraft.customer,tone,length);
   const confidence=await scoreDraftConfidence(userId,support.customerEmailBody,reply,support.knowledgeBase);
   const policy=await evaluateDraftPolicy(userId,support.customerEmailBody,reply,support.knowledgeBase);
+
   const automaticAction=applySupportDecision(
     determineAutomaticAction(support.customerEmailBody,confidence,policy),
     support.supportResult,
   );
+
   const supportCategory=normalizeSupportCategory(support.supportResult.category);
   const policyIssues=[...support.supportResult.policyIssues,...policy.violations].filter(Boolean);
+
   const updatedDraft=await draftRepository.update(id,{
     ...data,
     reply,
@@ -149,10 +179,23 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     escalationReasons:automaticAction.action==="escalate"?automaticAction.reasons:[],
     approvedAt:automaticAction.action==="auto_approve"?new Date():undefined,
     rejectionReason:automaticAction.action==="blocked"?automaticAction.reasons.join(" "):undefined,
+    automaticSendInProgress:false,
   });
-  if(updatedDraft&&(automaticAction.action==="pending"||automaticAction.action==="escalate")){
+
+  if(!updatedDraft)return null;
+
+  if(automaticAction.action==="auto_approve"){
+    try{
+      await sendAutomatically(userId,updatedDraft._id.toString());
+    }catch(error){
+      console.error("Automatic draft sending failed:",error);
+    }
+  }
+
+  if(automaticAction.action==="pending"||automaticAction.action==="escalate"){
     await requestApproval(updatedDraft._id.toString(),userId);
   }
+
   return updatedDraft;
 }
 
