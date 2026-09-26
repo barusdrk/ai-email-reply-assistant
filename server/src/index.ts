@@ -24,6 +24,7 @@ import supportRoutes from "./routes/support.js";
 import crmRoutes from "./routes/crm.js";
 import automaticActionRoutes from "./routes/automaticActions.js";
 import {recoverStaleAutomaticSends} from "./services/automaticSendRecovery.js";
+import analyticsRoutes from "./routes/analytics.js";
 
 dotenv.config();
 
@@ -82,35 +83,21 @@ app.use("/api/knowledge-base",knowledgeBaseRoutes);
 app.use("/api/support",supportRoutes);
 app.use("/api/crm",crmRoutes);
 app.use("/api/automation",automaticActionRoutes);
+app.use("/api/analytics",analyticsRoutes);
 
 const PORT=Number(process.env.PORT??3001);
 
 async function start(){
   try{
     await connectDatabase();
-    const recoveryResult=await recoverStaleAutomaticSends();
-    if(recoveryResult.scanned>0){
-      console.log(
-        `Automatic-send recovery: scanned=${recoveryResult.scanned}, released=${recoveryResult.released}, humanReview=${recoveryResult.requiresHumanReview}, errors=${recoveryResult.errors}`,
-      );
-    }
-
-    const recoveryInterval=setInterval(()=>{
-      void recoverStaleAutomaticSends().then((result)=>{
-        if(result.scanned>0){
-          console.log(
-            `Automatic-send recovery: scanned=${result.scanned}, released=${result.released}, humanReview=${result.requiresHumanReview}, errors=${result.errors}`,
-          );
-        }
-      }).catch((error)=>{
-        console.error("Automatic-send recovery sweep failed:",error);
-      });
-    },5*60*1000);
-
-    recoveryInterval.unref();
-
-    server.listen(PORT,()=>{
+    await runAutomaticSendRecovery();
+    const recoveryInterval=setInterval(() => {
+      void runAutomaticSendRecovery();
+    },AUTOMATIC_SEND_RECOVERY_INTERVAL_MS);
+    recoveryInterval.unref?.();
+    server.listen(PORT,() => {
       console.log(`Server running on port ${PORT}`);
+      console.log("Automatic-send recovery scheduled every 5 minutes.");
     });
   }catch(error){
     console.error("Failed to start server.");
@@ -120,3 +107,14 @@ async function start(){
 }
 
 void start();
+
+const AUTOMATIC_SEND_RECOVERY_INTERVAL_MS=5*60*1000;
+
+async function runAutomaticSendRecovery(){
+  try{
+    const result=await recoverStaleAutomaticSends();
+    console.log("Automatic-send recovery completed:",result);
+  }catch(error){
+    console.error("Automatic-send recovery failed:",error);
+  }
+}

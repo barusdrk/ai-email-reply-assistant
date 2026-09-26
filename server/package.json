@@ -8,6 +8,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:support-processing-worker": "node dist/workers/supportProcessingWorker.js",
+    "migrate:email-support-processing": "tsx src/migrations/20260925_add_email_support_processing.ts",
     "backfill:knowledge-base": "tsx src/scripts/backfillKnowledgeBaseEmbeddings.ts",
     "test": "vitest run --config vitest.config.ts",
     "test:watch": "vitest --config vitest.config.ts"

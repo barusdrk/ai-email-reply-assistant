@@ -86,17 +86,45 @@ describe("knowledgeBase", () => {
     expect(knowledgeBaseRepository.findById).not.toHaveBeenCalled();
   });
 
-  it("uses semantic search for company knowledge", async () => {
-    const articles = [createArticle()];
-    vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(articles as never);
+it("uses semantic and keyword search for company knowledge",async()=>{
+  const articles=[createArticle()];
 
-    const result = await searchKnowledgeBase(userId, "How can I request a refund?");
+  vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(
+    articles as never,
+  );
 
-    expect(result).toEqual(articles);
-    expect(generateEmbedding).toHaveBeenCalledWith("How can I request a refund?");
-    expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(userId, [0.1, 0.2, 0.3], 5);
-    expect(knowledgeBaseRepository.search).not.toHaveBeenCalled();
-  });
+  vi.mocked(knowledgeBaseRepository.search).mockImplementation(
+    ((_userId:string,term:string)=>{
+      if(term==="request"||term==="refund"){
+        return Promise.resolve(articles);
+      }
+      return Promise.resolve([]);
+    }) as never,
+  );
+
+  const result=await searchKnowledgeBase(
+    userId,
+    "How can I request a refund?",
+  );
+
+  expect(result).toEqual(articles);
+  expect(generateEmbedding).toHaveBeenCalledWith(
+    "How can I request a refund?",
+  );
+  expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(
+    userId,
+    [0.1,0.2,0.3],
+    5,
+  );
+  expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(
+    userId,
+    "request",
+  );
+  expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(
+    userId,
+    "refund",
+  );
+});
 
   it("falls back to keyword search when semantic search fails", async () => {
     const articles = [createArticle()];

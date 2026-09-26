@@ -41,44 +41,57 @@ function extractJson(text: string): PolicyCheckResult {
   };
 }
 
-function detectDeterministicPolicyIssues(email: string, reply: string): PolicyCheckResult {
-  const text = `${email}\n${reply}`.toLowerCase();
-  const violations: string[] = [];
-  const warnings: string[] = [];
-  const suggestions: string[] = [];
+function detectDeterministicPolicyIssues(email:string,reply:string):PolicyCheckResult{
+  const customerText=email.toLowerCase();
+  const replyText=reply.toLowerCase();
+  const violations:string[]=[];
+  const warnings:string[]=[];
+  const suggestions:string[]=[];
 
-  const sensitiveRules = [
+  const sensitiveRules=[
     {
-      patterns: ["chargeback", "payment dispute", "dispute this payment"],
-      reason: "Chargeback or payment dispute requires human review.",
+      patterns:["chargeback","payment dispute","dispute this payment"],
+      reason:"Chargeback or payment dispute requires human review.",
     },
     {
-      patterns: ["lawsuit", "legal action", "my lawyer", "attorney", "legal dispute"],
-      reason: "Legal issue requires human review.",
+      patterns:["lawsuit","legal action","my lawyer","attorney","legal dispute"],
+      reason:"Legal issue requires human review.",
     },
     {
-      patterns: ["hacked", "account compromised", "security breach", "someone accessed my account"],
-      reason: "Account security issue requires human review.",
+      patterns:["hacked","account compromised","security breach","someone accessed my account"],
+      reason:"Account security issue requires human review.",
     },
     {
-      patterns: ["personal data", "delete my data", "privacy request", "gdpr", "data protection"],
-      reason: "Privacy or personal-data request requires human review.",
+      patterns:["personal data","delete my data","privacy request","gdpr","data protection"],
+      reason:"Privacy or personal-data request requires human review.",
     },
   ];
 
-  for (const rule of sensitiveRules) {
-    if (rule.patterns.some((pattern) => text.includes(pattern))) warnings.push(rule.reason);
+  for(const rule of sensitiveRules){
+    if(rule.patterns.some((pattern)=>customerText.includes(pattern))){
+      warnings.push(rule.reason);
+    }
   }
 
-  if (/\b(refund|money back|reimburse)\b/i.test(text)) warnings.push("Refund request requires policy verification before automatic handling.");
-  if (/\b(cancel|cancellation|terminate subscription)\b/i.test(text)) warnings.push("Cancellation request requires policy verification before automatic handling.");
-  if (/\b(password|login|log in|sign in|access my account)\b/i.test(text)) warnings.push("Account access request requires careful verification before automatic handling.");
+  if(/\b(refund|money back|reimburse)\b/i.test(customerText)){
+    warnings.push("Refund request requires policy verification before automatic handling.");
+  }
 
-  if (warnings.length > 0) suggestions.push("Route the conversation to human review before sending an automatic response.");
+  if(/\b(cancel|cancellation|terminate subscription)\b/i.test(customerText)){
+    warnings.push("Cancellation request requires policy verification before automatic handling.");
+  }
 
-  return {
-    compliant: true,
-    score: warnings.length > 0 ? 75 : 100,
+  if(/\b(password|forgot password|reset password|cannot log in|can't log in|unable to log in|cannot sign in|can't sign in|unable to sign in|account access|locked out)\b/i.test(customerText)){
+    warnings.push("Account access request requires careful verification before automatic handling.");
+  }
+
+  if(warnings.length>0){
+    suggestions.push("Route the conversation to human review before sending an automatic response.");
+  }
+
+  return{
+    compliant:true,
+    score:warnings.length>0?75:100,
     violations,
     warnings,
     suggestions,

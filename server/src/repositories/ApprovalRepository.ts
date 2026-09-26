@@ -15,7 +15,9 @@ class ApprovalRepository{
 
   findById(id:string){
     if(!Types.ObjectId.isValid(id))return null;
-    return ApprovalModel.findById(id).populate("draftId").populate("emailId");
+    return ApprovalModel.findById(id)
+      .populate("draftId")
+      .populate("emailId");
   }
 
   findByIdForReviewer(id:string,reviewerId:string){
@@ -51,7 +53,11 @@ class ApprovalRepository{
 
   update(id:string,data:Partial<ApprovalDocument>){
     if(!Types.ObjectId.isValid(id))return null;
-    return ApprovalModel.findByIdAndUpdate(id,{$set:data},{new:true})
+    return ApprovalModel.findByIdAndUpdate(
+      id,
+      {$set:data},
+      {new:true},
+    )
       .populate("draftId")
       .populate("emailId");
   }

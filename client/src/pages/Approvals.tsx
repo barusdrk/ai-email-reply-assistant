@@ -160,19 +160,6 @@ export default function Approvals() {
                   disabled={actionInProgress}
                   approving={approvingId === approval.id}
                 />
-
-                {escalated && (
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={() => void handleResubmit(approval.id)}
-                      disabled={actionInProgress}
-                      className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {resubmittingId === approval.id ? "Resubmitting..." : "Mark Reviewed & Resubmit"}
-                    </button>
-                  </div>
-                )}
               </div>
             );
           })}

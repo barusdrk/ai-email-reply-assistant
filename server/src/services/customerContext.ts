@@ -1,5 +1,6 @@
 import type {CustomerContext} from "./supportEngine.js";
-import {searchContactByEmail} from "./hubspot.js";
+import {customerRepository} from "../repositories/CustomerRepository.js";
+import {syncCustomerFromCrm} from "./crmSync.js";
 
 export type CustomerContextInput={
   email?:string|null;
@@ -102,60 +103,69 @@ export function getCustomerContext(input:CustomerContextInput):CustomerContext{
   return buildCustomerContext(input);
 }
 
-export async function getHubSpotCustomerContext(
+export async function getCrmCustomerContext(
   userId:string,
   email:string
 ):Promise<Partial<CustomerContext>>{
   const normalizedEmail=normalizeEmail(email);
   if(!normalizedEmail||!normalizedEmail.includes("@"))return {};
+  try{
+    const syncResult=await syncCustomerFromCrm(userId,normalizedEmail);
+    if(!syncResult)return {};
+    const customer=await customerRepository.findById(syncResult.customerId,userId);
+    if(!customer)return {};
+    const context=buildCustomerContextFromCustomer(customer);
+    const metadata={
+      ...(context.metadata??{}),
+      customerId:String(customer._id),
+      ...(customer.crmProvider?{crmProvider:customer.crmProvider}:{}),
+      ...(customer.crmId?{crmId:customer.crmId}:{}),
+      crmSynced:syncResult.synced,
+      crmConnected:syncResult.connected,
+    };
+    return {
+      ...context,
+      email:context.email??normalizedEmail,
+      metadata,
+    };
+  }catch(error){
+    console.error("CRM customer context enrichment failed:",{
+      userId,
+      email:normalizedEmail,
+      error,
+    });
+    return {};
+  }
+}
 
-  const contact=await searchContactByEmail(userId,normalizedEmail);
-  if(!contact)return {};
-
-  const properties=contact.properties??{};
-  const firstName=normalizeText(properties.firstname);
-  const lastName=normalizeText(properties.lastname);
-  const name=[firstName,lastName].filter(Boolean).join(" ");
-
-  const metadata:Record<string,unknown>={
-    crmProvider:"hubspot",
-    hubspotContactId:contact.id,
-    hubspotEmail:properties.email??normalizedEmail,
-    hubspotFirstName:firstName||null,
-    hubspotLastName:lastName||null,
-    hubspotCompany:properties.company??null,
-    hubspotPhone:properties.phone??null,
-    hubspotCreatedAt:properties.createdate??null,
-    hubspotUpdatedAt:properties.lastmodifieddate??null,
-    ...(typeof contact.url==="string"?{hubspotUrl:contact.url}:{}),
-  };
-
-  return {
-    email:typeof properties.email==="string"
-      ?normalizeEmail(properties.email)
-      :normalizedEmail,
-    ...(name?{name}:{}),
-    metadata,
-  };
+export async function enrichCustomerContextWithCrm(
+  userId:string,
+  context:CustomerContext
+):Promise<CustomerContext>{
+  if(!context.email)return context;
+  try{
+    const crmContext=await getCrmCustomerContext(userId,context.email);
+    if(!crmContext.email&&!crmContext.name&&!crmContext.metadata)return context;
+    const merged=mergeCustomerContext(context,crmContext);
+    if(context.name)merged.name=context.name;
+    if(context.email)merged.email=context.email;
+    return merged;
+  }catch(error){
+    console.error("CRM customer context enrichment failed:",error);
+    return context;
+  }
 }
 
 export async function enrichCustomerContextWithHubSpot(
   userId:string,
   context:CustomerContext
 ):Promise<CustomerContext>{
-  if(!context.email)return context;
+  return enrichCustomerContextWithCrm(userId,context);
+}
 
-  try{
-    const hubSpotContext=await getHubSpotCustomerContext(userId,context.email);
-    if(!hubSpotContext.email&&!hubSpotContext.name&&!hubSpotContext.metadata)return context;
-
-    const merged=mergeCustomerContext(context,hubSpotContext);
-
-    if(context.name)merged.name=context.name;
-
-    return merged;
-  }catch(error){
-    console.error("HubSpot customer context enrichment failed:",error);
-    return context;
-  }
+export async function getHubSpotCustomerContext(
+  userId:string,
+  email:string
+):Promise<Partial<CustomerContext>>{
+  return getCrmCustomerContext(userId,email);
 }

@@ -1,6 +1,6 @@
 import {searchKnowledgeBase} from "./knowledgeBase.js";
 import {getCompanyPolicies} from "./companyPolicies.js";
-import {buildCustomerContext,buildCustomerContextFromCustomer,getCustomerContextFromEmail,mergeCustomerContext,enrichCustomerContextWithHubSpot} from "./customerContext.js";
+import {buildCustomerContext,buildCustomerContextFromCustomer,getCustomerContextFromEmail,mergeCustomerContext,enrichCustomerContextWithCrm} from "./customerContext.js";
 import {customerRepository} from "../repositories/CustomerRepository.js";
 import {scoreReplyConfidence} from "./confidenceScoring.js";
 import {checkReplyPolicy,type PolicyCheckResult} from "./policyChecker.js";
@@ -29,7 +29,7 @@ export async function getDraftSupportContext(userId:string,emailId:string){
     :null;
   const persistedCustomerContext=buildCustomerContextFromCustomer(persistedCustomer);
   let customerContext=mergeCustomerContext(persistedCustomerContext,emailCustomerContext);
-  customerContext=await enrichCustomerContextWithHubSpot(userId,customerContext);
+  customerContext=await enrichCustomerContextWithCrm(userId,customerContext);
   return {
     sourceEmail,
     customerEmailBody,
@@ -54,7 +54,7 @@ export async function analyzeDraftSupport(
   const suppliedCustomerContext=buildCustomerContext({email:customerEmail});
   if(suppliedCustomerContext.email&&suppliedCustomerContext.email!==customerContext.email){
     customerContext=mergeCustomerContext(customerContext,suppliedCustomerContext);
-    customerContext=await enrichCustomerContextWithHubSpot(userId,customerContext);
+    customerContext=await enrichCustomerContextWithCrm(userId,customerContext);
   }else{
     customerContext=mergeCustomerContext(customerContext,suppliedCustomerContext);
   }

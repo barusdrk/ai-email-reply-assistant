@@ -2,6 +2,7 @@ import {Schema,model,type InferSchemaType} from "mongoose";
 
 const emailCategories=["refund","cancellation","billing","account","technical","shipping","product","feature_request","complaint","other"] as const;
 const emailDirections=["inbound","outbound"] as const;
+const supportProcessingStatuses=["pending","processing","completed","failed"] as const;
 
 const emailSchema=new Schema(
   {
@@ -26,11 +27,33 @@ const emailSchema=new Schema(
       category:{type:String,enum:emailCategories,default:"other"},
       confidence:{type:Number,default:0,min:0,max:1},
     },
+    supportProcessingStatus:{
+      type:String,
+      enum:supportProcessingStatuses,
+      default:"pending",
+    },
+    supportProcessingError:{
+      type:String,
+      default:"",
+    },
+    supportProcessingAttempts:{
+      type:Number,
+      default:0,
+      min:0,
+    },
+    supportProcessingStartedAt:{
+      type:Date,
+      default:null,
+    },
+    supportProcessedAt:{
+      type:Date,
+      default:null,
+    },
     unread:{type:Boolean,default:true},
     archived:{type:Boolean,default:false},
     receivedAt:{type:Date,default:Date.now},
   },
-  {timestamps:true}
+  {timestamps:true},
 );
 
 emailSchema.index({userId:1,provider:1,messageId:1},{unique:true});
@@ -39,6 +62,7 @@ emailSchema.index({userId:1,receivedAt:-1});
 emailSchema.index({userId:1,threadId:1});
 emailSchema.index({userId:1,customerId:1});
 emailSchema.index({userId:1,draftId:1});
+emailSchema.index({userId:1,supportProcessingStatus:1,receivedAt:-1});
 
 export type EmailDocument=InferSchemaType<typeof emailSchema>;
 export const EmailModel=model("Email",emailSchema);

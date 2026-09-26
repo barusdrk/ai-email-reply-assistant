@@ -2,6 +2,7 @@ import {google} from "googleapis";
 import {Types} from "mongoose";
 import crypto from "crypto";
 import ConnectedAccountModel from "../models/ConnectedAccount.js";
+import EmailModel from "../models/Email.js";
 
 const GMAIL_SCOPES=[
   "https://www.googleapis.com/auth/gmail.readonly",
@@ -11,6 +12,8 @@ const GMAIL_SCOPES=[
 ];
 const GOOGLE_TOKEN_URL="https://oauth2.googleapis.com/token";
 const GMAIL_OAUTH_STATE_MAX_AGE=10*60*1000;
+const MAX_SYNC_MESSAGES=100;
+const GMAIL_PAGE_SIZE=50;
 
 export interface GoogleOAuthTokens{
   access_token:string;
@@ -133,7 +136,7 @@ export function verifyGmailOAuthState(state:string):string{
 export function getGmailAuthUrl(userId:string):string{
   const oauth=createOAuthClient();
   const state=createGmailOAuthState(userId);
-    console.log("Gmail OAuth configuration:",{
+  console.log("Gmail OAuth configuration:",{
     clientId:process.env.GOOGLE_CLIENT_ID,
     callbackUri:process.env.GOOGLE_CALLBACK_URI,
   });
@@ -372,14 +375,33 @@ export async function gmailStatus(userId:string){
   };
 }
 
-async function listMessageIds(gmail:any,query:string,labelIds?:string[],maxResults=50){
-  const response=await gmail.users.messages.list({
-    userId:"me",
-    q:query||undefined,
-    labelIds,
-    maxResults,
-  });
-  return response.data.messages??[];
+async function listMessageIds(
+  gmail:any,
+  query:string,
+  labelIds?:string[],
+  maxMessages=MAX_SYNC_MESSAGES,
+){
+  const messages:any[]=[];
+  let pageToken:string|undefined;
+  const limit=Math.max(1,Math.min(maxMessages,MAX_SYNC_MESSAGES));
+
+  do{
+    const remaining=limit-messages.length;
+    if(remaining<=0)break;
+
+    const response=await gmail.users.messages.list({
+      userId:"me",
+      q:query||undefined,
+      labelIds,
+      maxResults:Math.min(GMAIL_PAGE_SIZE,remaining),
+      ...(pageToken?{pageToken}:{}),
+    });
+
+    messages.push(...(response.data.messages??[]));
+    pageToken=response.data.nextPageToken??undefined;
+  }while(pageToken);
+
+  return messages.slice(0,limit);
 }
 
 async function getMessage(gmail:any,id:string){
@@ -454,19 +476,114 @@ function normalizeGmailSentMessage(message:any):SentEmail{
   };
 }
 
+async function getExistingMessageIds(
+  userId:string,
+  provider:"gmail",
+  direction:"inbound"|"outbound",
+  ids:string[],
+):Promise<Set<string>>{
+  if(ids.length===0)return new Set();
+
+  const existing=await EmailModel.find({
+    userId:new Types.ObjectId(userId),
+    provider,
+    direction,
+    messageId:{$in:ids},
+  }).select("messageId").lean();
+
+  return new Set(existing.map((item)=>String(item.messageId)));
+}
+
+function getIncrementalAfterDate(
+  latestReceivedAt?:Date|null,
+):string{
+  if(!latestReceivedAt)return "";
+  const seconds=Math.floor(latestReceivedAt.getTime()/1000)-60;
+  return seconds>0?`after:${seconds}`:"";
+}
+
 export async function listEmails(userId:string):Promise<InboxEmail[]>{
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
+
   let gmail=await getGmailClient(userId);
+
+  const loadEmails=async(client:any)=>{
+    const latestStored=await EmailModel.findOne({
+      userId:new Types.ObjectId(userId),
+      provider:"gmail",
+      direction:"inbound",
+      receivedAt:{$exists:true},
+    }).sort({receivedAt:-1}).select("messageId receivedAt").lean();
+
+    const query=getIncrementalAfterDate(latestStored?.receivedAt);
+
+    console.log("GMAIL INCREMENTAL SYNC:",{
+      latestStoredMessageId:latestStored?.messageId??null,
+      latestStoredReceivedAt:latestStored?.receivedAt??null,
+      query,
+    });
+
+    const messageIds=await listMessageIds(
+      client,
+      query,
+      ["INBOX"],
+      MAX_SYNC_MESSAGES,
+    );
+
+    console.log("GMAIL MESSAGE IDS:",{
+      count:messageIds.length,
+      ids:messageIds.map((item:any)=>item.id),
+    });
+
+    const providerIds=messageIds
+      .map((item:any)=>item.id)
+      .filter((id:string)=>Boolean(id));
+
+    const existingIds=await getExistingMessageIds(
+      userId,
+      "gmail",
+      "inbound",
+      providerIds,
+    );
+
+    const newMessageIds=providerIds.filter((id:string)=>!existingIds.has(id));
+
+    console.log("GMAIL NEW MESSAGE CHECK:",{
+      providerCount:providerIds.length,
+      existingCount:existingIds.size,
+      newCount:newMessageIds.length,
+      newIds:newMessageIds,
+    });
+
+    if(newMessageIds.length===0){
+      console.log("GMAIL NO NEW MESSAGES.");
+      return [];
+    }
+
+    const messages=await Promise.all(
+      newMessageIds.map((id:string)=>getMessage(client,id)),
+    );
+
+    const normalized=messages
+      .filter(Boolean)
+      .map(normalizeGmailMessage)
+      .filter((email)=>Boolean(email.id));
+
+    console.log("GMAIL FULL MESSAGE FETCH:",{
+      requested:newMessageIds.length,
+      received:messages.filter(Boolean).length,
+      normalized:normalized.length,
+    });
+
+    return normalized;
+  };
+
   try{
-    const messageIds=await listMessageIds(gmail,"",["INBOX"],50);
-    const messages=await Promise.all(messageIds.map((item:any)=>getMessage(gmail,item.id)));
-    return messages.filter(Boolean).map(normalizeGmailMessage).filter((email)=>Boolean(email.id));
+    return await loadEmails(gmail);
   }catch(error:any){
     if(error?.code===401||error?.response?.status===401){
       gmail=await getGmailClient(userId,true);
-      const messageIds=await listMessageIds(gmail,"",["INBOX"],50);
-      const messages=await Promise.all(messageIds.map((item:any)=>getMessage(gmail,item.id)));
-      return messages.filter(Boolean).map(normalizeGmailMessage).filter((email)=>Boolean(email.id));
+      return await loadEmails(gmail);
     }
     throw error;
   }
@@ -475,16 +592,86 @@ export async function listEmails(userId:string):Promise<InboxEmail[]>{
 export async function listSentEmails(userId:string):Promise<SentEmail[]>{
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
   let gmail=await getGmailClient(userId);
+
+  const loadEmails=async(client:any)=>{
+    const objectId=new Types.ObjectId(userId);
+
+    const latestStored=await EmailModel.findOne({
+      userId:objectId,
+      provider:"gmail",
+      direction:"outbound",
+    }).sort({receivedAt:-1}).select("messageId receivedAt").lean();
+
+    const query=getIncrementalAfterDate(latestStored?.receivedAt);
+
+    console.log("GMAIL SENT INCREMENTAL SYNC:",{
+      latestStoredMessageId:latestStored?.messageId??null,
+      latestStoredReceivedAt:latestStored?.receivedAt??null,
+      query:query||"(initial sync)",
+    });
+
+    const messageIds=await listMessageIds(
+      client,
+      query,
+      ["SENT"],
+      MAX_SYNC_MESSAGES,
+    );
+
+    console.log("GMAIL SENT MESSAGE IDS:",{
+      count:messageIds.length,
+      ids:messageIds.slice(0,10).map((item:any)=>item.id),
+    });
+
+    if(messageIds.length===0)return [];
+
+    const ids=messageIds
+      .map((item:any)=>String(item.id??""))
+      .filter(Boolean);
+
+    const existingIds=await getExistingMessageIds(
+      userId,
+      "gmail",
+      "outbound",
+      ids,
+    );
+
+    const newMessageIds=messageIds.filter(
+      (item:any)=>!existingIds.has(String(item.id)),
+    );
+
+    console.log("GMAIL SENT NEW MESSAGE CHECK:",{
+      providerCount:messageIds.length,
+      existingCount:existingIds.size,
+      newCount:newMessageIds.length,
+      newIds:newMessageIds.slice(0,10).map((item:any)=>item.id),
+    });
+
+    if(newMessageIds.length===0)return [];
+
+    const messages=await Promise.all(
+      newMessageIds.map((item:any)=>getMessage(client,item.id)),
+    );
+
+    const normalized=messages
+      .filter(Boolean)
+      .map(normalizeGmailSentMessage)
+      .filter((email)=>Boolean(email.id));
+
+    console.log("GMAIL SENT FULL MESSAGE FETCH:",{
+      requested:newMessageIds.length,
+      received:messages.length,
+      normalized:normalized.length,
+    });
+
+    return normalized;
+  };
+
   try{
-    const messageIds=await listMessageIds(gmail,"",["SENT"],50);
-    const messages=await Promise.all(messageIds.map((item:any)=>getMessage(gmail,item.id)));
-    return messages.filter(Boolean).map(normalizeGmailSentMessage).filter((email)=>Boolean(email.id));
+    return await loadEmails(gmail);
   }catch(error:any){
     if(error?.code===401||error?.response?.status===401){
       gmail=await getGmailClient(userId,true);
-      const messageIds=await listMessageIds(gmail,"",["SENT"],50);
-      const messages=await Promise.all(messageIds.map((item:any)=>getMessage(gmail,item.id)));
-      return messages.filter(Boolean).map(normalizeGmailSentMessage).filter((email)=>Boolean(email.id));
+      return await loadEmails(gmail);
     }
     throw error;
   }
@@ -522,20 +709,39 @@ export async function sendEmail(
   const subjectText=options.subject.trim();
   const reply=options.reply.trim();
   if(!to||!subjectText||!reply)throw new Error("Recipient, subject, and reply are required.");
+
   let gmail=await getGmailClient(userId);
+
   const subject=/^re:/i.test(subjectText)?subjectText:`Re: ${subjectText}`;
+
   const headers=[
     `To: ${to}`,
     `Subject: ${subject}`,
     "Content-Type: text/plain; charset=UTF-8",
   ];
-  if(options.inReplyTo?.trim())headers.push(`In-Reply-To: ${options.inReplyTo.trim()}`);
-  if(options.references?.length){
-    const references=[...new Set(options.references.map((value)=>value.trim()).filter(Boolean))];
-    if(references.length)headers.push(`References: ${references.join(" ")}`);
+
+  if(options.inReplyTo?.trim()){
+    headers.push(`In-Reply-To: ${options.inReplyTo.trim()}`);
   }
+
+  if(options.references?.length){
+    const references=[
+      ...new Set(
+        options.references
+          .map((value)=>value.trim())
+          .filter(Boolean),
+      ),
+    ];
+
+    if(references.length){
+      headers.push(`References: ${references.join(" ")}`);
+    }
+  }
+
   const message=[...headers,"",reply].join("\r\n");
+
   let threadId:string|undefined;
+
   if(options.originalMessageId?.trim()){
     try{
       const original=await gmail.users.messages.get({
@@ -543,61 +749,75 @@ export async function sendEmail(
         id:options.originalMessageId.trim(),
         format:"minimal",
       });
+
       threadId=original.data.threadId??undefined;
     }catch(error:any){
       if(error?.code===401||error?.response?.status===401){
         gmail=await getGmailClient(userId,true);
+
         try{
           const original=await gmail.users.messages.get({
             userId:"me",
             id:options.originalMessageId.trim(),
             format:"minimal",
           });
+
           threadId=original.data.threadId??undefined;
         }catch{}
       }
     }
   }
+
   if(!threadId&&options.originalMessageIdHeader?.trim()){
     try{
       const header=options.originalMessageIdHeader.trim();
+
       const result=await gmail.users.messages.list({
         userId:"me",
         q:`rfc822msgid:${header}`,
         maxResults:10,
       });
+
       const messageId=result.data.messages?.[0]?.id;
+
       if(messageId){
         const original=await gmail.users.messages.get({
           userId:"me",
           id:messageId,
           format:"minimal",
         });
+
         threadId=original.data.threadId??undefined;
       }
     }catch(error:any){
       if(error?.code===401||error?.response?.status===401){
         gmail=await getGmailClient(userId,true);
+
         try{
           const header=options.originalMessageIdHeader.trim();
+
           const result=await gmail.users.messages.list({
             userId:"me",
             q:`rfc822msgid:${header}`,
             maxResults:10,
           });
+
           const messageId=result.data.messages?.[0]?.id;
+
           if(messageId){
             const original=await gmail.users.messages.get({
               userId:"me",
               id:messageId,
               format:"minimal",
             });
+
             threadId=original.data.threadId??undefined;
           }
         }catch{}
       }
     }
   }
+
   if(!threadId&&options.threadId?.trim()){
     try{
       await gmail.users.threads.get({
@@ -605,24 +825,29 @@ export async function sendEmail(
         id:options.threadId.trim(),
         format:"minimal",
       });
+
       threadId=options.threadId.trim();
     }catch(error:any){
       if(error?.code===401||error?.response?.status===401){
         gmail=await getGmailClient(userId,true);
+
         try{
           await gmail.users.threads.get({
             userId:"me",
             id:options.threadId.trim(),
             format:"minimal",
           });
+
           threadId=options.threadId.trim();
         }catch{}
       }
     }
   }
+
   if((options.originalMessageId?.trim()||options.originalMessageIdHeader?.trim())&&!threadId){
     throw new Error("The original Gmail message could not be found in the connected Gmail account. Please sync the inbox again before sending.");
   }
+
   try{
     const result=await gmail.users.messages.send({
       userId:"me",
@@ -631,6 +856,7 @@ export async function sendEmail(
         ...(threadId?{threadId}:{}),
       },
     });
+
     return {
       id:result.data.id??"",
       threadId:result.data.threadId??threadId??"",
@@ -638,6 +864,7 @@ export async function sendEmail(
   }catch(error:any){
     if(error?.code===401||error?.response?.status===401){
       gmail=await getGmailClient(userId,true);
+
       const result=await gmail.users.messages.send({
         userId:"me",
         requestBody:{
@@ -645,11 +872,13 @@ export async function sendEmail(
           ...(threadId?{threadId}:{}),
         },
       });
+
       return {
         id:result.data.id??"",
         threadId:result.data.threadId??threadId??"",
       };
     }
+
     throw error;
   }
 }
@@ -661,19 +890,26 @@ export async function replyToEmail(
 ):Promise<{id:string;threadId:string}>{
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
   if(!messageId?.trim())throw new Error("Gmail message ID is required.");
+
   const gmail=await getGmailClient(userId);
+
   const original=await gmail.users.messages.get({
     userId:"me",
     id:messageId.trim(),
     format:"full",
   });
+
   const headers=original.data.payload?.headers??[];
   const from=getHeader(headers,"From");
   const subject=getHeader(headers,"Subject");
   const originalMessageIdHeader=getHeader(headers,"Message-ID");
   const referencesHeader=getHeader(headers,"References");
   const references=[...referencesHeader.split(/\s+/).filter(Boolean)];
-  if(originalMessageIdHeader&&!references.includes(originalMessageIdHeader))references.push(originalMessageIdHeader);
+
+  if(originalMessageIdHeader&&!references.includes(originalMessageIdHeader)){
+    references.push(originalMessageIdHeader);
+  }
+
   return sendEmail(userId,{
     to:extractEmailAddress(from)||from,
     subject:/^re:/i.test(subject)?subject:`Re: ${subject}`,
@@ -689,7 +925,9 @@ export async function replyToEmail(
 export async function markAsRead(userId:string,messageId:string){
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
   if(!messageId?.trim())throw new Error("Gmail message ID is required.");
+
   const gmail=await getGmailClient(userId);
+
   await gmail.users.messages.modify({
     userId:"me",
     id:messageId.trim(),
@@ -700,7 +938,9 @@ export async function markAsRead(userId:string,messageId:string){
 export async function archiveEmail(userId:string,messageId:string){
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
   if(!messageId?.trim())throw new Error("Gmail message ID is required.");
+
   const gmail=await getGmailClient(userId);
+
   await gmail.users.messages.modify({
     userId:"me",
     id:messageId.trim(),
@@ -711,11 +951,14 @@ export async function archiveEmail(userId:string,messageId:string){
 export async function getThread(userId:string,threadId:string){
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
   if(!threadId?.trim())throw new Error("Gmail thread ID is required.");
+
   const gmail=await getGmailClient(userId);
+
   const response=await gmail.users.threads.get({
     userId:"me",
     id:threadId.trim(),
     format:"full",
   });
+
   return response.data;
 }

@@ -6,6 +6,7 @@ import {classifyEmail} from "../services/emailClassification.js";
 import {identifyCustomer} from "../services/customerIdentification.js";
 import {EmailModel} from "../models/Email.js";
 import {listEmails as listOutlookEmails} from "../services/outlook.js";
+import {retryFailedSupportProcessing,retryFailedSupportProcessingBatch} from "../services/supportProcessingRetry.js";
 
 const router=Router();
 router.use(auth);
@@ -158,6 +159,34 @@ router.get("/outlook/test",async(req,res)=>{
   }catch(error){
     console.error("Outlook test failed:",error);
     return res.status(400).json({success:false,message:error instanceof Error?error.message:"Failed to retrieve Outlook emails."});
+  }
+});
+
+router.post("/support-processing/retry-failed",async(req,res)=>{
+  try{
+    if(!req.user?.id)return res.status(401).json({success:false,message:"Authentication required."});
+    const limit=Number(req.body?.limit??10);
+    const result=await retryFailedSupportProcessingBatch(
+      req.user.id,
+      Number.isFinite(limit)?limit:10,
+    );
+    return res.json({success:true,...result});
+  }catch(error){
+    console.error("Failed support processing batch retry failed:",error);
+    return res.status(400).json({success:false,message:error instanceof Error?error.message:"Failed to retry support processing."});
+  }
+});
+
+router.post("/:id/support-processing/retry",async(req,res)=>{
+  try{
+    if(!req.user?.id)return res.status(401).json({success:false,message:"Authentication required."});
+    const {id}=req.params;
+    if(!Types.ObjectId.isValid(id))return res.status(400).json({success:false,message:"Invalid email ID."});
+    const result=await retryFailedSupportProcessing(req.user.id,id);
+    return res.json({success:true,email:result});
+  }catch(error){
+    console.error("Failed support processing retry:",error);
+    return res.status(400).json({success:false,message:error instanceof Error?error.message:"Failed to retry support processing."});
   }
 });
 

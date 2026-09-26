@@ -1,35 +1,18 @@
-import { draftRepository } from "../repositories/DraftRepository.js";
-import { notificationRepository } from "../repositories/NotificationRepository.js";
+import {draftRepository} from "../repositories/DraftRepository.js";
+import {notificationRepository} from "../repositories/NotificationRepository.js";
 
 export async function cleanupJob(){
+  const cutoff=new Date();
+  cutoff.setDate(cutoff.getDate()-30);
 
-const cutoff=new Date();
+  const[draftsDeleted,notificationsDeleted]=await Promise.all([
+    draftRepository.deleteOlderThan(cutoff),
+    notificationRepository.deleteOlderThan(cutoff),
+  ]);
 
-cutoff.setDate(
-cutoff.getDate()-30
-);
-
-const[
-draftsDeleted,
-notificationsDeleted,
-]=await Promise.all([
-
-draftRepository.deleteOlderThan(
-cutoff
-),
-
-notificationRepository.deleteOlderThan(
-cutoff
-),
-
-]);
-
-return{
-success:true,
-deletedDrafts:
-draftsDeleted.deletedCount??0,
-deletedNotifications:
-notificationsDeleted.deletedCount??0,
-};
-
+  return{
+    success:true,
+    deletedDrafts:draftsDeleted,
+    deletedNotifications:notificationsDeleted,
+  };
 }

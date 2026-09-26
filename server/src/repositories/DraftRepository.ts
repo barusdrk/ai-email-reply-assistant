@@ -1,11 +1,9 @@
-import {Types,type DeleteResult} from "mongoose";
+import {Types} from "mongoose";
 import DraftModel,{type Draft,type DraftStatus} from "../models/Draft.js";
 
 class DraftRepository {
   async findAll(userId:string,status?:DraftStatus):Promise<Draft[]>{
-    const filter:{userId:Types.ObjectId;status?:DraftStatus}={
-      userId:new Types.ObjectId(userId),
-    };
+    const filter:{userId:Types.ObjectId;status?:DraftStatus}={userId:new Types.ObjectId(userId)};
     if(status)filter.status=status;
     return DraftModel.find(filter).sort({createdAt:-1}).lean<Draft[]>();
   }
@@ -28,6 +26,14 @@ class DraftRepository {
   async update(id:string,data:Partial<Draft>):Promise<Draft|null>{
     if(!Types.ObjectId.isValid(id))return null;
     return DraftModel.findByIdAndUpdate(id,{$set:data},{new:true,runValidators:true}).lean<Draft|null>();
+  }
+
+  async delete(id:string):Promise<Draft|null>{
+    if(!Types.ObjectId.isValid(id))return null;
+    return DraftModel.findOneAndDelete({
+      _id:new Types.ObjectId(id),
+      automaticSendInProgress:{$ne:true},
+    }).lean<Draft|null>();
   }
 
   async claimForAutomaticSend(id:string,userId:string):Promise<Draft|null>{
@@ -169,20 +175,29 @@ class DraftRepository {
     ).lean<Draft|null>();
   }
 
-  async findStaleAutomaticClaims(cutoff:Date):Promise<Draft[]>{
+    async findStaleAutomaticClaims(cutoff:Date):Promise<Draft[]>{
     return DraftModel.find({
       automaticSendInProgress:true,
-      automaticSendClaimedAt:{$lt:cutoff},
-    }).sort({automaticSendClaimedAt:1}).lean<Draft[]>();
+      $or:[
+        {
+          automaticSendPhase:"claimed",
+          automaticSendClaimedAt:{$lt:cutoff},
+        },
+        {
+          automaticSendPhase:"sending",
+          automaticSendStartedAt:{$lt:cutoff},
+        },
+      ],
+    }).sort({automaticSendLastAttemptAt:1}).lean<Draft[]>();
   }
 
-  async delete(id:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
-    return DraftModel.findByIdAndDelete(id).lean<Draft|null>();
-  }
-
-  async deleteOlderThan(date:Date):Promise<DeleteResult>{
-    return DraftModel.deleteMany({createdAt:{$lt:date}});
+  async deleteOlderThan(date:Date):Promise<number>{
+    const result=await DraftModel.deleteMany({
+      createdAt:{$lt:date},
+      automaticSendInProgress:{$ne:true},
+      automaticSendRecoveryRequired:{$ne:true},
+    });
+    return result.deletedCount??0;
   }
 }
 
