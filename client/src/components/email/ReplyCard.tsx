@@ -134,7 +134,7 @@ export default function ReplyCard({
             type="button"
             onClick={() => void handleSaveDraft()}
             disabled={saving || sending || !hasReply}
-            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {saving ? "Saving..." : "Save Draft"}
           </button>
@@ -144,7 +144,7 @@ export default function ReplyCard({
             onClick={() => void handleSendEmail()}
             onMouseDown={(event) => event.currentTarget.blur()}
             disabled={saving || sending || !hasReply || !hasCustomer}
-            className="rounded-lg bg-(--info-text) px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-lg bg-(--info-text) px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {sending ? "Sending..." : "Send Email"}
           </button>
@@ -170,7 +170,7 @@ export default function ReplyCard({
           type="button"
           onClick={() => void handleCopy()}
           disabled={!hasReply}
-          className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
         >
           Copy
         </button>
@@ -184,7 +184,7 @@ export default function ReplyCard({
               reply,
             })
           }
-          className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
         >
           Download PDF
         </button>
@@ -198,7 +198,7 @@ export default function ReplyCard({
               reply,
             })
           }
-          className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
         >
           Download DOCX
         </button>

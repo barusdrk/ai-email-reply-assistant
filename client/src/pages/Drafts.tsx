@@ -143,7 +143,7 @@ export default function Drafts() {
                       type="button"
                       onClick={() => void handleSubmit(draft)}
                       disabled={submittingDraftId !== null || sendingDraftId !== null}
-                      className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                      className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
                     >
                       {submittingDraftId === draft.id ? "Submitting..." : "Resubmit for Approval"}
                     </button>
@@ -171,7 +171,7 @@ export default function Drafts() {
                 type="button"
                 onClick={closeEdit}
                 disabled={saving}
-                className="rounded-lg border border-(--border) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-(--border) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -179,7 +179,7 @@ export default function Drafts() {
                 type="button"
                 onClick={() => void saveEdit()}
                 disabled={saving || !editedReply.trim()}
-                className="rounded-lg bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </button>

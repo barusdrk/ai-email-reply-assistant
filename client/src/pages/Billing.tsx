@@ -211,7 +211,7 @@ export default function Billing(){
             type="button"
             onClick={()=>void handleCancel()}
             disabled={changingPlan!==null}
-            className="mt-5 rounded-lg border border-(--danger-text) px-4 py-2 text-(--danger-text) hover:bg-(--danger-bg) disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-5 rounded-lg border border-(--danger-text) px-4 py-2 text-(--danger-text) hover:bg-(--danger-bg) disabled:cursor-not-allowed disabled:opacity-60"
           >
             {changingPlan?"Updating...":"Cancel Subscription"}
           </button>
@@ -304,7 +304,7 @@ export default function Billing(){
                   changingPlan!==null||
                   (plan.id==="business"&&businessRequested)
                 }
-                className={`mt-8 w-full rounded-lg px-4 py-3 font-medium disabled:cursor-not-allowed disabled:opacity-50 ${
+                className={`mt-8 w-full rounded-lg px-4 py-3 font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
                   current
                     ?"bg-(--bg-secondary) text-(--text-secondary)"
                     :plan.id==="business"||plan.id==="pro"

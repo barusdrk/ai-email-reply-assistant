@@ -205,7 +205,7 @@ export default function BillingPage() {
             type="button"
             onClick={() => void handleCancel()}
             disabled={changingPlan !== null}
-            className="mt-5 rounded-lg border border-(--danger-text) px-4 py-2 text-(--danger-text) hover:bg-(--danger-bg) disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-5 rounded-lg border border-(--danger-text) px-4 py-2 text-(--danger-text) hover:bg-(--danger-bg) disabled:cursor-not-allowed disabled:opacity-60"
           >
             {changingPlan ? "Updating..." : "Cancel Subscription"}
           </button>

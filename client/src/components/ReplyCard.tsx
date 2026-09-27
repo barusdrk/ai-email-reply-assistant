@@ -125,7 +125,7 @@ export default function ReplyCard({ reply, policyCheck, loading = false, onAppro
             type="button"
             onClick={onApprove}
             disabled={Boolean(policyCheck && !canProceed)}
-            className="rounded bg-(--success) px-4 py-2 text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded bg-(--success) px-4 py-2 text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Approve
           </button>
@@ -136,7 +136,7 @@ export default function ReplyCard({ reply, policyCheck, loading = false, onAppro
             type="button"
             onClick={onSend}
             disabled={Boolean(policyCheck && !canProceed)}
-            className="rounded bg-(--info-text) px-4 py-2 text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded bg-(--info-text) px-4 py-2 text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Send Email
           </button>

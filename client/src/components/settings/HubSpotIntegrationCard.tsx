@@ -141,7 +141,7 @@ export default function HubSpotIntegrationCard() {
                 type="button"
                 onClick={() => void disconnectHubSpot()}
                 disabled={loading}
-                className="rounded-lg border border-(--border) px-4 py-2 text-sm font-medium text-(--text-h) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--text-h) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Disconnecting..." : "Disconnect HubSpot"}
               </button>
@@ -150,7 +150,7 @@ export default function HubSpotIntegrationCard() {
                 type="button"
                 onClick={() => void connectHubSpot()}
                 disabled={loading}
-                className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loading ? "Connecting..." : "Connect HubSpot"}
               </button>

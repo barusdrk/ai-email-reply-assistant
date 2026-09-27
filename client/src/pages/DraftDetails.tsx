@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { getDraft, sendDraft } from "../services/drafts.js";
 import type { Draft } from "../types/index.js";
+import { Send } from "lucide-react";
 
 export default function DraftDetails() {
   const { id } = useParams<{ id: string }>();
@@ -219,8 +220,9 @@ export default function DraftDetails() {
             type="button"
             onClick={() => void handleSend()}
             disabled={sending || !canSend}
-            className="rounded-lg bg-(--info-text) px-4 py-2 text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-(--success) px-4 py-2 text-sm font-medium text-(--success-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
+            <Send size={15} />
             {sending ? "Sending..." : "Send Email"}
           </button>
         </div>

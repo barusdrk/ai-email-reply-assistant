@@ -40,7 +40,7 @@ export default function APIKeyForm({ provider, initialValue = "" }: Props) {
         type="button"
         onClick={save}
         disabled={saving}
-        className="mt-4 rounded-lg bg-(--accent) px-4 py-2 font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mt-4 rounded-lg bg-(--accent) px-4 py-2 font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {saving ? "Saving..." : "Save API Key"}
       </button>

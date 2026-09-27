@@ -171,7 +171,7 @@ export default function Analytics(){
             type="button"
             onClick={()=>void loadAnalytics(true)}
             disabled={refreshing}
-            className="flex items-center gap-2 rounded-lg bg-(--accent) px-4 py-2.5 text-sm font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-(--accent) px-4 py-2.5 text-sm font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             <RefreshCw className={`h-4 w-4 ${refreshing?"animate-spin":""}`}/>
             {refreshing?"Refreshing...":"Refresh"}

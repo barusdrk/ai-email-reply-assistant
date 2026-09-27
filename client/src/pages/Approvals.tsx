@@ -190,7 +190,7 @@ export default function Approvals() {
                 type="button"
                 onClick={closeEdit}
                 disabled={saving}
-                className="rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -198,7 +198,7 @@ export default function Approvals() {
                 type="button"
                 onClick={() => void saveEdit()}
                 disabled={saving || !editedReply.trim()}
-                className="rounded-lg bg-(--accent) px-4 py-2 font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-(--accent) px-4 py-2 font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Saving..." : "Save Changes"}
               </button>
@@ -237,7 +237,7 @@ export default function Approvals() {
                 type="button"
                 onClick={closeReject}
                 disabled={rejecting}
-                className="rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
               >
                 Cancel
               </button>
@@ -245,7 +245,7 @@ export default function Approvals() {
                 type="button"
                 onClick={() => void submitReject()}
                 disabled={rejecting}
-                className="rounded-lg bg-(--danger) px-4 py-2 font-medium text-(--danger-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+                className="rounded-lg bg-(--danger) px-4 py-2 font-medium text-(--danger-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {rejecting ? "Rejecting..." : "Reject Draft"}
               </button>

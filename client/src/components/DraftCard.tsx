@@ -128,7 +128,7 @@ export default function DraftCard({
           type="button"
           onClick={onEdit}
           disabled={draft.status === "sent" || sending}
-          className="inline-flex items-center gap-2 rounded-lg bg-(--warning) px-4 py-2 text-sm font-medium text-(--text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-(--warning) px-4 py-2 text-sm font-medium text-(--text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Pencil size={15} />
           Edit
@@ -139,7 +139,7 @@ export default function DraftCard({
           onClick={onSend}
           disabled={!canSend || sending}
           title={!canSend ? "Only approved drafts can be sent." : undefined}
-          className="inline-flex items-center gap-2 rounded-lg bg-(--success) px-4 py-2 text-sm font-medium text-(--success-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-(--success) px-4 py-2 text-sm font-medium text-(--success-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Send size={15} />
           {sending ? "Sending..." : "Send"}
@@ -149,7 +149,7 @@ export default function DraftCard({
           type="button"
           onClick={onDelete}
           disabled={sending}
-          className="inline-flex items-center gap-2 rounded-lg bg-(--danger) px-4 py-2 text-sm font-medium text-(--error-text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-(--danger) px-4 py-2 text-sm font-medium text-(--error-text) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Trash2 size={15} />
           Delete

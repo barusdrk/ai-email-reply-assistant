@@ -27,7 +27,7 @@ export default function SecurityCard({ onChangePassword }: Props) {
       <form onSubmit={handleSubmit} className="space-y-4">
         <input type="password" placeholder="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} className="w-full rounded-md border border-(--border) bg-(--bg) px-3 py-2 text-(--text) outline-none focus:ring-2 focus:ring-(--accent)" />
         <input type="password" placeholder="New password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="w-full rounded-md border border-(--border) bg-(--bg) px-3 py-2 text-(--text) outline-none focus:ring-2 focus:ring-(--accent)" />
-        <button type="submit" disabled={loading} className="rounded-md bg-(--accent) px-4 py-2 text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50">
+        <button type="submit" disabled={loading} className="rounded-md bg-(--accent) px-4 py-2 text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
           {loading ? "Saving..." : "Change Password"}
         </button>
       </form>

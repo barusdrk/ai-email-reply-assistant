@@ -142,7 +142,7 @@ export default function ApprovalCard({
               ?"Approve this escalated draft after human review."
               :undefined
           }
-          className="rounded-lg bg-(--success) px-4 py-2 text-sm font-medium text-(--success-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-(--success) px-4 py-2 text-sm font-medium text-(--success-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {approving?"Approving...":"Approve"}
         </button>
@@ -151,7 +151,7 @@ export default function ApprovalCard({
           type="button"
           onClick={onEdit}
           disabled={disabled}
-          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Edit
         </button>
@@ -160,7 +160,7 @@ export default function ApprovalCard({
           type="button"
           onClick={onReject}
           disabled={disabled}
-          className="rounded-lg bg-(--danger) px-4 py-2 text-sm font-medium text-(--danger-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="rounded-lg bg-(--danger) px-4 py-2 text-sm font-medium text-(--danger-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
         >
           Reject
         </button>

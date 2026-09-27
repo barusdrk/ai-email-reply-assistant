@@ -174,7 +174,7 @@ export default function Settings(){
               activeEmailProvider==="gmail"
                 ? "border-(--accent) bg-(--bg-secondary)"
                 : "border-(--border) hover:bg-(--surface-hover)"
-            } disabled:cursor-not-allowed disabled:opacity-50`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             <div className="flex items-center justify-between">
               <span className="font-medium text-(--text-h)">Gmail</span>
@@ -195,7 +195,7 @@ export default function Settings(){
               activeEmailProvider==="outlook"
                 ? "border-(--accent) bg-(--bg-secondary)"
                 : "border-(--border) hover:bg-(--surface-hover)"
-            } disabled:cursor-not-allowed disabled:opacity-50`}
+            } disabled:cursor-not-allowed disabled:opacity-60`}
           >
             <div className="flex items-center justify-between">
               <span className="font-medium text-(--text-h)">Outlook</span>
