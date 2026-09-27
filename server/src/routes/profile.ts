@@ -33,12 +33,18 @@ router.get(
       return;
     }
 
-    const profile =
-      await getProfile(
-        req.user.id
-      );
+    try{
+      const profile =
+        await getProfile(
+          req.user.id
+        );
 
-    res.json(profile);
+      res.json(profile);
+    }catch(error){
+      res.status(400).json({
+        message:error instanceof Error?error.message:"Failed to load profile.",
+      });
+    }
   }
 );
 
@@ -57,13 +63,19 @@ router.put(
       return;
     }
 
-    const profile =
-      await updateProfile(
-        req.user.id,
-        req.body
-      );
+    try{
+      const profile =
+        await updateProfile(
+          req.user.id,
+          req.body
+        );
 
-    res.json(profile);
+      res.json(profile);
+    }catch(error){
+      res.status(400).json({
+        message:error instanceof Error?error.message:"Failed to update profile.",
+      });
+    }
   }
 );
 
