@@ -14,8 +14,10 @@ import {getConnections,setActiveProvider,connectGmail,connectOutlook,disconnectG
 import {getMe,updateProfile,changePassword,deleteAccount,type UserProfile} from "../services/users.js";
 import type {ReplyLength} from "../components/LengthSelector.js";
 import HubSpotIntegrationCard from "../components/settings/HubSpotIntegrationCard.js";
+import {useAuth} from "../context/AuthContext.js";
 
 export default function Settings(){
+  const {refreshUser}=useAuth();
   const [settings,setSettings]=useState<AISettings|null>(null);
   const [user,setUser]=useState<UserProfile|null>(null);
   const [gmailConnected,setGmailConnected]=useState(false);
@@ -59,6 +61,7 @@ export default function Settings(){
     try{
       const updated=await updateProfile(data);
       setUser(updated);
+      await refreshUser();
       setError("");
     }catch(error){
       setError(error instanceof Error?error.message:"Failed to update profile.");

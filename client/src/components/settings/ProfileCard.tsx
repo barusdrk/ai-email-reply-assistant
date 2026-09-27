@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import FormInput from "../ui/FormInput.js";
 
 interface ProfileCardProps {
   name: string;
   email: string;
   avatar: string;
-  onSave: (data: { name: string; email: string; avatar: string }) => Promise<void>;
+  onSave: (data: { name: string; email: string; avatar?: string }) => Promise<void>;
 }
 
 export default function ProfileCard({ name, email, avatar, onSave }: ProfileCardProps) {
@@ -13,6 +13,8 @@ export default function ProfileCard({ name, email, avatar, onSave }: ProfileCard
   const [profileEmail, setProfileEmail] = useState(email);
   const [profileAvatar, setProfileAvatar] = useState(avatar);
   const [saving, setSaving] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setProfileName(name);
@@ -23,10 +25,42 @@ export default function ProfileCard({ name, email, avatar, onSave }: ProfileCard
   async function handleSave() {
     setSaving(true);
     try {
-      await onSave({ name: profileName, email: profileEmail, avatar: profileAvatar });
+      await onSave({
+        name: profileName,
+        email: profileEmail,
+        ...(profileAvatar !== avatar ? { avatar: profileAvatar } : {}),
+      });
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleAvatarChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|gif|webp)$/.test(file.type)) {
+      setUploadError("Choose a JPEG, PNG, GIF, or WebP image.");
+      event.target.value = "";
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError("Choose an image that is 2 MB or smaller.");
+      event.target.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setProfileAvatar(typeof reader.result === "string" ? reader.result : "");
+      setUploadError("");
+    };
+    reader.onerror = () => setUploadError("The selected image could not be read.");
+    reader.readAsDataURL(file);
+  }
+
+  function removeAvatar() {
+    setProfileAvatar("");
+    setUploadError("");
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   return (
@@ -48,7 +82,15 @@ export default function ProfileCard({ name, email, avatar, onSave }: ProfileCard
       <div className="space-y-4">
         <FormInput label="Name" value={profileName} onChange={setProfileName} placeholder="Name" />
         <FormInput label="Email" value={profileEmail} onChange={setProfileEmail} placeholder="Email" />
-        <FormInput label="Avatar URL" value={profileAvatar} onChange={setProfileAvatar} placeholder="https://example.com/avatar.jpg" />
+        <div>
+          <label className="mb-1 block text-sm font-medium text-(--text-h)" htmlFor="avatar-upload">Avatar image</label>
+          <div className="flex flex-wrap items-center gap-3">
+            <input ref={fileInputRef} id="avatar-upload" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleAvatarChange} className="block text-sm text-(--text-secondary) file:mr-3 file:rounded file:border-0 file:bg-(--bg-secondary) file:px-3 file:py-2 file:text-sm file:font-medium file:text-(--text-h) hover:file:bg-(--surface-hover)" />
+            {profileAvatar && <button type="button" onClick={removeAvatar} className="text-sm text-(--danger-text) hover:underline">Remove image</button>}
+          </div>
+          <p className="mt-1 text-xs text-(--text-secondary)">JPEG, PNG, GIF, or WebP. Maximum 2 MB.</p>
+          {uploadError && <p className="mt-1 text-sm text-(--danger-text)">{uploadError}</p>}
+        </div>
         <button type="button" onClick={handleSave} disabled={saving} className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) transition hover:opacity-90 disabled:opacity-60">
           {saving ? "Saving..." : "Save Profile"}
         </button>

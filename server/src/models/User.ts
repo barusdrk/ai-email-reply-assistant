@@ -6,7 +6,7 @@ const userSchema = new Schema(
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
     role: { type: String, enum: ["user", "admin"], default: "user" },
-    avatar: { type: String, default: "" },
+    avatar: { type: String, default: "", maxlength: 2_800_000 },
     emailVerified: { type: Boolean, default: false },
     lastLoginAt: { type: Date },
     active: { type: Boolean, default: true },
