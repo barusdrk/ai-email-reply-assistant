@@ -1,5 +1,5 @@
 import {useEffect,useState} from "react";
-import {BookOpen,Edit3,Plus,Search,Trash2,X} from "lucide-react";
+import {Edit3,Plus,Search,Trash2,X} from "lucide-react";
 import {
   createKnowledgeBaseArticle,
   deleteKnowledgeBaseArticle,
@@ -162,13 +162,9 @@ export default function KnowledgeBase(){
   return (
     <div className="space-y-8">
       <header className="flex items-center gap-3">
-        <div className="rounded-xl bg-(--accent) p-3 text-(--accent-contrast)">
-          <BookOpen size={22} />
-        </div>
-
         <div>
-          <h1 className="text-2xl font-bold">Knowledge Base</h1>
-          <p className="text-sm text-(--text-secondary)">
+          <h1 className="text-3xl font-bold">Knowledge Base</h1>
+          <p className="mt-2 text-(--text-secondary)">
             Manage company information used by the AI email assistant.
           </p>
         </div>
@@ -330,10 +326,6 @@ export default function KnowledgeBase(){
           </div>
         ) : articles.length === 0 ? (
           <div className="rounded-xl border border-dashed border-(--border) bg-(--surface) p-10 text-center">
-            <BookOpen
-              size={30}
-              className="mx-auto mb-3 text-(--text-secondary)"
-            />
             <h3 className="font-semibold">No articles found</h3>
             <p className="mt-1 text-sm text-(--text-secondary)">
               Create your first knowledge base article above.
