@@ -18,6 +18,14 @@ export interface Subscription {
     | "stripe";
   currentPeriodStart?:string;
   currentPeriodEnd?:string;
+  dailyReplyCount:number;
+  monthlyReplyCount:number;
+  dailyReplyReserved:number;
+  monthlyReplyReserved:number;
+  dailyReplyLimit:number;
+  monthlyReplyLimit:number;
+  dailyReplyResetAt?:string;
+  monthlyReplyResetAt?:string;
 }
 
 export interface CheckoutSession {

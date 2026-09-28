@@ -71,9 +71,12 @@ function normalizePlan(value:unknown):Plan{
 }
 
 function serializeSubscription(subscription:any){
+  const plan=normalizePlan(subscription.plan);
+  const limits=getPlanLimits(plan);
+
   return {
     id:subscription._id?.toString()??"",
-    plan:normalizePlan(subscription.plan),
+    plan,
     status:subscription.status,
     provider:subscription.provider,
     currentPeriodStart:subscription.currentPeriodStart?.toISOString?.(),
@@ -82,6 +85,8 @@ function serializeSubscription(subscription:any){
     monthlyReplyCount:subscription.monthlyReplyCount??0,
     dailyReplyReserved:subscription.dailyReplyReserved??0,
     monthlyReplyReserved:subscription.monthlyReplyReserved??0,
+    dailyReplyLimit:limits.dailyReplies,
+    monthlyReplyLimit:limits.monthlyReplies,
     dailyReplyResetAt:subscription.dailyReplyResetAt?.toISOString?.(),
     monthlyReplyResetAt:subscription.monthlyReplyResetAt?.toISOString?.(),
   };

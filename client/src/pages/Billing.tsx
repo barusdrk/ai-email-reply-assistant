@@ -16,6 +16,7 @@ const plans:{
   name:string;
   price:string;
   replies:string;
+  dailyReplies:string;
   description:string;
   features:string[];
 }[]=[
@@ -24,6 +25,7 @@ const plans:{
     name:"Free",
     price:"$0",
     replies:"100 replies / month",
+    dailyReplies:"5 replies / day",
     description:"Try AI-powered customer support automation.",
     features:[
       "100 AI replies per month",
@@ -37,6 +39,7 @@ const plans:{
     name:"Starter",
     price:"$19",
     replies:"1,000 replies / month",
+    dailyReplies:"100 replies / day",
     description:"For small teams automating everyday support.",
     features:[
       "1,000 AI replies per month",
@@ -52,6 +55,7 @@ const plans:{
     name:"Pro",
     price:"$59",
     replies:"10,000 replies / month",
+    dailyReplies:"1,000 replies / day",
     description:"For growing support teams with advanced automation.",
     features:[
       "10,000 AI replies per month",
@@ -68,6 +72,7 @@ const plans:{
     name:"Business",
     price:"$149+",
     replies:"Custom support volume",
+    dailyReplies:"Unlimited replies / day",
     description:"For organizations with complex support operations.",
     features:[
       "Custom support volume",
@@ -261,13 +266,14 @@ export default function Billing(){
                 <p className="font-medium text-(--text)">
                   {plan.replies}
                 </p>
-
+                <p className="font-medium text-(--text)">
+                  {plan.dailyReplies}
+                </p>
                 {plan.id!=="business"&&(
                   <div>
                     <p className="font-medium text-(--text)">
                       Available AI providers
                     </p>
-
                     <div className="mt-2 flex flex-wrap gap-2">
                       {aiProviders.map(provider=>(
                         <span
