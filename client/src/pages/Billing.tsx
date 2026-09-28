@@ -9,26 +9,21 @@ import {
   type Subscription,
 } from "../services/billing.js";
 
-const aiProviders=["OpenAI","Gemini","Groq","Claude"];
-
 const plans:{
   id:Plan;
   name:string;
   price:string;
-  replies:string;
-  dailyReplies:string;
   description:string;
-  features:string[];
+  perks:string[];
 }[]=[
   {
     id:"free",
     name:"Free",
     price:"$0",
-    replies:"100 replies / month",
-    dailyReplies:"5 replies / day",
     description:"Try AI-powered customer support automation.",
-    features:[
+    perks:[
       "100 AI replies per month",
+      "5 AI replies per day",
       "Choose from OpenAI, Gemini, Groq, or Claude",
       "Manual draft generation",
       "Approval workflow",
@@ -38,11 +33,10 @@ const plans:{
     id:"starter",
     name:"Starter",
     price:"$19",
-    replies:"1,000 replies / month",
-    dailyReplies:"100 replies / day",
     description:"For small teams automating everyday support.",
-    features:[
+    perks:[
       "1,000 AI replies per month",
+      "100 AI replies per day",
       "Choose from OpenAI, Gemini, Groq, or Claude",
       "Auto drafts",
       "Gmail and Outlook integrations",
@@ -54,11 +48,10 @@ const plans:{
     id:"pro",
     name:"Pro",
     price:"$59",
-    replies:"10,000 replies / month",
-    dailyReplies:"1,000 replies / day",
     description:"For growing support teams with advanced automation.",
-    features:[
+    perks:[
       "10,000 AI replies per month",
+      "1,000 AI replies per day",
       "Choose from OpenAI, Gemini, Groq, or Claude",
       "Automatic support handling",
       "Priority processing",
@@ -71,11 +64,10 @@ const plans:{
     id:"business",
     name:"Business",
     price:"$149+",
-    replies:"Custom support volume",
-    dailyReplies:"Unlimited replies / day",
     description:"For organizations with complex support operations.",
-    features:[
+    perks:[
       "Custom support volume",
+      "Unlimited AI replies per day",
       "Multiple support inboxes",
       "CRM and customer context",
       "Conversation memory",
@@ -216,7 +208,7 @@ export default function Billing(){
             type="button"
             onClick={()=>void handleCancel()}
             disabled={changingPlan!==null}
-            className="mt-5 rounded-lg border border-(--danger-text) px-4 py-2 text-(--danger-text) hover:bg-(--danger-bg) disabled:cursor-not-allowed disabled:opacity-60"
+            className="mt-5 rounded-lg bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {changingPlan?"Updating...":"Cancel Subscription"}
           </button>
@@ -245,12 +237,12 @@ export default function Billing(){
 
                   <p className="mt-2 text-3xl font-bold text-(--text-h)">
                     {plan.price}
-                    <span className="text-sm font-normal text-(--text-secondary)">
+                    <span className="text-sm font-normal text-(--text)">
                       {plan.id==="free"?"":" / month"}
                     </span>
                   </p>
 
-                  <p className="mt-2 text-sm text-(--text-secondary)">
+                  <p className="mt-2 text-sm text-(--text)">
                     {plan.description}
                   </p>
                 </div>
@@ -262,45 +254,22 @@ export default function Billing(){
                 )}
               </div>
 
-              <div className="mt-6 space-y-3 text-sm">
-                <p className="font-medium text-(--text)">
-                  {plan.replies}
-                </p>
-                <p className="font-medium text-(--text)">
-                  {plan.dailyReplies}
-                </p>
-                {plan.id!=="business"&&(
-                  <div>
-                    <p className="font-medium text-(--text)">
-                      Available AI providers
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {aiProviders.map(provider=>(
-                        <span
-                          key={provider}
-                          className="rounded-full bg-(--accent-light) px-3 py-1 text-xs font-medium text-(--accent)"
-                        >
-                          {provider}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="mt-6 flex-1">
+                <h3 className="text-sm font-semibold text-(--text)">Perks</h3>
+                <ul className="mt-3 space-y-3">
+                  {plan.perks.map(perk=>(
+                    <li
+                      key={perk}
+                      className="flex gap-2 text-sm text-(--text)"
+                    >
+                      <span className="font-bold text-(--info-text)">
+                        ✓
+                      </span>
+                      {perk}
+                    </li>
+                  ))}
+                </ul>
               </div>
-
-              <ul className="mt-6 flex-1 space-y-3">
-                {plan.features.map(feature=>(
-                  <li
-                    key={feature}
-                    className="flex gap-2 text-sm text-(--text-secondary)"
-                  >
-                    <span className="font-bold text-(--info-text)">
-                      ✓
-                    </span>
-                    {feature}
-                  </li>
-                ))}
-              </ul>
 
               <button
                 type="button"
@@ -310,13 +279,7 @@ export default function Billing(){
                   changingPlan!==null||
                   (plan.id==="business"&&businessRequested)
                 }
-                className={`mt-8 w-full rounded-lg px-4 py-3 font-medium disabled:cursor-not-allowed disabled:opacity-60 ${
-                  current
-                    ?"bg-(--bg-secondary) text-(--text-secondary)"
-                    :plan.id==="business"||plan.id==="pro"
-                      ?"bg-(--accent) text-(--accent-contrast) hover:opacity-90"
-                      :"border border-(--accent) text-(--accent) hover:bg-(--accent-light)"
-                }`}
+                className="mt-8 w-full rounded-lg bg-(--accent) px-4 py-3 font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {processing
                   ?"Updating..."
