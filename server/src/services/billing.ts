@@ -2,6 +2,11 @@ import {Types} from "mongoose";
 import {subscriptionRepository} from "../repositories/SubscriptionRepository.js";
 import {aiSettingsRepository} from "../repositories/AISettingsRepository.js";
 import {env} from "../config/env.js";
+import {
+  BILLING_AI_PROVIDERS,
+  FREE_BILLING_AI_PROVIDERS,
+  type BillingAIProvider,
+} from "../billing/plans.js";
 
 export type Plan="free"|"starter"|"pro"|"business";
 export type AIProvider="openai"|"gemini"|"groq"|"claude";
@@ -70,6 +75,19 @@ function normalizePlan(value:unknown):Plan{
   return "free";
 }
 
+export function getAllowedAIProviders(plan:Plan):readonly BillingAIProvider[]{
+  return plan==="free"
+    ?FREE_BILLING_AI_PROVIDERS
+    :BILLING_AI_PROVIDERS;
+}
+
+export function isAIProviderAllowed(
+  plan:Plan,
+  provider:string,
+):provider is BillingAIProvider{
+  return getAllowedAIProviders(plan).includes(provider as BillingAIProvider);
+}
+
 function serializeSubscription(subscription:any){
   const plan=normalizePlan(subscription.plan);
   const limits=getPlanLimits(plan);
@@ -119,10 +137,29 @@ export async function getPlan(userId:string):Promise<Plan>{
 }
 
 export async function getAIProvider(userId:string):Promise<AIProvider>{
+  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
+
+  const subscription=await getSubscription(userId);
+  const plan=normalizePlan(subscription.plan);
   const settings=await aiSettingsRepository.findByUser(userId);
+
+  if(plan==="free"){
+    if(settings?.provider!=="groq"){
+      await aiSettingsRepository.update(userId,{provider:"groq"});
+    }
+    return "groq";
+  }
+
   const provider=settings?.provider;
 
-  if(provider==="gemini"||provider==="groq"||provider==="claude")return provider;
+  if(
+    provider==="openai"||
+    provider==="gemini"||
+    provider==="groq"||
+    provider==="claude"
+  ){
+    return provider;
+  }
 
   return "openai";
 }
@@ -205,4 +242,24 @@ export async function setPlan(
   });
 
   return serializeSubscription(subscription);
+}
+
+export async function setAIProvider(
+  userId:string,
+  provider:AIProvider,
+){
+  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
+
+  const subscription=await getSubscription(userId);
+  const plan=normalizePlan(subscription.plan);
+
+  if(!isAIProviderAllowed(plan,provider)){
+    throw new Error(
+      plan==="free"
+        ?"The Free plan only supports the Groq AI provider."
+        :"The selected AI provider is not available on your subscription plan.",
+    );
+  }
+
+  return aiSettingsRepository.update(userId,{provider});
 }

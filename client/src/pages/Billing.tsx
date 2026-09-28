@@ -24,7 +24,7 @@ const plans:{
     perks:[
       "100 AI replies per month",
       "5 AI replies per day",
-      "Choose from OpenAI, Gemini, Groq, or Claude",
+      "Groq AI provider",
       "Manual draft generation",
       "Approval workflow",
     ],
@@ -37,7 +37,7 @@ const plans:{
     perks:[
       "1,000 AI replies per month",
       "100 AI replies per day",
-      "Choose from OpenAI, Gemini, Groq, or Claude",
+      "OpenAI, Gemini, Groq, or Claude AI providers",
       "Auto drafts",
       "Gmail and Outlook integrations",
       "Approval workflow",
@@ -52,7 +52,7 @@ const plans:{
     perks:[
       "10,000 AI replies per month",
       "1,000 AI replies per day",
-      "Choose from OpenAI, Gemini, Groq, or Claude",
+      "OpenAI, Gemini, Groq, or Claude AI providers",
       "Automatic support handling",
       "Priority processing",
       "Advanced escalation workflows",
@@ -242,7 +242,7 @@ export default function Billing(){
                     </span>
                   </p>
 
-                  <p className="mt-2 text-sm text-(--text)">
+                  <p className="mt-2 text-sm text-(--text-secondary)">
                     {plan.description}
                   </p>
                 </div>
@@ -262,7 +262,7 @@ export default function Billing(){
                       key={perk}
                       className="flex gap-2 text-sm text-(--text)"
                     >
-                      <span className="font-bold text-(--info-text)">
+                      <span className="font-bold text-(--text)">
                         ✓
                       </span>
                       {perk}
