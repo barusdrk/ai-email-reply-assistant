@@ -78,15 +78,20 @@ export async function scoreDraftConfidence(
   email:string,
   reply:string,
   knowledgeBase?:Awaited<ReturnType<typeof searchKnowledgeBase>>,
+  purpose:Parameters<typeof scoreReplyConfidence>[0]["purpose"]="automated_reply",
 ){
   const customerEmail=email.trim();
   const draftReply=reply.trim();
+
   if(!customerEmail)throw new Error("The original customer email has no body, so the draft cannot be scored.");
   if(!draftReply)throw new Error("A reply is required.");
+
   const context=knowledgeBase??await searchKnowledgeBase(userId,customerEmail);
+
   return scoreReplyConfidence({
     email:customerEmail,
     reply:draftReply,
+    purpose,
     knowledgeBase:context??[],
   });
 }
@@ -113,26 +118,21 @@ export function applySupportDecision(
   result:AutomaticActionResult,
   supportResult:SupportEngineResult,
 ):AutomaticActionResult{
-  if(result.action==="blocked")return result;
   const reasons=[
     supportResult.reason,
     ...supportResult.missingInformation,
     ...supportResult.policyIssues,
   ].filter(Boolean);
-  if(supportResult.policyIssues.length>0){
+
+  if(result.action==="blocked"){
     return {
       action:"blocked",
-      reasons:supportResult.policyIssues,
+      reasons:result.reasons.length
+        ?result.reasons
+        :["A confirmed policy violation prevents automatic handling."],
     };
   }
-  if(supportResult.decision==="reject"){
-    return {
-      action:"blocked",
-      reasons:reasons.length
-        ?reasons
-        :["The AI customer-support engine rejected the request for automated handling."],
-    };
-  }
+
   if(result.action==="escalate"){
     return {
       action:"escalate",
@@ -143,7 +143,21 @@ export function applySupportDecision(
           :["The request requires human specialist review."],
     };
   }
-  if(supportResult.decision==="human_review"||supportResult.needsHuman||!supportResult.reply.trim()){
+
+  if(supportResult.decision==="reject"){
+    return {
+      action:"blocked",
+      reasons:reasons.length
+        ?reasons
+        :["The AI customer-support engine rejected the request for automated handling."],
+    };
+  }
+
+  if(
+    supportResult.decision==="human_review"||
+    supportResult.needsHuman||
+    !supportResult.reply.trim()
+  ){
     return {
       action:"pending",
       reasons:reasons.length
@@ -151,6 +165,7 @@ export function applySupportDecision(
         :["Human approval is required before the response can be sent."],
     };
   }
+
   if(result.action==="auto_approve"&&supportResult.decision==="reply"){
     return {
       action:"auto_approve",
@@ -159,6 +174,7 @@ export function applySupportDecision(
         :["The request passed the AI customer-support decision checks."],
     };
   }
+
   if(result.action==="pending"){
     return {
       action:"pending",
@@ -167,6 +183,7 @@ export function applySupportDecision(
         :["Human approval is required before the response can be sent."],
     };
   }
+
   return {
     action:"pending",
     reasons:reasons.length

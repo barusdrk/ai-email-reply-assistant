@@ -25,15 +25,30 @@ function getClient() {
   return new OpenAI({apiKey: env.OPENAI_API_KEY});
 }
 
-function extractJson(text: string): PolicyCheckResult {
-  const cleaned = text.trim().replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "");
-  const parsed = JSON.parse(cleaned);
-  const violations = Array.isArray(parsed.violations) ? parsed.violations.map(String).slice(0, 10) : [];
-  const warnings = Array.isArray(parsed.warnings) ? parsed.warnings.map(String).slice(0, 10) : [];
-  const suggestions = Array.isArray(parsed.suggestions) ? parsed.suggestions.map(String).slice(0, 10) : [];
-  const score = Math.max(0, Math.min(100, Number(parsed.score) || 0));
+function extractJson(text:string):PolicyCheckResult{
+  const cleaned=text.trim()
+    .replace(/^```json\s*/i,"")
+    .replace(/^```\s*/i,"")
+    .replace(/\s*```$/i,"");
+
+  const parsed=JSON.parse(cleaned);
+
+  const violations=Array.isArray(parsed.violations)
+    ?parsed.violations.map(String).slice(0,10)
+    :[];
+
+  const warnings=Array.isArray(parsed.warnings)
+    ?parsed.warnings.map(String).slice(0,10)
+    :[];
+
+  const suggestions=Array.isArray(parsed.suggestions)
+    ?parsed.suggestions.map(String).slice(0,10)
+    :[];
+
+  const score=Math.max(0,Math.min(100,Number(parsed.score)||0));
+
   return {
-    compliant: violations.length === 0 && Boolean(parsed.compliant),
+    compliant:violations.length===0,
     score,
     violations,
     warnings,
@@ -185,7 +200,7 @@ ${knowledgeBase || "No relevant Knowledge Base information was found."}`;
       : Math.min(aiResult.score, deterministicResult.score);
 
   return {
-    compliant: violations.length === 0 && aiResult.compliant,
+    compliant:violations.length===0,
     score,
     violations,
     warnings,

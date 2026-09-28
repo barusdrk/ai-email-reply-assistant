@@ -75,6 +75,7 @@ export default function Inbox(){
 
             <ReplyGenerator
               email={inbox.selected.body}
+              emailId={inbox.selected.id}
               tone={actualTone}
               length={actualLength}
               onGenerated={inbox.setReply}

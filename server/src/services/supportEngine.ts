@@ -71,14 +71,22 @@ export async function analyzeSupportRequest(input:SupportEngineInput):Promise<Su
   if(!content)throw new Error("AI customer-support engine returned an empty response.");
 
   try{
-    return normalizeResult(JSON.parse(content));
+    return normalizeResult(
+      JSON.parse(content),
+      input.knowledgeBase??[],
+      customerMessage,
+    );
   }catch{
     const fenced=content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
 
     if(!fenced?.[1])throw new Error("AI customer-support engine returned invalid JSON.");
 
     try{
-      return normalizeResult(JSON.parse(fenced[1]));
+      return normalizeResult(
+        JSON.parse(fenced[1]),
+        input.knowledgeBase??[],
+        customerMessage,
+      );
     }catch{
       throw new Error("AI customer-support engine returned invalid JSON.");
     }

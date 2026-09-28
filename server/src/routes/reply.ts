@@ -1,7 +1,7 @@
 import {Router,type Request,type Response} from "express";
 import {authenticate} from "../middleware/auth.js";
 import {reserveReplyAllowance,finalizeReplyAllowance,releaseReplyAllowance} from "../services/billing.js";
-import {generateReplyForUser} from "../services/ai.js";
+import {analyzeDraftSupport} from "../services/draftSupport.js";
 import {TONES} from "../templates/tones.js";
 import type {Tone,ReplyLength} from "../ai/types.js";
 
@@ -10,17 +10,21 @@ const router=Router();
 router.post("/",authenticate,async(req:Request,res:Response)=>{
   let reservationId:string|null=null;
   let aiSucceeded=false;
-
   try{
     if(!req.user){
       res.status(401).json({message:"Unauthorized."});
       return;
     }
 
-    const {email,tone="professional",length="medium",signature}=req.body;
+    const {email,emailId,tone="professional",length="medium"}=req.body;
 
     if(typeof email!=="string"||!email.trim()){
       res.status(400).json({message:"Email is required."});
+      return;
+    }
+
+    if(typeof emailId!=="string"||!emailId.trim()){
+      res.status(400).json({message:"Email ID is required."});
       return;
     }
 
@@ -43,19 +47,24 @@ router.post("/",authenticate,async(req:Request,res:Response)=>{
       return;
     }
 
-    const result=await generateReplyForUser(req.user.id,{
-      email,
-      tone:tone as Tone,
-      length:length as ReplyLength,
-      signature:typeof signature==="string"?signature:undefined,
-    });
+    const result=await analyzeDraftSupport(
+      req.user.id,
+      emailId,
+      undefined,
+      tone as Parameters<typeof analyzeDraftSupport>[3],
+      length as Parameters<typeof analyzeDraftSupport>[4],
+    );
+
+    const reply=result.supportResult.reply.trim();
 
     aiSucceeded=true;
 
-    if(!result.reply.trim()){
+    if(!reply){
       await releaseReplyAllowance(req.user.id,reservationId);
       reservationId=null;
-      res.status(500).json({message:"AI returned an empty reply."});
+      res.status(500).json({
+        message:"AI customer-support engine returned an empty reply.",
+      });
       return;
     }
 
@@ -71,7 +80,25 @@ router.post("/",authenticate,async(req:Request,res:Response)=>{
 
     reservationId=null;
 
-    res.json({success:true,...result});
+    res.json({
+      success:true,
+      reply,
+      confidence:{
+        score:Math.round(result.supportResult.confidence*100),
+        level:result.supportResult.confidence>=0.8
+          ?"high"
+          :result.supportResult.confidence>=0.6
+            ?"medium"
+            :"low",
+      },
+      policyCheck:{
+        compliant:result.supportResult.policyIssues.length===0,
+        violations:result.supportResult.policyIssues,
+      },
+      supportDecision:result.supportResult.decision,
+      needsHuman:result.supportResult.needsHuman,
+      reason:result.supportResult.reason,
+    });
   }catch(error){
     if(!aiSucceeded&&reservationId){
       try{
@@ -82,7 +109,6 @@ router.post("/",authenticate,async(req:Request,res:Response)=>{
     }
 
     console.error("POST /api/reply failed:",error);
-
     res.status(500).json({
       message:error instanceof Error?error.message:"Failed to generate reply.",
     });

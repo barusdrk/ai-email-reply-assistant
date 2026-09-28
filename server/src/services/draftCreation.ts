@@ -22,63 +22,78 @@ export async function createDraft(data:CreateDraftData){
   const length=data.length??"medium";
   const support=await analyzeDraftSupport(data.userId,data.emailId,data.customer,tone,length);
   const supportResult=support.supportResult;
-  const reply=data.reply?.trim()||supportResult.reply.trim();
+
+  // The centralized support engine is the authoritative source for automatic replies.
+  const reply=supportResult.reply.trim();
 
   if(!reply){
-  const now=new Date();
-  const createdDraft=await draftRepository.create({
-    userId:data.userId as any,
-    emailId:data.emailId as any,
-    provider:data.provider,
-    subject:data.subject,
-    customer:data.customer.trim(),
-    reply:"",
-    tone,
-    length,
-    status:"pending",
-    confidence:{
-      score:supportResult.confidence,
-      level:supportResult.confidence>=0.75?"high":"low",
-      reasons:["The AI customer-support engine did not generate a customer-ready reply."],
-    },
-    automaticAction:"pending",
-    automaticActionReasons:["The AI customer-support engine did not generate a customer-ready reply."],
-    supportCategory:normalizeSupportCategory(supportResult.category),
-    supportSentiment:supportResult.sentiment,
-    supportConfidence:supportResult.confidence,
-    supportDecision:"human_review",
-    supportNeedsHuman:true,
-    supportReason:"The AI customer-support engine did not generate a customer-ready reply.",
-    supportSuggestedActions:supportResult.suggestedActions,
-    supportMissingInformation:supportResult.missingInformation,
-    supportPolicyIssues:supportResult.policyIssues,
-    escalatedAt:undefined,
-    escalationReason:undefined,
-    escalationReasons:[],
-    approvedAt:undefined,
-    rejectionReason:undefined,
-  });
-  await emailRepository.update(data.emailId,{draftId:createdDraft._id});
-  await requestApproval(createdDraft._id.toString(),data.userId);
-  return createdDraft;
-}
+    const createdDraft=await draftRepository.create({
+      userId:data.userId as any,
+      emailId:data.emailId as any,
+      provider:data.provider,
+      subject:data.subject,
+      customer:data.customer.trim(),
+      reply:"",
+      tone,
+      length,
+      status:"pending",
+      confidence:{
+        score:Math.round(supportResult.confidence*100),
+        level:supportResult.confidence>=0.75
+          ?"high"
+          :supportResult.confidence>=0.5
+            ?"medium"
+            :"low",
+        reasons:[
+          "The AI customer-support engine did not generate a customer-ready reply.",
+          supportResult.reason,
+        ].filter(Boolean),
+      },
+      automaticAction:"pending",
+      automaticActionReasons:[
+        "The AI customer-support engine did not generate a customer-ready reply.",
+      ],
+      supportCategory:normalizeSupportCategory(supportResult.category),
+      supportSentiment:supportResult.sentiment,
+      supportConfidence:supportResult.confidence,
+      supportDecision:"human_review",
+      supportNeedsHuman:true,
+      supportReason:"The AI customer-support engine did not generate a customer-ready reply.",
+      supportSuggestedActions:supportResult.suggestedActions,
+      supportMissingInformation:supportResult.missingInformation,
+      supportPolicyIssues:supportResult.policyIssues,
+      escalatedAt:undefined,
+      escalationReason:undefined,
+      escalationReasons:[],
+      approvedAt:undefined,
+      rejectionReason:undefined,
+    });
+
+    await emailRepository.update(data.emailId,{draftId:createdDraft._id});
+    await requestApproval(createdDraft._id.toString(),data.userId);
+    return createdDraft;
+  }
 
   const confidence=await scoreDraftConfidence(
     data.userId,
     support.customerEmailBody,
     reply,
     support.knowledgeBase,
+    supportResult.needsHuman?"human_review":"automated_reply",
   );
+
   const policy=await evaluateDraftPolicy(
     data.userId,
     support.customerEmailBody,
     reply,
     support.knowledgeBase,
   );
+
   const automaticAction=applySupportDecision(
     determineAutomaticAction(support.customerEmailBody,confidence,policy),
     supportResult,
   );
+
   const status=automaticAction.action==="escalate"
     ?"escalated"
     :automaticAction.action==="auto_approve"
@@ -88,6 +103,7 @@ export async function createDraft(data:CreateDraftData){
         :"pending";
 
   const now=new Date();
+
   const createdDraft=await draftRepository.create({
     userId:data.userId as any,
     emailId:data.emailId as any,

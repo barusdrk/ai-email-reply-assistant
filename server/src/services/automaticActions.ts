@@ -1,5 +1,6 @@
 import type {ConfidenceScore} from "../ai/types.js";
 import type {PolicyCheckResult} from "./policyChecker.js";
+import type {SupportEngineResult} from "./supportEngineLogic.js";
 import {determineEscalation} from "./escalation.js";
 
 export type AutomaticAction="auto_approve"|"pending"|"escalate"|"blocked";
@@ -13,6 +14,7 @@ export function determineAutomaticAction(
   email:string,
   confidence:ConfidenceScore,
   policy:PolicyCheckResult,
+  supportResult?:SupportEngineResult,
 ):AutomaticActionResult{
   if(!policy.compliant||policy.violations.length>0){
     return {
@@ -20,6 +22,30 @@ export function determineAutomaticAction(
       reasons:policy.violations.length>0
         ?policy.violations
         :["Policy check failed."],
+    };
+  }
+
+  if(supportResult?.decision==="reject"){
+    return {
+      action:"blocked",
+      reasons:[
+        supportResult.reason||"The support engine rejected the response.",
+        ...supportResult.policyIssues,
+      ].filter(Boolean),
+    };
+  }
+
+  if(supportResult?.needsHuman||supportResult?.decision==="human_review"){
+    const reasons=[
+      supportResult.reason||"The support engine determined that human review is required.",
+      ...supportResult.policyIssues,
+    ].filter(Boolean);
+
+    return {
+      action:"escalate",
+      reasons:reasons.length>0
+        ?reasons
+        :["Human review is required before this response can be sent."],
     };
   }
 
