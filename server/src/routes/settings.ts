@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { auth } from "../middleware/auth.js";
 import { getSettings, updateSettings, resetSettings } from "../services/settings.js";
-import {getPlan,isAIProviderAllowed,type AIProvider} from "../services/billing.js";
+import {getPlan,isAIProviderAllowed} from "../services/billing.js";
 
 const router = Router();
 router.use(auth);
@@ -44,20 +44,18 @@ router.put("/", async (req: Request, res: Response) => {
   try {
     const { provider, defaultReplyTone, defaultLength, ...updates } = req.body;
 
-    if(provider!==undefined){
-      if(!AI_PROVIDERS.includes(provider)){
-        res.status(400).json({message:"Invalid AI provider."});
-        return;
-      }
+    if(provider!==undefined&&!AI_PROVIDERS.includes(provider)){
+      res.status(400).json({message:"Invalid AI provider."});
+      return;
+    }
 
+    if(provider!==undefined){
       const plan=await getPlan(req.user.id);
 
       if(!isAIProviderAllowed(plan,provider)){
         res.status(403).json({
           message:
-            plan==="free"
-              ?"The Free plan only supports the Groq AI provider. Upgrade your plan to use another AI provider."
-              :"The selected AI provider is not available on your subscription plan.",
+            "The Free plan only supports the Groq AI provider. Upgrade your plan to use another AI provider.",
         });
         return;
       }

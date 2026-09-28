@@ -11,7 +11,7 @@ export const FREE_BILLING_AI_PROVIDERS=[
   "groq",
 ] as const satisfies readonly AIProviderName[];
 
-export type BillingAIProvider=AIProviderName;
+export type BillingAIProvider=typeof BILLING_AI_PROVIDERS[number];
 
 export const PLANS={
   free:{

@@ -18,7 +18,7 @@ export interface SettingsUpdate {
 }
 
 const DEFAULT_SETTINGS = {
-  provider: "gemini" as AIProvider,
+  provider: "groq" as AIProvider,
   defaultReplyTone: "formal" as ReplyTone,
   defaultLength: "medium" as ReplyLength,
   maxDailyReplies: 20,

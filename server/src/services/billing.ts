@@ -139,18 +139,16 @@ export async function getPlan(userId:string):Promise<Plan>{
 export async function getAIProvider(userId:string):Promise<AIProvider>{
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
 
-  const subscription=await getSubscription(userId);
-  const plan=normalizePlan(subscription.plan);
+  const plan=await getPlan(userId);
   const settings=await aiSettingsRepository.findByUser(userId);
+  const provider=settings?.provider;
 
   if(plan==="free"){
-    if(settings?.provider!=="groq"){
+    if(provider!=="groq"){
       await aiSettingsRepository.update(userId,{provider:"groq"});
     }
     return "groq";
   }
-
-  const provider=settings?.provider;
 
   if(
     provider==="openai"||
