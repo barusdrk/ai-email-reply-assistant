@@ -10,15 +10,22 @@
     "url": "https://github.com/barusdrk/ai-email-reply-assistant"
   },
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\"",
+    "dev": "concurrently \"npm run dev --prefix client\" \"npm run dev --prefix server\" \"vite\"",
     "build": "npm run build --prefix client && npm run build --prefix server",
     "start": "npm start --prefix server",
     "lint": "npm run lint --prefix client && npm run lint --prefix server",
     "test": "npm run test --prefix client && npm run test --prefix server",
     "format": "prettier --write .",
-    "clean": "rimraf node_modules client/node_modules server/node_modules client/dist server/dist"
+    "clean": "rimraf node_modules client/node_modules server/node_modules client/dist server/dist",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "test:all": "npm test && npm run test:e2e"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.3",
     "concurrently": "^9.0.1",
     "prettier": "^3.6.2",
     "rimraf": "^6.0.1"
