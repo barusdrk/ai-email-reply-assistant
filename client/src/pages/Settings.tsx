@@ -168,48 +168,32 @@ export default function Settings(){
           </p>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            disabled={!gmailConnected||providerSaving}
-            onClick={()=>void handleEmailProvider("gmail")}
-            className={`rounded-lg border p-4 text-left transition ${
-              activeEmailProvider==="gmail"
-                ? "border-(--accent) bg-(--bg-secondary)"
-                : "border-(--border) hover:bg-(--surface-hover)"
-            } disabled:cursor-not-allowed disabled:opacity-60`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-(--text-h)">Gmail</span>
-              {activeEmailProvider==="gmail"&&(
-                <span className="text-sm font-medium text-(--accent)">Active</span>
-              )}
-            </div>
-            <p className="mt-1 text-sm text-(--text-secondary)">
-              {gmailConnected?"Connected":"Not connected"}
-            </p>
-          </button>
-
-          <button
-            type="button"
-            disabled={!outlookConnected||providerSaving}
-            onClick={()=>void handleEmailProvider("outlook")}
-            className={`rounded-lg border p-4 text-left transition ${
-              activeEmailProvider==="outlook"
-                ? "border-(--accent) bg-(--bg-secondary)"
-                : "border-(--border) hover:bg-(--surface-hover)"
-            } disabled:cursor-not-allowed disabled:opacity-60`}
-          >
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-(--text-h)">Outlook</span>
-              {activeEmailProvider==="outlook"&&(
-                <span className="text-sm font-medium text-(--accent)">Active</span>
-              )}
-            </div>
-            <p className="mt-1 text-sm text-(--text-secondary)">
-              {outlookConnected?"Connected":"Not connected"}
-            </p>
-          </button>
+        <div className="grid gap-4 md:grid-cols-2">
+          {[
+            {name:"Gmail",provider:"gmail" as const,connected:gmailConnected},
+            {name:"Outlook",provider:"outlook" as const,connected:outlookConnected},
+          ].map(({name,provider,connected})=>{
+            const active=activeEmailProvider===provider;
+            return (
+              <div key={provider} className="rounded-lg border border-(--border) p-4">
+                <div className="flex items-center gap-2">
+                  <span className={`h-2.5 w-2.5 rounded-full ${connected?"bg-emerald-500":"bg-gray-400"}`}/>
+                  <h3 className="font-medium text-(--text-h)">{name}</h3>
+                </div>
+                <p className="mt-1 text-sm text-(--text-secondary)">
+                  {connected?(active?"Connected · Active sending provider":"Connected"):"Not connected"}
+                </p>
+                <button
+                  type="button"
+                  disabled={!connected||providerSaving||active}
+                  onClick={()=>void handleEmailProvider(provider)}
+                  className="mt-4 w-full rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {providerSaving&&!active?"Selecting...":active?`${name} selected`:`Use ${name}`}
+                </button>
+              </div>
+            );
+          })}
         </div>
 
         {!activeEmailProvider&&(
