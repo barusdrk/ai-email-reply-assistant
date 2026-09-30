@@ -12,12 +12,12 @@ export default function GmailConnectButton({
   return (
     <button
       type="button"
-      disabled={loading || connected}
+      disabled={loading}
       onClick={onConnect}
-      className="flex w-full items-center justify-center gap-3 rounded-lg bg-(--accent) px-5 py-3 text-(--text) shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-3 rounded-lg bg-(--accent) px-5 py-3 text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
     >
       <span className="font-medium">
-        {loading ? "Connecting..." : connected ? "Gmail Connected" : "Connect Gmail"}
+        {loading ? (connected ? "Disconnecting..." : "Connecting...") : connected ? "Disconnect Gmail" : "Connect Gmail"}
       </span>
     </button>
   );
