@@ -2,28 +2,37 @@ import {Schema,model,type InferSchemaType,type HydratedDocument,Types} from "mon
 
 export const DRAFT_TONES=["professional","friendly","formal","concise","empathetic","enthusiastic"] as const;
 export type DraftTone=(typeof DRAFT_TONES)[number];
+
 export const DRAFT_LENGTHS=["short","medium","long"] as const;
 export type DraftLength=(typeof DRAFT_LENGTHS)[number];
+
 export const DRAFT_STATUSES=["pending","approved","rejected","sent","escalated"] as const;
 export type DraftStatus=(typeof DRAFT_STATUSES)[number];
+
 export const DRAFT_PROVIDERS=["gmail","outlook"] as const;
 export type DraftProvider=(typeof DRAFT_PROVIDERS)[number];
+
 export const CONFIDENCE_LEVELS=["high","medium","low"] as const;
 export type ConfidenceLevel=(typeof CONFIDENCE_LEVELS)[number];
+
 export const AUTOMATIC_ACTIONS=["auto_approve","pending","escalate","blocked"] as const;
 export type AutomaticAction=(typeof AUTOMATIC_ACTIONS)[number];
+
 export const AUTOMATIC_SEND_PHASES=["idle","claimed","sending","completed","failed","recovery_required"] as const;
 export type AutomaticSendPhase=(typeof AUTOMATIC_SEND_PHASES)[number];
+
 export const SUPPORT_CATEGORIES=["general_support","billing","technical","account","sales","refund","cancellation","shipping","complaint","other"] as const;
 export type SupportCategory=(typeof SUPPORT_CATEGORIES)[number];
+
 export const SUPPORT_SENTIMENTS=["positive","neutral","negative","urgent"] as const;
 export type SupportSentiment=(typeof SUPPORT_SENTIMENTS)[number];
+
 export const SUPPORT_DECISIONS=["reply","human_review","reject"] as const;
 export type SupportDecision=(typeof SUPPORT_DECISIONS)[number];
 
 const draftSchema=new Schema({
   userId:{type:Schema.Types.ObjectId,ref:"User",required:true,index:true},
-  emailId:{type:Schema.Types.ObjectId,ref:"Email",required:true,index:true},
+  emailId:{type:Schema.Types.ObjectId,ref:"Email",required:true},
   provider:{type:String,enum:DRAFT_PROVIDERS,required:true},
   subject:{type:String,required:true,trim:true},
   customer:{type:String,required:true,trim:true},
@@ -63,6 +72,14 @@ const draftSchema=new Schema({
   sentAt:Date,
 },{timestamps:true});
 
+/**
+ * A source email may have exactly one draft.
+ *
+ * This is the database-level protection against two simultaneous
+ * sync/processing workers creating two drafts for the same message.
+ */
+draftSchema.index({emailId:1},{unique:true});
+
 draftSchema.index({userId:1,status:1});
 draftSchema.index({userId:1,createdAt:-1});
 draftSchema.index({userId:1,automaticAction:1});
@@ -74,6 +91,7 @@ export type Draft=InferSchemaType<typeof draftSchema>&{
   createdAt:Date;
   updatedAt:Date;
 };
+
 export type DraftDocument=HydratedDocument<Draft>;
 
 export default model<Draft>("Draft",draftSchema);

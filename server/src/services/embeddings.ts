@@ -2,7 +2,7 @@ import OpenAI from "openai";
 import {env} from "../config/env.js";
 
 const EMBEDDING_MODEL="text-embedding-3-small";
-const MAX_EMBEDDING_INPUT_CHARS=24000;
+const MAX_EMBEDDING_INPUT_CHARS=10000;
 
 function getClient(){
   if(!env.OPENAI_API_KEY){

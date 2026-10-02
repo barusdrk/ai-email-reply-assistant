@@ -2,7 +2,6 @@ import {Types} from "mongoose";
 import {emailRepository} from "../repositories/EmailRepository.js";
 import {customerRepository} from "../repositories/CustomerRepository.js";
 import {connectedAccountRepository} from "../repositories/ConnectedAccountRepository.js";
-import {draftRepository} from "../repositories/DraftRepository.js";
 import {listEmails as listGmailEmails,type InboxEmail as GmailInboxEmail,listSentEmails as listGmailSentEmails,type SentEmail as GmailSentEmail} from "./gmail.js";
 import {listEmails as listOutlookEmails,type InboxEmail as OutlookInboxEmail,listSentEmails as listOutlookSentEmails,type SentEmail as OutlookSentEmail} from "./outlook.js";
 import {createDraft} from "./drafts.js";
@@ -54,19 +53,35 @@ function extractEmailAddress(value:string):string{
 function extractDisplayName(value:string,email:string):string{
   if(!value)return "";
   if(!email)return value.replace(/[<>]/g,"").trim();
-  return value.replace(email,"").replace(/^["']|["']$/g,"").replace(/[<>]/g,"").trim();
+
+  return value
+    .replace(email,"")
+    .replace(/^["']|["']$/g,"")
+    .replace(/[<>]/g,"")
+    .trim();
 }
 
-function isCustomerMessage(email:NormalizedEmail,accountEmail?:string):boolean{
+function isCustomerMessage(
+  email:NormalizedEmail,
+  accountEmail?:string,
+):boolean{
   if(email.direction!=="inbound")return false;
-  const senderEmail=normalizeAddress(email.senderEmail||extractEmailAddress(email.from));
+
+  const senderEmail=normalizeAddress(
+    email.senderEmail||extractEmailAddress(email.from),
+  );
   const connectedEmail=normalizeAddress(accountEmail??"");
+
   if(!senderEmail)return false;
   if(connectedEmail&&senderEmail===connectedEmail)return false;
+
   return true;
 }
 
-function normalizeGmailEmail(userId:string,email:GmailInboxEmail):NormalizedEmail{
+function normalizeGmailEmail(
+  userId:string,
+  email:GmailInboxEmail,
+):NormalizedEmail{
   return {
     userId:new Types.ObjectId(userId),
     provider:"gmail",
@@ -89,10 +104,14 @@ function normalizeGmailEmail(userId:string,email:GmailInboxEmail):NormalizedEmai
   };
 }
 
-function normalizeOutlookEmail(userId:string,email:OutlookInboxEmail):NormalizedEmail{
+function normalizeOutlookEmail(
+  userId:string,
+  email:OutlookInboxEmail,
+):NormalizedEmail{
   const from=email.from?.trim()??"";
   const senderEmail=extractEmailAddress(from);
   const senderName=extractDisplayName(from,senderEmail);
+
   return {
     userId:new Types.ObjectId(userId),
     provider:"outlook",
@@ -115,7 +134,10 @@ function normalizeOutlookEmail(userId:string,email:OutlookInboxEmail):Normalized
   };
 }
 
-function normalizeGmailSentEmail(userId:string,email:GmailSentEmail):NormalizedEmail{
+function normalizeGmailSentEmail(
+  userId:string,
+  email:GmailSentEmail,
+):NormalizedEmail{
   return {
     userId:new Types.ObjectId(userId),
     provider:"gmail",
@@ -138,7 +160,10 @@ function normalizeGmailSentEmail(userId:string,email:GmailSentEmail):NormalizedE
   };
 }
 
-function normalizeOutlookSentEmail(userId:string,email:OutlookSentEmail):NormalizedEmail{
+function normalizeOutlookSentEmail(
+  userId:string,
+  email:OutlookSentEmail,
+):NormalizedEmail{
   return {
     userId:new Types.ObjectId(userId),
     provider:"outlook",
@@ -149,7 +174,10 @@ function normalizeOutlookSentEmail(userId:string,email:OutlookSentEmail):Normali
     threadId:email.threadId??"",
     subject:email.subject??"",
     from:email.from??"",
-    senderName:extractDisplayName(email.from??"",extractEmailAddress(email.from??"")),
+    senderName:extractDisplayName(
+      email.from??"",
+      extractEmailAddress(email.from??""),
+    ),
     senderEmail:extractEmailAddress(email.from??""),
     recipientName:email.recipientName??"",
     recipientEmail:email.recipientEmail??"",
@@ -246,121 +274,245 @@ async function linkEmailsToCustomers(
   };
 }
 
-async function generateDraftsForNewEmails(userId:string,emails:NormalizedEmail[],accountEmail?:string){
+async function generateDraftsForNewEmails(
+  userId:string,
+  emails:NormalizedEmail[],
+  accountEmail?:string,
+){
   let created=0,skipped=0,failed=0;
-  const inboundEmails=emails.filter((email)=>email.direction==="inbound");
-  const storedEmails=await emailRepository.findAll(userId);
-  for(const email of inboundEmails){
-    try{
-      if(!isCustomerMessage(email,accountEmail)){skipped++;continue;}
-      if(!email.body.trim()){skipped++;continue;}
-      const storedEmail=storedEmails.find((stored)=>stored.provider===email.provider&&stored.messageId===email.messageId);
-      if(!storedEmail){skipped++;continue;}
-      const existingDraft=await draftRepository.findByEmailId(storedEmail._id.toString());
-      if(existingDraft){skipped++;continue;}
-      await createDraft({
-        userId,
-        emailId:storedEmail._id.toString(),
-        provider:email.provider,
-        subject:email.subject,
-        customer:email.senderEmail||email.senderName,
-        email:email.body,
-      });
-      created++;
-    }catch(error){
-      failed++;
-      console.error("Automatic draft generation failed:",{
-        provider:email.provider,
-        messageId:email.messageId,
-        senderEmail:email.senderEmail,
-        error:error instanceof Error?error.message:error,
-      });
-    }
-  }
-  return {created,skipped,failed};
-}
 
-async function syncProvider(userId:string,provider:EmailProvider,direction:EmailDirection,sourceEmails:NormalizedEmail[]):Promise<SyncResult>{
-  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
-
-  const existingEmails=await emailRepository.findAll(userId);
-  const existingIds=new Set(
-    existingEmails
-      .filter((email)=>email.provider===provider&&email.direction===direction)
-      .map((email)=>email.messageId),
+  const inboundEmails=emails.filter(
+    email=>email.direction==="inbound",
   );
 
-  const newEmails=sourceEmails.filter((email)=>!existingIds.has(email.messageId));
+  for(const email of inboundEmails){
+    try{
+      if(!isCustomerMessage(email,accountEmail)){
+        skipped++;
+        continue;
+      }
 
-  console.log("Email provider sync:",{
+      if(!email.body.trim()){
+        skipped++;
+        continue;
+      }
+
+      const storedEmail=await emailRepository.findByMessageId(
+        userId,
+        email.provider,
+        email.messageId,
+      );
+
+      if(!storedEmail){
+        skipped++;
+        continue;
+      }
+
+      if(storedEmail.automaticDraftGenerated){
+        skipped++;
+        continue;
+      }
+
+      /**
+       * Database-level claim.
+       *
+       * Only one sync worker should perform automatic draft generation
+       * for this email at a time.
+       */
+      const claimedEmail=await emailRepository.claimAutomaticDraftGeneration(
+        storedEmail._id.toString(),
+      );
+
+      if(!claimedEmail){
+        skipped++;
+        continue;
+      }
+
+      try{
+        const result=await createDraft({
+          userId,
+          emailId:storedEmail._id.toString(),
+          provider:email.provider,
+          subject:email.subject,
+          customer:email.senderEmail||email.senderName,
+          email:email.body,
+        });
+
+        if(result){
+          created++;
+        }else{
+          skipped++;
+        }
+      }catch(error){
+        await emailRepository.releaseAutomaticDraftGeneration(
+          storedEmail._id.toString(),
+        );
+        throw error;
+      }
+    }catch(error){
+      failed++;
+
+      console.error(
+        "Automatic draft generation failed:",
+        {
+          provider:email.provider,
+          messageId:email.messageId,
+          senderEmail:email.senderEmail,
+          error:error instanceof Error
+            ?error.message
+            :error,
+        },
+      );
+    }
+  }
+
+  return {
+    created,
+    skipped,
+    failed,
+  };
+}
+
+async function syncProvider(
+  userId:string,
+  provider:EmailProvider,
+  direction:EmailDirection,
+  sourceEmails:NormalizedEmail[],
+):Promise<SyncResult>{
+  if(!Types.ObjectId.isValid(userId)){
+    throw new Error("Invalid user ID.");
+  }
+
+  const existingEmails=await emailRepository.findAll(userId);
+
+  const existingIds=new Set(
+    existingEmails
+      .filter(
+        email=>
+          email.provider===provider&&
+          email.direction===direction,
+      )
+      .map(email=>email.messageId),
+  );
+
+  const newEmails=sourceEmails.filter(
+    email=>!existingIds.has(email.messageId),
+  );
+
+  console.log(
+    "Email provider sync:",
+    {
+      provider,
+      direction,
+      sourceCount:sourceEmails.length,
+      newCount:newEmails.length,
+      newest:sourceEmails[0]
+        ?{
+          messageId:sourceEmails[0].messageId,
+          subject:sourceEmails[0].subject,
+          receivedAt:sourceEmails[0].receivedAt,
+        }
+        :null,
+      oldest:sourceEmails.length>0
+        ?{
+          messageId:sourceEmails[sourceEmails.length-1].messageId,
+          subject:sourceEmails[sourceEmails.length-1].subject,
+          receivedAt:sourceEmails[sourceEmails.length-1].receivedAt,
+        }
+        :null,
+    },
+  );
+
+  if(sourceEmails.length>0){
+    await emailRepository.bulkUpsert(sourceEmails);
+  }
+
+  const account=await connectedAccountRepository.findByProvider(
+    userId,
     provider,
-    direction,
-    sourceCount:sourceEmails.length,
-    newCount:newEmails.length,
-    newest:sourceEmails[0]?{
-      messageId:sourceEmails[0].messageId,
-      subject:sourceEmails[0].subject,
-      receivedAt:sourceEmails[0].receivedAt,
-    }:null,
-    oldest:sourceEmails.length>0?{
-      messageId:sourceEmails[sourceEmails.length-1].messageId,
-      subject:sourceEmails[sourceEmails.length-1].subject,
-      receivedAt:sourceEmails[sourceEmails.length-1].receivedAt,
-    }:null,
-  });
-
-  if(sourceEmails.length>0)await emailRepository.bulkUpsert(sourceEmails);
-
-  const account=await connectedAccountRepository.findByProvider(userId,provider);
+  );
 
   if(direction==="inbound"){
-    const customerResult=await linkEmailsToCustomers(userId,sourceEmails,account?.email);
-    console.log("CRM customer linking:",{
-      provider,
-      emails:sourceEmails.length,
-      linked:customerResult.linked,
-      skipped:customerResult.skipped,
-      failed:customerResult.failed,
-    });
+    const customerResult=await linkEmailsToCustomers(
+      userId,
+      sourceEmails,
+      account?.email,
+    );
 
-    if(newEmails.length>0){
-      const draftResult=await generateDraftsForNewEmails(userId,newEmails,account?.email);
-      console.log("Automatic draft generation:",{
+    console.log(
+      "CRM customer linking:",
+      {
         provider,
-        newEmails:newEmails.length,
-        draftsCreated:draftResult.created,
-        draftsSkipped:draftResult.skipped,
-        draftsFailed:draftResult.failed,
-      });
+        emails:sourceEmails.length,
+        linked:customerResult.linked,
+        skipped:customerResult.skipped,
+        failed:customerResult.failed,
+      },
+    );
+
+    /**
+     * Process the provider batch through the persistent idempotency
+     * boundary instead of relying on the old in-memory newEmails list.
+     *
+     * This is important because another sync can have inserted the
+     * same email between the old snapshot and this point.
+     */
+    if(sourceEmails.length>0){
+      const draftResult=await generateDraftsForNewEmails(
+        userId,
+        sourceEmails,
+        account?.email,
+      );
+
+      console.log(
+        "Automatic draft generation:",
+        {
+          provider,
+          sourceEmails:sourceEmails.length,
+          draftsCreated:draftResult.created,
+          draftsSkipped:draftResult.skipped,
+          draftsFailed:draftResult.failed,
+        },
+      );
     }
   }
 
   if(account){
-    await connectedAccountRepository.update(account._id.toString(),{
-      syncStatus:"idle",
-      lastSyncAt:new Date(),
-      lastError:"",
-      connected:true,
-    });
+    await connectedAccountRepository.update(
+      account._id.toString(),
+      {
+        syncStatus:"idle",
+        lastSyncAt:new Date(),
+        lastError:"",
+        connected:true,
+      },
+    );
   }
 
   const storedEmails=await emailRepository.findAll(userId);
 
-  console.log("Email database sync:",{
-    provider,
-    direction,
-    synced:sourceEmails.length,
-    created:newEmails.length,
-    updated:sourceEmails.length-newEmails.length,
-    newestStored:storedEmails
-      .filter((email)=>email.provider===provider&&email.direction===direction)
-      .slice(0,5)
-      .map((email)=>({
-        messageId:email.messageId,
-        subject:email.subject,
-        receivedAt:email.receivedAt,
-      })),
-  });
+  console.log(
+    "Email database sync:",
+    {
+      provider,
+      direction,
+      synced:sourceEmails.length,
+      created:newEmails.length,
+      updated:sourceEmails.length-newEmails.length,
+      newestStored:storedEmails
+        .filter(
+          email=>
+            email.provider===provider&&
+            email.direction===direction,
+        )
+        .slice(0,5)
+        .map(email=>({
+          messageId:email.messageId,
+          subject:email.subject,
+          receivedAt:email.receivedAt,
+        })),
+    },
+  );
 
   return {
     provider,
@@ -374,143 +526,298 @@ async function syncProvider(userId:string,provider:EmailProvider,direction:Email
   };
 }
 
-async function markSyncError(userId:string,provider:EmailProvider,error:unknown){
-  const account=await connectedAccountRepository.findByProvider(userId,provider);
-  if(!account)return;
-  const message=error instanceof Error?error.message:"Email sync failed.";
-  await connectedAccountRepository.update(account._id.toString(),{
-    syncStatus:"error",
-    lastError:message,
-  });
-  console.error("Email sync failed:",{
+async function markSyncError(
+  userId:string,
+  provider:EmailProvider,
+  error:unknown,
+){
+  const account=await connectedAccountRepository.findByProvider(
+    userId,
     provider,
-    error:message,
-  });
+  );
+
+  if(!account)return;
+
+  const message=error instanceof Error
+    ?error.message
+    :"Email sync failed.";
+
+  await connectedAccountRepository.update(
+    account._id.toString(),
+    {
+      syncStatus:"error",
+      lastError:message,
+    },
+  );
+
+  console.error(
+    "Email sync failed:",
+    {
+      provider,
+      error:message,
+    },
+  );
 }
 
-export async function syncGmail(userId:string):Promise<SyncResult>{
-  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
-  const account=await connectedAccountRepository.findByProvider(userId,"gmail");
-  if(!account?.connected)throw new Error("Gmail is not connected.");
+export async function syncGmail(
+  userId:string,
+):Promise<SyncResult>{
+  if(!Types.ObjectId.isValid(userId)){
+    throw new Error("Invalid user ID.");
+  }
 
-  await connectedAccountRepository.update(account._id.toString(),{
-    syncStatus:"syncing",
-    lastError:"",
-  });
+  const account=await connectedAccountRepository.findByProvider(
+    userId,
+    "gmail",
+  );
+
+  if(!account?.connected){
+    throw new Error("Gmail is not connected.");
+  }
+
+  await connectedAccountRepository.update(
+    account._id.toString(),
+    {
+      syncStatus:"syncing",
+      lastError:"",
+    },
+  );
 
   try{
     const emails=await listGmailEmails(userId);
-    console.log("GMAIL PROVIDER EMAILS:",{
-      count:emails.length,
-      newest:emails[0]?.receivedAt,
-      oldest:emails[emails.length-1]?.receivedAt,
-      newestSubject:emails[0]?.subject,
-      ids:emails.slice(0,10).map((email)=>email.id),
-    });
-    const normalized=emails.map((email)=>normalizeGmailEmail(userId,email));
-    return await syncProvider(userId,"gmail","inbound",normalized);
+
+    console.log(
+      "GMAIL PROVIDER EMAILS:",
+      {
+        count:emails.length,
+        newest:emails[0]?.receivedAt,
+        oldest:emails[emails.length-1]?.receivedAt,
+        newestSubject:emails[0]?.subject,
+        ids:emails.slice(0,10).map(email=>email.id),
+      },
+    );
+
+    const normalized=emails.map(
+      email=>normalizeGmailEmail(userId,email),
+    );
+
+    return await syncProvider(
+      userId,
+      "gmail",
+      "inbound",
+      normalized,
+    );
   }catch(error){
     await markSyncError(userId,"gmail",error);
     throw error;
   }
 }
 
-export async function syncOutlook(userId:string):Promise<SyncResult>{
-  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
-  const account=await connectedAccountRepository.findByProvider(userId,"outlook");
-  if(!account?.connected)throw new Error("Outlook is not connected.");
+export async function syncOutlook(
+  userId:string,
+):Promise<SyncResult>{
+  if(!Types.ObjectId.isValid(userId)){
+    throw new Error("Invalid user ID.");
+  }
 
-  await connectedAccountRepository.update(account._id.toString(),{
-    syncStatus:"syncing",
-    lastError:"",
-  });
+  const account=await connectedAccountRepository.findByProvider(
+    userId,
+    "outlook",
+  );
+
+  if(!account?.connected){
+    throw new Error("Outlook is not connected.");
+  }
+
+  await connectedAccountRepository.update(
+    account._id.toString(),
+    {
+      syncStatus:"syncing",
+      lastError:"",
+    },
+  );
 
   try{
     const emails=await listOutlookEmails(userId);
-    console.log("OUTLOOK PROVIDER EMAILS:",{
-      count:emails.length,
-      newest:emails[0]?.receivedAt,
-      oldest:emails[emails.length-1]?.receivedAt,
-      newestSubject:emails[0]?.subject,
-      ids:emails.slice(0,10).map((email)=>email.id),
-    });
-    const normalized=emails.map((email)=>normalizeOutlookEmail(userId,email));
-    return await syncProvider(userId,"outlook","inbound",normalized);
+
+    console.log(
+      "OUTLOOK PROVIDER EMAILS:",
+      {
+        count:emails.length,
+        newest:emails[0]?.receivedAt,
+        oldest:emails[emails.length-1]?.receivedAt,
+        newestSubject:emails[0]?.subject,
+        ids:emails.slice(0,10).map(email=>email.id),
+      },
+    );
+
+    const normalized=emails.map(
+      email=>normalizeOutlookEmail(userId,email),
+    );
+
+    return await syncProvider(
+      userId,
+      "outlook",
+      "inbound",
+      normalized,
+    );
   }catch(error){
     await markSyncError(userId,"outlook",error);
     throw error;
   }
 }
 
-export async function syncGmailSent(userId:string):Promise<SyncResult>{
-  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
-  const account=await connectedAccountRepository.findByProvider(userId,"gmail");
-  if(!account?.connected)throw new Error("Gmail is not connected.");
+export async function syncGmailSent(
+  userId:string,
+):Promise<SyncResult>{
+  if(!Types.ObjectId.isValid(userId)){
+    throw new Error("Invalid user ID.");
+  }
 
-  await connectedAccountRepository.update(account._id.toString(),{
-    syncStatus:"syncing",
-    lastError:"",
-  });
+  const account=await connectedAccountRepository.findByProvider(
+    userId,
+    "gmail",
+  );
+
+  if(!account?.connected){
+    throw new Error("Gmail is not connected.");
+  }
+
+  await connectedAccountRepository.update(
+    account._id.toString(),
+    {
+      syncStatus:"syncing",
+      lastError:"",
+    },
+  );
 
   try{
     const emails=await listGmailSentEmails(userId);
-    console.log("GMAIL SENT PROVIDER EMAILS:",{
-      count:emails.length,
-      newest:emails[0]?.receivedAt,
-      oldest:emails[emails.length-1]?.receivedAt,
-      newestSubject:emails[0]?.subject,
-      ids:emails.slice(0,10).map((email)=>email.id),
-    });
-    const normalized=emails.map((email)=>normalizeGmailSentEmail(userId,email));
-    return await syncProvider(userId,"gmail","outbound",normalized);
+
+    console.log(
+      "GMAIL SENT PROVIDER EMAILS:",
+      {
+        count:emails.length,
+        newest:emails[0]?.receivedAt,
+        oldest:emails[emails.length-1]?.receivedAt,
+        newestSubject:emails[0]?.subject,
+        ids:emails.slice(0,10).map(email=>email.id),
+      },
+    );
+
+    const normalized=emails.map(
+      email=>normalizeGmailSentEmail(userId,email),
+    );
+
+    return await syncProvider(
+      userId,
+      "gmail",
+      "outbound",
+      normalized,
+    );
   }catch(error){
     await markSyncError(userId,"gmail",error);
     throw error;
   }
 }
 
-export async function syncOutlookSent(userId:string):Promise<SyncResult>{
-  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
-  const account=await connectedAccountRepository.findByProvider(userId,"outlook");
-  if(!account?.connected)throw new Error("Outlook is not connected.");
+export async function syncOutlookSent(
+  userId:string,
+):Promise<SyncResult>{
+  if(!Types.ObjectId.isValid(userId)){
+    throw new Error("Invalid user ID.");
+  }
 
-  await connectedAccountRepository.update(account._id.toString(),{
-    syncStatus:"syncing",
-    lastError:"",
-  });
+  const account=await connectedAccountRepository.findByProvider(
+    userId,
+    "outlook",
+  );
+
+  if(!account?.connected){
+    throw new Error("Outlook is not connected.");
+  }
+
+  await connectedAccountRepository.update(
+    account._id.toString(),
+    {
+      syncStatus:"syncing",
+      lastError:"",
+    },
+  );
 
   try{
     const emails=await listOutlookSentEmails(userId);
-    console.log("OUTLOOK SENT PROVIDER EMAILS:",{
-      count:emails.length,
-      newest:emails[0]?.receivedAt,
-      oldest:emails[emails.length-1]?.receivedAt,
-      newestSubject:emails[0]?.subject,
-      ids:emails.slice(0,10).map((email)=>email.id),
-    });
-    const normalized=emails.map((email)=>normalizeOutlookSentEmail(userId,email));
-    return await syncProvider(userId,"outlook","outbound",normalized);
+
+    console.log(
+      "OUTLOOK SENT PROVIDER EMAILS:",
+      {
+        count:emails.length,
+        newest:emails[0]?.receivedAt,
+        oldest:emails[emails.length-1]?.receivedAt,
+        newestSubject:emails[0]?.subject,
+        ids:emails.slice(0,10).map(email=>email.id),
+      },
+    );
+
+    const normalized=emails.map(
+      email=>normalizeOutlookSentEmail(userId,email),
+    );
+
+    return await syncProvider(
+      userId,
+      "outlook",
+      "outbound",
+      normalized,
+    );
   }catch(error){
     await markSyncError(userId,"outlook",error);
     throw error;
   }
 }
 
-export async function syncInbox(userId:string,provider?:EmailProvider){
-  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
+export async function syncInbox(
+  userId:string,
+  provider?:EmailProvider,
+){
+  if(!Types.ObjectId.isValid(userId)){
+    throw new Error("Invalid user ID.");
+  }
 
-  if(provider==="gmail")return {gmail:await syncGmail(userId)};
-  if(provider==="outlook")return {outlook:await syncOutlook(userId)};
+  if(provider==="gmail"){
+    return {
+      gmail:await syncGmail(userId),
+    };
+  }
 
-  const results:{gmail?:SyncResult;outlook?:SyncResult}={};
-  const gmailAccount=await connectedAccountRepository.findByProvider(userId,"gmail");
-  const outlookAccount=await connectedAccountRepository.findByProvider(userId,"outlook");
+  if(provider==="outlook"){
+    return {
+      outlook:await syncOutlook(userId),
+    };
+  }
+
+  const results:{
+    gmail?:SyncResult;
+    outlook?:SyncResult;
+  }={};
+
+  const gmailAccount=await connectedAccountRepository.findByProvider(
+    userId,
+    "gmail",
+  );
+
+  const outlookAccount=await connectedAccountRepository.findByProvider(
+    userId,
+    "outlook",
+  );
 
   if(gmailAccount?.connected){
     try{
       results.gmail=await syncGmail(userId);
     }catch(error){
-      console.error("Gmail inbox sync failed:",error);
+      console.error(
+        "Gmail inbox sync failed:",
+        error,
+      );
     }
   }
 
@@ -518,28 +825,59 @@ export async function syncInbox(userId:string,provider?:EmailProvider){
     try{
       results.outlook=await syncOutlook(userId);
     }catch(error){
-      console.error("Outlook inbox sync failed:",error);
+      console.error(
+        "Outlook inbox sync failed:",
+        error,
+      );
     }
   }
 
   return results;
 }
 
-export async function syncSent(userId:string,provider?:EmailProvider){
-  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
+export async function syncSent(
+  userId:string,
+  provider?:EmailProvider,
+){
+  if(!Types.ObjectId.isValid(userId)){
+    throw new Error("Invalid user ID.");
+  }
 
-  if(provider==="gmail")return {gmail:await syncGmailSent(userId)};
-  if(provider==="outlook")return {outlook:await syncOutlookSent(userId)};
+  if(provider==="gmail"){
+    return {
+      gmail:await syncGmailSent(userId),
+    };
+  }
 
-  const results:{gmail?:SyncResult;outlook?:SyncResult}={};
-  const gmailAccount=await connectedAccountRepository.findByProvider(userId,"gmail");
-  const outlookAccount=await connectedAccountRepository.findByProvider(userId,"outlook");
+  if(provider==="outlook"){
+    return {
+      outlook:await syncOutlookSent(userId),
+    };
+  }
+
+  const results:{
+    gmail?:SyncResult;
+    outlook?:SyncResult;
+  }={};
+
+  const gmailAccount=await connectedAccountRepository.findByProvider(
+    userId,
+    "gmail",
+  );
+
+  const outlookAccount=await connectedAccountRepository.findByProvider(
+    userId,
+    "outlook",
+  );
 
   if(gmailAccount?.connected){
     try{
       results.gmail=await syncGmailSent(userId);
     }catch(error){
-      console.error("Gmail sent sync failed:",error);
+      console.error(
+        "Gmail sent sync failed:",
+        error,
+      );
     }
   }
 
@@ -547,7 +885,10 @@ export async function syncSent(userId:string,provider?:EmailProvider){
     try{
       results.outlook=await syncOutlookSent(userId);
     }catch(error){
-      console.error("Outlook sent sync failed:",error);
+      console.error(
+        "Outlook sent sync failed:",
+        error,
+      );
     }
   }
 

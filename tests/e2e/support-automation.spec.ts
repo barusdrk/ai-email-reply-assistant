@@ -528,4 +528,102 @@ test.describe("Support automation workflows", () => {
       await deleteDraft(request, token, String(draft._id));
     }
   });
+
+  test("does not create duplicate drafts for the same source email", async ({
+    request,
+  }) => {
+    const session = await login(request);
+    const token = session.token;
+    const inbox = await getInbox(request, token);
+    const email = inbox[0];
+
+    test.skip(
+      !email,
+      "The demo account has no inbox email available for idempotency testing.",
+    );
+
+    const emailId = getEmailId(email!);
+    expect(emailId).toBeTruthy();
+
+    const provider = getProvider(email!);
+
+    const draftData = {
+      emailId,
+      provider,
+      subject: `Re: ${email!.subject ?? "Customer Support Request"}`,
+      customer: getCustomerEmail(email!),
+      reply:
+        "Thank you for contacting our support team. We have received your request and will review it shortly.",
+      tone: "professional",
+      length: "medium",
+    };
+
+    const responses = await Promise.all([
+      request.post(`${API_URL}/drafts`, {
+        headers: authHeaders(token),
+        timeout: AI_REQUEST_TIMEOUT,
+        data: draftData,
+      }),
+      request.post(`${API_URL}/drafts`, {
+        headers: authHeaders(token),
+        timeout: AI_REQUEST_TIMEOUT,
+        data: draftData,
+      }),
+    ]);
+
+    const successfulResponses = responses.filter((response) =>
+      response.ok(),
+    );
+
+    const duplicateResponses = responses.filter(
+      (response) => response.status() === 409,
+    );
+
+    expect(
+      successfulResponses.length + duplicateResponses.length,
+    ).toBe(2);
+
+    expect(successfulResponses.length).toBe(1);
+
+    const firstSuccessfulResponse = successfulResponses[0];
+    const createdDraft = await firstSuccessfulResponse.json();
+
+    expect(createdDraft._id).toBeTruthy();
+
+    try {
+      const draftsResponse = await request.get(`${API_URL}/drafts`, {
+        headers: authHeaders(token),
+      });
+
+      expect(
+        draftsResponse.ok(),
+        `Draft listing failed with ${draftsResponse.status()}: ${await draftsResponse.text()}`,
+      ).toBeTruthy();
+
+      const draftsBody = await draftsResponse.json();
+
+      const drafts = Array.isArray(draftsBody)
+        ? draftsBody
+        : draftsBody.drafts ?? draftsBody.data ?? [];
+
+      const matchingDrafts = drafts.filter(
+        (draft: { emailId?: string | { _id?: string } }) => {
+          const draftEmailId =
+            typeof draft.emailId === "object"
+              ? draft.emailId?._id
+              : draft.emailId;
+
+          return String(draftEmailId) === String(emailId);
+        },
+      );
+
+      expect(matchingDrafts).toHaveLength(1);
+    } finally {
+      await deleteDraft(
+        request,
+        token,
+        String(createdDraft._id),
+      );
+    }
+  });
 });

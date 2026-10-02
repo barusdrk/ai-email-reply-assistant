@@ -1,204 +1,300 @@
-import {Types} from "mongoose";
-import DraftModel,{type Draft,type DraftStatus} from "../models/Draft.js";
+import { Types } from "mongoose";
+import DraftModel, { type Draft, type DraftStatus } from "../models/Draft.js";
 
 class DraftRepository {
-  async findAll(userId:string,status?:DraftStatus):Promise<Draft[]>{
-    const filter:{userId:Types.ObjectId;status?:DraftStatus}={userId:new Types.ObjectId(userId)};
-    if(status)filter.status=status;
-    return DraftModel.find(filter).sort({createdAt:-1}).lean<Draft[]>();
+  async findAll(userId: string, status?: DraftStatus): Promise<Draft[]> {
+    if (!Types.ObjectId.isValid(userId)) return [];
+    const filter: { userId: Types.ObjectId; status?: DraftStatus } = {
+      userId: new Types.ObjectId(userId),
+    };
+    if (status) filter.status = status;
+    return DraftModel.find(filter).sort({ createdAt: -1 }).lean<Draft[]>();
   }
 
-  async findById(id:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
-    return DraftModel.findById(id).lean<Draft|null>();
+  async findById(id: string): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+    return DraftModel.findById(id).lean<Draft | null>();
   }
 
-  async findByEmailId(emailId:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(emailId))return null;
-    return DraftModel.findOne({emailId:new Types.ObjectId(emailId)}).sort({createdAt:-1}).lean<Draft|null>();
+  async findByEmailId(emailId: string): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(emailId)) return null;
+    return DraftModel.findOne({
+      emailId: new Types.ObjectId(emailId),
+    }).sort({ createdAt: -1 }).lean<Draft | null>();
   }
 
-  async create(data:Partial<Draft>):Promise<Draft>{
-    const draft=await DraftModel.create(data);
+  async create(data: Partial<Draft>): Promise<Draft> {
+    const draft = await DraftModel.create(data);
     return draft.toObject() as Draft;
   }
 
-  async update(id:string,data:Partial<Draft>):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
-    return DraftModel.findByIdAndUpdate(id,{$set:data},{new:true,runValidators:true}).lean<Draft|null>();
+  async createIfNotExists(
+    data: Partial<Draft>,
+  ): Promise<{ created: boolean; draft: Draft }> {
+    if (!data.emailId) {
+      const draft = await this.create(data);
+      return { created: true, draft };
+    }
+
+    const emailId =
+      data.emailId instanceof Types.ObjectId
+        ? data.emailId
+        : new Types.ObjectId(String(data.emailId));
+
+    const existing = await DraftModel.findOne({ emailId }).lean<Draft | null>();
+
+    if (existing) {
+      return {
+        created: false,
+        draft: existing,
+      };
+    }
+
+    try {
+      const draft = await DraftModel.create({
+        ...data,
+        emailId,
+      });
+
+      return {
+        created: true,
+        draft: draft.toObject() as Draft,
+      };
+    } catch (error: unknown) {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        (error as { code?: number }).code === 11000
+      ) {
+        const existing = await DraftModel.findOne({
+          emailId,
+        }).lean<Draft | null>();
+
+        if (existing) {
+          return {
+            created: false,
+            draft: existing,
+          };
+        }
+      }
+
+      throw error;
+    }
   }
 
-  async delete(id:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
+  async update(id: string, data: Partial<Draft>): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+
+    return DraftModel.findByIdAndUpdate(
+      id,
+      { $set: data },
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean<Draft | null>();
+  }
+
+  async delete(id: string): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+
     return DraftModel.findOneAndDelete({
-      _id:new Types.ObjectId(id),
-      automaticSendInProgress:{$ne:true},
-    }).lean<Draft|null>();
+      _id: new Types.ObjectId(id),
+      automaticSendInProgress: { $ne: true },
+    }).lean<Draft | null>();
   }
 
-  async claimForAutomaticSend(id:string,userId:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id)||!Types.ObjectId.isValid(userId))return null;
-    return DraftModel.findOneAndUpdate(
-      {
-        _id:new Types.ObjectId(id),
-        userId:new Types.ObjectId(userId),
-        status:"approved",
-        automaticAction:"auto_approve",
-        automaticSendInProgress:{$ne:true},
-        automaticSendRecoveryRequired:{$ne:true},
-      },
-      {
-        $set:{
-          automaticSendInProgress:true,
-          automaticSendPhase:"claimed",
-          automaticSendClaimedAt:new Date(),
-          automaticSendLastAttemptAt:new Date(),
-          automaticSendLastError:"",
-        },
-        $inc:{
-          automaticSendAttempts:1,
-        },
-      },
-      {
-        new:true,
-        runValidators:true,
-      },
-    ).lean<Draft|null>();
-  }
+  async claimForAutomaticSend(
+    id: string,
+    userId: string,
+  ): Promise<Draft | null> {
+    if (
+      !Types.ObjectId.isValid(id) ||
+      !Types.ObjectId.isValid(userId)
+    ) {
+      return null;
+    }
 
-  async markAutomaticSendStarted(id:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
     return DraftModel.findOneAndUpdate(
       {
-        _id:new Types.ObjectId(id),
-        automaticSendInProgress:true,
-        automaticSendPhase:"claimed",
+        _id: new Types.ObjectId(id),
+        userId: new Types.ObjectId(userId),
+        status: "approved",
+        automaticAction: "auto_approve",
+        automaticSendInProgress: { $ne: true },
+        automaticSendRecoveryRequired: { $ne: true },
       },
       {
-        $set:{
-          automaticSendPhase:"sending",
-          automaticSendStartedAt:new Date(),
-          automaticSendLastAttemptAt:new Date(),
+        $set: {
+          automaticSendInProgress: true,
+          automaticSendPhase: "claimed",
+          automaticSendClaimedAt: new Date(),
+          automaticSendLastAttemptAt: new Date(),
+          automaticSendLastError: "",
+        },
+        $inc: {
+          automaticSendAttempts: 1,
         },
       },
       {
-        new:true,
-        runValidators:true,
+        new: true,
+        runValidators: true,
       },
-    ).lean<Draft|null>();
+    ).lean<Draft | null>();
   }
 
-  async markAutomaticSendCompleted(id:string,sentAt:Date):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
+  async markAutomaticSendStarted(id: string): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+
     return DraftModel.findOneAndUpdate(
       {
-        _id:new Types.ObjectId(id),
-        automaticSendInProgress:true,
-        automaticSendPhase:"sending",
+        _id: new Types.ObjectId(id),
+        automaticSendInProgress: true,
+        automaticSendPhase: "claimed",
       },
       {
-        $set:{
-          status:"sent",
+        $set: {
+          automaticSendPhase: "sending",
+          automaticSendStartedAt: new Date(),
+          automaticSendLastAttemptAt: new Date(),
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    ).lean<Draft | null>();
+  }
+
+  async markAutomaticSendCompleted(
+    id: string,
+    sentAt: Date,
+  ): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+
+    return DraftModel.findOneAndUpdate(
+      {
+        _id: new Types.ObjectId(id),
+        automaticSendInProgress: true,
+        automaticSendPhase: "sending",
+      },
+      {
+        $set: {
+          status: "sent",
           sentAt,
-          automaticSendInProgress:false,
-          automaticSendPhase:"completed",
-          automaticSendRecoveryRequired:false,
-          automaticSendLastError:"",
+          automaticSendInProgress: false,
+          automaticSendPhase: "completed",
+          automaticSendRecoveryRequired: false,
+          automaticSendLastError: "",
         },
-        $unset:{
-          automaticSendClaimedAt:1,
-          automaticSendStartedAt:1,
+        $unset: {
+          automaticSendClaimedAt: 1,
+          automaticSendStartedAt: 1,
         },
       },
       {
-        new:true,
-        runValidators:true,
+        new: true,
+        runValidators: true,
       },
-    ).lean<Draft|null>();
+    ).lean<Draft | null>();
   }
 
-  async releaseAutomaticClaim(id:string,errorMessage?:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
+  async releaseAutomaticClaim(
+    id: string,
+    errorMessage?: string,
+  ): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+
     return DraftModel.findOneAndUpdate(
       {
-        _id:new Types.ObjectId(id),
-        automaticSendInProgress:true,
-        automaticSendPhase:"claimed",
+        _id: new Types.ObjectId(id),
+        automaticSendInProgress: true,
+        automaticSendPhase: "claimed",
       },
       {
-        $set:{
-          status:"approved",
-          automaticSendInProgress:false,
-          automaticSendPhase:"failed",
-          automaticSendLastError:errorMessage??"",
-          automaticSendRecoveryRequired:false,
+        $set: {
+          status: "approved",
+          automaticSendInProgress: false,
+          automaticSendPhase: "failed",
+          automaticSendLastError: errorMessage ?? "",
+          automaticSendRecoveryRequired: false,
         },
-        $unset:{
-          automaticSendClaimedAt:1,
-          automaticSendStartedAt:1,
+        $unset: {
+          automaticSendClaimedAt: 1,
+          automaticSendStartedAt: 1,
         },
       },
       {
-        new:true,
-        runValidators:true,
+        new: true,
+        runValidators: true,
       },
-    ).lean<Draft|null>();
+    ).lean<Draft | null>();
   }
 
-  async markAutomaticRecoveryRequired(id:string,errorMessage:string):Promise<Draft|null>{
-    if(!Types.ObjectId.isValid(id))return null;
+  async markAutomaticRecoveryRequired(
+    id: string,
+    errorMessage: string,
+  ): Promise<Draft | null> {
+    if (!Types.ObjectId.isValid(id)) return null;
+
     return DraftModel.findOneAndUpdate(
       {
-        _id:new Types.ObjectId(id),
-        automaticSendInProgress:true,
+        _id: new Types.ObjectId(id),
+        automaticSendInProgress: true,
       },
       {
-        $set:{
-          status:"pending",
-          automaticAction:"pending",
-          automaticSendInProgress:false,
-          automaticSendPhase:"recovery_required",
-          automaticSendLastError:errorMessage,
-          automaticSendRecoveryRequired:true,
-          supportNeedsHuman:true,
-          supportReason:"Automatic sending may have reached the email provider but completion could not be confirmed. Verify the provider Sent folder before retrying.",
+        $set: {
+          status: "pending",
+          automaticAction: "pending",
+          automaticSendInProgress: false,
+          automaticSendPhase: "recovery_required",
+          automaticSendLastError: errorMessage,
+          automaticSendRecoveryRequired: true,
+          supportNeedsHuman: true,
+          supportReason:
+            "Automatic sending may have reached the email provider but completion could not be confirmed. Verify the provider Sent folder before retrying.",
         },
-        $unset:{
-          automaticSendClaimedAt:1,
-          automaticSendStartedAt:1,
+        $unset: {
+          automaticSendClaimedAt: 1,
+          automaticSendStartedAt: 1,
         },
       },
       {
-        new:true,
-        runValidators:true,
+        new: true,
+        runValidators: true,
       },
-    ).lean<Draft|null>();
+    ).lean<Draft | null>();
   }
 
-    async findStaleAutomaticClaims(cutoff:Date):Promise<Draft[]>{
+  async findStaleAutomaticClaims(cutoff: Date): Promise<Draft[]> {
     return DraftModel.find({
-      automaticSendInProgress:true,
-      $or:[
+      automaticSendInProgress: true,
+      $or: [
         {
-          automaticSendPhase:"claimed",
-          automaticSendClaimedAt:{$lt:cutoff},
+          automaticSendPhase: "claimed",
+          automaticSendClaimedAt: { $lt: cutoff },
         },
         {
-          automaticSendPhase:"sending",
-          automaticSendStartedAt:{$lt:cutoff},
+          automaticSendPhase: "sending",
+          automaticSendStartedAt: { $lt: cutoff },
         },
       ],
-    }).sort({automaticSendLastAttemptAt:1}).lean<Draft[]>();
+    })
+      .sort({ automaticSendLastAttemptAt: 1 })
+      .lean<Draft[]>();
   }
 
-  async deleteOlderThan(date:Date):Promise<number>{
-    const result=await DraftModel.deleteMany({
-      createdAt:{$lt:date},
-      automaticSendInProgress:{$ne:true},
-      automaticSendRecoveryRequired:{$ne:true},
+  async deleteOlderThan(date: Date): Promise<number> {
+    const result = await DraftModel.deleteMany({
+      createdAt: { $lt: date },
+      automaticSendInProgress: { $ne: true },
+      automaticSendRecoveryRequired: { $ne: true },
     });
-    return result.deletedCount??0;
+
+    return result.deletedCount ?? 0;
   }
 }
 
-export const draftRepository=new DraftRepository();
+export const draftRepository = new DraftRepository();
+export default draftRepository;

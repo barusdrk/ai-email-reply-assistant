@@ -3,6 +3,7 @@ import {Types} from "mongoose";
 import crypto from "crypto";
 import ConnectedAccountModel from "../models/ConnectedAccount.js";
 import EmailModel from "../models/Email.js";
+import {cleanEmailBody} from "./emailBody.js";
 
 const GMAIL_SCOPES=[
   "https://www.googleapis.com/auth/gmail.readonly",
@@ -424,7 +425,8 @@ function normalizeGmailMessage(message:any):InboxEmail{
   const inReplyTo=getHeader(headers,"In-Reply-To");
   const references=[...referencesHeader.split(/\s+/).filter(Boolean)];
   if(inReplyTo&&!references.includes(inReplyTo))references.push(inReplyTo);
-  const body=collectPlainTextBody(message.payload)||collectBody(message.payload);
+  const rawBody=collectPlainTextBody(message.payload)||collectBody(message.payload);
+const body=cleanEmailBody(rawBody);
   const labelIds=message.labelIds??[];
   return {
     id:message.id??"",
@@ -457,7 +459,8 @@ function normalizeGmailSentMessage(message:any):SentEmail{
   const inReplyTo=getHeader(headers,"In-Reply-To");
   const references=[...referencesHeader.split(/\s+/).filter(Boolean)];
   if(inReplyTo&&!references.includes(inReplyTo))references.push(inReplyTo);
-  const body=collectPlainTextBody(message.payload)||collectBody(message.payload);
+  const rawBody=collectPlainTextBody(message.payload)||collectBody(message.payload);
+const body=cleanEmailBody(rawBody);
   return {
     id:message.id??"",
     threadId:message.threadId??"",

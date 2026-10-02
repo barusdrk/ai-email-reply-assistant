@@ -8,26 +8,51 @@ import type {CreateDraftData} from "./draftTypes.js";
 import {sendAutomatically} from "./automaticSend.js";
 import {requestApproval} from "./draftApproval.js";
 
-function normalizeSupportCategory(value:string):SupportCategory{
+function normalizeSupportCategory(
+  value:string,
+):SupportCategory{
   return (SUPPORT_CATEGORIES as readonly string[]).includes(value)
     ?value as SupportCategory
     :"general_support";
 }
 
+async function markCreatedDraft(
+  emailId:string,
+  draftId:any,
+){
+  await emailRepository.markAutomaticDraftGenerated(
+    emailId,
+    draftId,
+  );
+}
+
 export async function createDraft(data:CreateDraftData){
-  if(!isValidObjectId(data.userId))throw new Error("Invalid user ID.");
-  if(!isValidObjectId(data.emailId))throw new Error("Invalid source email ID.");
+  if(!isValidObjectId(data.userId)){
+    throw new Error("Invalid user ID.");
+  }
+
+  if(!isValidObjectId(data.emailId)){
+    throw new Error("Invalid source email ID.");
+  }
 
   const tone=data.tone??"professional";
   const length=data.length??"medium";
-  const support=await analyzeDraftSupport(data.userId,data.emailId,data.customer,tone,length);
+
+  const support=await analyzeDraftSupport(
+    data.userId,
+    data.emailId,
+    data.customer,
+    tone,
+    length,
+  );
+
   const supportResult=support.supportResult;
 
   // The centralized support engine is the authoritative source for automatic replies.
   const reply=supportResult.reply.trim();
 
   if(!reply){
-    const createdDraft=await draftRepository.create({
+    const draftResult=await draftRepository.createIfNotExists({
       userId:data.userId as any,
       emailId:data.emailId as any,
       provider:data.provider,
@@ -53,7 +78,9 @@ export async function createDraft(data:CreateDraftData){
       automaticActionReasons:[
         "The AI customer-support engine did not generate a customer-ready reply.",
       ],
-      supportCategory:normalizeSupportCategory(supportResult.category),
+      supportCategory:normalizeSupportCategory(
+        supportResult.category,
+      ),
       supportSentiment:supportResult.sentiment,
       supportConfidence:supportResult.confidence,
       supportDecision:"human_review",
@@ -69,8 +96,26 @@ export async function createDraft(data:CreateDraftData){
       rejectionReason:undefined,
     });
 
-    await emailRepository.update(data.emailId,{draftId:createdDraft._id});
-    await requestApproval(createdDraft._id.toString(),data.userId);
+    const createdDraft=draftResult.draft;
+
+    /**
+     * If another sync/process already created the draft, do not
+     * request another approval or perform another side effect.
+     */
+    await markCreatedDraft(
+      data.emailId,
+      createdDraft._id,
+    );
+
+    if(!draftResult.created){
+      return createdDraft;
+    }
+
+    await requestApproval(
+      createdDraft._id.toString(),
+      data.userId,
+    );
+
     return createdDraft;
   }
 
@@ -79,7 +124,9 @@ export async function createDraft(data:CreateDraftData){
     support.customerEmailBody,
     reply,
     support.knowledgeBase,
-    supportResult.needsHuman?"human_review":"automated_reply",
+    supportResult.needsHuman
+      ?"human_review"
+      :"automated_reply",
   );
 
   const policy=await evaluateDraftPolicy(
@@ -90,7 +137,11 @@ export async function createDraft(data:CreateDraftData){
   );
 
   const automaticAction=applySupportDecision(
-    determineAutomaticAction(support.customerEmailBody,confidence,policy),
+    determineAutomaticAction(
+      support.customerEmailBody,
+      confidence,
+      policy,
+    ),
     supportResult,
   );
 
@@ -104,7 +155,7 @@ export async function createDraft(data:CreateDraftData){
 
   const now=new Date();
 
-  const createdDraft=await draftRepository.create({
+  const draftResult=await draftRepository.createIfNotExists({
     userId:data.userId as any,
     emailId:data.emailId as any,
     provider:data.provider,
@@ -117,7 +168,9 @@ export async function createDraft(data:CreateDraftData){
     confidence,
     automaticAction:automaticAction.action,
     automaticActionReasons:automaticAction.reasons,
-    supportCategory:normalizeSupportCategory(supportResult.category),
+    supportCategory:normalizeSupportCategory(
+      supportResult.category,
+    ),
     supportSentiment:supportResult.sentiment,
     supportConfidence:supportResult.confidence,
     supportDecision:supportResult.decision,
@@ -126,24 +179,67 @@ export async function createDraft(data:CreateDraftData){
     supportSuggestedActions:supportResult.suggestedActions,
     supportMissingInformation:supportResult.missingInformation,
     supportPolicyIssues:supportResult.policyIssues,
-    escalatedAt:status==="escalated"?now:undefined,
-    escalationReason:status==="escalated"?automaticAction.reasons[0]:undefined,
-    escalationReasons:status==="escalated"?automaticAction.reasons:[],
-    approvedAt:status==="approved"?now:undefined,
-    rejectionReason:status==="rejected"?automaticAction.reasons.join(" "):undefined,
+    escalatedAt:status==="escalated"
+      ?now
+      :undefined,
+    escalationReason:status==="escalated"
+      ?automaticAction.reasons[0]
+      :undefined,
+    escalationReasons:status==="escalated"
+      ?automaticAction.reasons
+      :[],
+    approvedAt:status==="approved"
+      ?now
+      :undefined,
+    rejectionReason:status==="rejected"
+      ?automaticAction.reasons.join(" ")
+      :undefined,
   });
 
-  await emailRepository.update(data.emailId,{draftId:createdDraft._id});
+  const createdDraft=draftResult.draft;
+
+  /**
+   * Mark the source email as permanently processed for automatic
+   * draft generation. Deleting this draft later must not make the
+   * source email eligible for automatic regeneration.
+   */
+  await markCreatedDraft(
+    data.emailId,
+    createdDraft._id,
+  );
+
+  /**
+   * Another worker already created this draft.
+   *
+   * Returning here is critical: the losing worker must not send the
+   * same reply or create a second approval request.
+   */
+  if(!draftResult.created){
+    return createdDraft;
+  }
 
   if(automaticAction.action==="auto_approve"){
-    console.log("AUTOMATIC APPROVAL: sending draft:",{
-      draftId:createdDraft._id.toString(),
-      emailId:data.emailId,
-      provider:data.provider,
-    });
-    await sendAutomatically(data.userId,createdDraft._id.toString());
-  }else if(automaticAction.action==="pending"||automaticAction.action==="escalate"){
-    await requestApproval(createdDraft._id.toString(),data.userId);
+    console.log(
+      "AUTOMATIC APPROVAL: sending draft:",
+      {
+        draftId:createdDraft._id.toString(),
+        emailId:data.emailId,
+        provider:data.provider,
+      },
+    );
+
+    await sendAutomatically(
+      data.userId,
+      createdDraft._id.toString(),
+    );
+  }else if(
+    automaticAction.action==="pending"||
+    automaticAction.action==="escalate"
+  ){
+    await requestApproval(
+      createdDraft._id.toString(),
+      data.userId,
+    );
   }
 
   return createdDraft;

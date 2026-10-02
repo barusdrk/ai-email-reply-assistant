@@ -49,6 +49,20 @@ const emailSchema=new Schema(
       type:Date,
       default:null,
     },
+    automaticDraftGenerated:{
+      type:Boolean,
+      default:false,
+      index:true,
+    },
+    automaticDraftGenerationInProgress:{
+      type:Boolean,
+      default:false,
+      index:true,
+    },
+    automaticDraftGenerationStartedAt:{
+      type:Date,
+      default:null,
+    },
     unread:{type:Boolean,default:true},
     archived:{type:Boolean,default:false},
     receivedAt:{type:Date,default:Date.now},
@@ -63,6 +77,8 @@ emailSchema.index({userId:1,threadId:1});
 emailSchema.index({userId:1,customerId:1});
 emailSchema.index({userId:1,draftId:1});
 emailSchema.index({userId:1,supportProcessingStatus:1,receivedAt:-1});
+emailSchema.index({userId:1,automaticDraftGenerated:1,receivedAt:-1});
+emailSchema.index({automaticDraftGenerationInProgress:1,automaticDraftGenerationStartedAt:1});
 
 export type EmailDocument=InferSchemaType<typeof emailSchema>;
 export const EmailModel=model("Email",emailSchema);

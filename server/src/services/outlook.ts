@@ -2,6 +2,7 @@ import {Types} from "mongoose";
 import jwt from "jsonwebtoken";
 import {env} from "../config/env.js";
 import {connectedAccountRepository} from "../repositories/ConnectedAccountRepository.js";
+import {cleanEmailBody} from "./emailBody.js";
 
 const MICROSOFT_SCOPES=[
   "openid",
@@ -405,23 +406,34 @@ export async function listEmails(userId:string):Promise<InboxEmail[]>{
   const data=await response.json() as MicrosoftGraphMessageResponse;
 
   return (data.value??[])
-    .filter((message)=>Boolean(message.id))
-    .map((message)=>({
+  .filter((message)=>Boolean(message.id))
+  .map((message)=>{
+    const rawBody=message.body?.content??message.bodyPreview??"";
+    const body=cleanEmailBody(
+      rawBody,
+      message.body?.contentType?.toLowerCase()==="html",
+    );
+
+    return {
       id:message.id??"",
       threadId:message.conversationId??message.id??"",
       subject:message.subject??"",
       from:message.from?.emailAddress?.address
-        ? message.from.emailAddress.name
-          ? `${message.from.emailAddress.name} <${message.from.emailAddress.address}>`
-          : message.from.emailAddress.address
-        : message.from?.emailAddress?.name??"",
-      preview:message.bodyPreview??"",
-      body:message.body?.content??message.bodyPreview??"",
+        ?message.from.emailAddress.name
+          ?`${message.from.emailAddress.name} <${message.from.emailAddress.address}>`
+          :message.from.emailAddress.address
+        :message.from?.emailAddress?.name??"",
+      preview:body.replace(/\s+/g," ").slice(0,300),
+      body,
       unread:!(message.isRead??false),
       archived:false,
-      receivedAt:message.receivedDateTime?new Date(message.receivedDateTime):undefined,
-    }));
+      receivedAt:message.receivedDateTime
+        ?new Date(message.receivedDateTime)
+        :undefined,
+    };
+  });
 }
+
 
 export async function listSentEmails(userId:string):Promise<SentEmail[]>{
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
@@ -467,10 +479,16 @@ export async function listSentEmails(userId:string):Promise<SentEmail[]>{
       const fromAddress=message.from?.emailAddress?.address??"";
       const fromName=message.from?.emailAddress?.name??"";
       const from=fromAddress
-        ? fromName
-          ? `${fromName} <${fromAddress}>`
-          : fromAddress
-        : fromName;
+        ?fromName
+          ?`${fromName} <${fromAddress}>`
+          :fromAddress
+        :fromName;
+
+      const rawBody=message.body?.content??message.bodyPreview??"";
+      const body=cleanEmailBody(
+        rawBody,
+        message.body?.contentType?.toLowerCase()==="html",
+      );
 
       return {
         id:message.id??"",
@@ -478,15 +496,17 @@ export async function listSentEmails(userId:string):Promise<SentEmail[]>{
         subject:message.subject??"",
         from,
         to:recipientEmail
-          ? recipientName
-            ? `${recipientName} <${recipientEmail}>`
-            : recipientEmail
-          : "",
+          ?recipientName
+            ?`${recipientName} <${recipientEmail}>`
+            :recipientEmail
+          :"",
         recipientName,
         recipientEmail,
-        preview:message.bodyPreview??"",
-        body:message.body?.content??message.bodyPreview??"",
-        receivedAt:message.receivedDateTime?new Date(message.receivedDateTime):undefined,
+        preview:body.replace(/\s+/g," ").slice(0,300),
+        body,
+        receivedAt:message.receivedDateTime
+          ?new Date(message.receivedDateTime)
+          :undefined,
       };
     });
 }
