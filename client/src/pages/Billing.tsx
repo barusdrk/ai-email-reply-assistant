@@ -275,7 +275,7 @@ export default function Billing(){
                   changingPlan!==null||
                   (plan.id==="business"&&businessRequested)
                 }
-                className="mt-8 w-full rounded-lg bg-(--accent) px-4 py-3 font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="mt-8 w-full rounded-lg bg-(--accent) px-4 py-3 font-medium text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 max-w-64"
               >
                 {processing
                   ?"Updating..."
