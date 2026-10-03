@@ -40,7 +40,6 @@ const plans:{
       "OpenAI, Gemini, Groq, or Claude AI providers",
       "Auto drafts",
       "Gmail and Outlook integrations",
-      "Approval workflow",
       "Conversation memory",
     ],
   },
@@ -69,9 +68,6 @@ const plans:{
       "Custom support volume",
       "Unlimited AI replies per day",
       "Multiple support inboxes",
-      "CRM and customer context",
-      "Conversation memory",
-      "Advanced escalation workflows",
       "Custom policies and automation",
       "Business-level analytics",
       "Dedicated support",
@@ -229,7 +225,7 @@ export default function Billing(){
                   :"border-(--border)"
               }`}
             >
-              <div className="flex items-start justify-between gap-4">
+              <div className="flex items-start justify-between gap-4 relative">
                 <div>
                   <h2 className="text-xl font-bold text-(--text-h)">
                     {plan.name}
@@ -248,7 +244,7 @@ export default function Billing(){
                 </div>
 
                 {current&&(
-                  <span className="rounded-full bg-(--accent-light) px-3 py-1 text-xs font-semibold text-(--accent)">
+                  <span className="absolute right-0 rounded-full bg-(--accent-light) px-3 py-1 text-xs font-semibold text-(--accent) top-0">
                     Current Plan
                   </span>
                 )}
