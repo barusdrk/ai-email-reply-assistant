@@ -117,7 +117,7 @@ export default function Approvals() {
   const pendingCount = approvals.filter((approval) => approval.draft.status === "pending").length;
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-(--text-h)">Approval Queue</h1>
         <p className="mt-2 text-(--text-secondary)">Review AI replies before they are sent.</p>
@@ -145,13 +145,13 @@ export default function Approvals() {
           No replies waiting for approval.
         </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid min-w-0 max-w-full gap-6">
           {approvals.map((approval) => {
             const draft = approval.draft;
             const escalated = draft.status === "escalated";
 
             return (
-              <div key={approval.id} className="space-y-3">
+              <div key={approval.id} className="min-w-0 max-w-full space-y-3">
                 <ApprovalCard
                   draft={draft}
                   onApprove={() => void handleApprove(approval.id)}

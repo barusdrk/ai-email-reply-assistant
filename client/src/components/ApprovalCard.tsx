@@ -34,7 +34,10 @@ export default function ApprovalCard({
   const escalated=draft.status==="escalated";
 
   return (
-    <article className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
+    <article
+      data-testid="approval-card"
+      className="min-w-0 max-w-full rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-semibold text-(--text-h)">
@@ -121,7 +124,7 @@ export default function ApprovalCard({
         <p className="text-xs font-semibold uppercase tracking-wide text-(--text-secondary)">
           Proposed Reply
         </p>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-(--text)">
+        <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-(--text)">
           {draft.reply}
         </p>
       </div>

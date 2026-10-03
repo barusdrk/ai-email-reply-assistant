@@ -50,7 +50,7 @@ export default function NotificationsCard({
             type="checkbox"
             checked={emailNotifications}
             onChange={(event)=>onEmailNotificationsChange(event.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-(--border) accent-(--accent)"
+            className="cursor-pointer mt-1 h-4 w-4 rounded border-(--border) accent-(--accent)"
           />
           <span>
             <span className="block font-medium text-(--text-h)">Email notifications</span>
@@ -65,7 +65,7 @@ export default function NotificationsCard({
             type="checkbox"
             checked={desktopNotifications}
             onChange={(event)=>handleDesktopChange(event.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-(--border) accent-(--accent)"
+            className="cursor-pointer mt-1 h-4 w-4 rounded border-(--border) accent-(--accent)"
           />
           <span>
             <span className="block font-medium text-(--text-h)">Desktop notifications</span>
