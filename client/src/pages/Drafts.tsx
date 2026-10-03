@@ -104,7 +104,7 @@ export default function Drafts() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="min-w-0 max-w-full space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-(--text-h)">Draft Replies</h1>
         <p className="mt-2 text-(--text-secondary)">
@@ -117,11 +117,11 @@ export default function Drafts() {
           No drafts available.
         </div>
       ) : (
-        <div className="grid gap-6">
+        <div className="grid min-w-0 max-w-full gap-6">
           {drafts.map((draft) => {
             const statusMessage = getStatusMessage(draft);
             return (
-              <div key={draft.id} className="space-y-3">
+              <div key={draft.id} className="min-w-0 max-w-full space-y-3">
                 {statusMessage && (
                   <div className={`rounded-lg border p-4 text-sm ${statusMessage.className}`}>
                     {statusMessage.text}

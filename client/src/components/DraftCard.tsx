@@ -35,7 +35,10 @@ export default function DraftCard({
   const canSend = draft.status === "approved";
 
   return (
-    <article className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
+    <article
+      data-testid="draft-card"
+      className="min-w-0 max-w-full rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h2 className="truncate text-lg font-semibold text-(--text-h)">
@@ -111,7 +114,7 @@ export default function DraftCard({
         </div>
       )}
 
-      <p className="mt-4 line-clamp-4 whitespace-pre-wrap text-sm text-(--text)">
+      <p className="mt-4 line-clamp-4 whitespace-pre-wrap break-words text-sm text-(--text)">
         {draft.reply}
       </p>
 
