@@ -75,12 +75,8 @@ function isCustomerMessage(
 
   if(!senderEmail)return false;
 
-  // Never process messages sent from the connected support mailbox
-  // as customer messages.
   if(connectedEmail&&senderEmail===connectedEmail)return false;
 
-  // Prevent the application's own email notifications from becoming
-  // customer messages when they arrive back in the support inbox.
   const isInternalNotification=
     subject.startsWith("new customer message:")&&
     body.includes("you have a new customer message in your support inbox.")&&
