@@ -187,7 +187,7 @@ export default function Settings(){
                   type="button"
                   disabled={!connected||providerSaving||active}
                   onClick={()=>void handleEmailProvider(provider)}
-                  className="mt-4 w-full rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-4 w-full rounded-lg bg-(--accent) px-4 py-2 text-sm font-medium text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 max-w-64"
                 >
                   {providerSaving&&!active?"Selecting...":active?`${name} selected`:`Use ${name}`}
                 </button>

@@ -14,7 +14,7 @@ export default function GmailConnectButton({
       type="button"
       disabled={loading}
       onClick={onConnect}
-      className="flex w-full items-center justify-center gap-3 rounded-lg bg-(--accent) px-5 py-3 text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+      className="flex w-full items-center justify-center gap-3 rounded-lg bg-(--accent) px-5 py-3 text-white shadow-sm transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60 max-w-64"
     >
       <span className="font-medium">
         {loading ? (connected ? "Disconnecting..." : "Connecting...") : connected ? "Disconnect Gmail" : "Connect Gmail"}
