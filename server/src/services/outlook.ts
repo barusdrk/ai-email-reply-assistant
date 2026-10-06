@@ -11,11 +11,13 @@ const MICROSOFT_SCOPES=[
   "offline_access",
   "User.Read",
   "Mail.Read",
+  "Mail.ReadWrite",
   "Mail.Send",
 ];
 
 const MICROSOFT_TOKEN_URL=`https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
 const MICROSOFT_GRAPH_URL="https://graph.microsoft.com/v1.0";
+const MICROSOFT_IMMUTABLE_ID_HEADER='IdType="ImmutableId"';
 const OAUTH_STATE_EXPIRES_IN="10m";
 
 interface OAuthState{
@@ -58,6 +60,7 @@ interface MicrosoftGraphMessage{
   id?:string;
   conversationId?:string;
   subject?:string;
+  isDraft?:boolean;
   bodyPreview?:string;
   receivedDateTime?:string;
   isRead?:boolean;
@@ -229,6 +232,10 @@ async function getAccessToken(userId:string,forceRefresh=false):Promise<string>{
   return account.accessToken;
 }
 
+export async function getOutlookAccessToken(userId:string,forceRefresh=false):Promise<string>{
+  return getAccessToken(userId,forceRefresh);
+}
+
 export async function outlookStatus(userId:string){
   const account=await connectedAccountRepository.findByProvider(userId,"outlook");
   return {
@@ -261,45 +268,178 @@ async function handleGraphError(userId:string,response:Response,operation:string
   throw new Error(`Microsoft Graph ${operation} failed: ${response.status} ${text}`);
 }
 
+
 export async function replyToEmail(userId:string,messageId:string,reply:string){
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
   if(!messageId.trim()||!reply.trim())throw new Error("Message ID and reply are required.");
 
   let accessToken=await getAccessToken(userId);
-  const url=`${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(messageId)}/reply`;
-  const body=JSON.stringify({
-    message:{
-      body:{
-        contentType:"Text",
-        content:reply.trim(),
-      },
-    },
+  const createReplyUrl=`${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(messageId)}/createReply`;
+  const createReplyBody=JSON.stringify({
+    comment:reply.trim(),
   });
 
-  let response=await fetch(url,{
-    method:"POST",
-    headers:{
-      Authorization:`Bearer ${accessToken}`,
-      "Content-Type":"application/json",
-    },
-    body,
-  });
-
-  if(response.status===401){
-    accessToken=await getAccessToken(userId,true);
-    response=await fetch(url,{
+  let response:Response;
+  try{
+    response=await fetch(createReplyUrl,{
       method:"POST",
       headers:{
         Authorization:`Bearer ${accessToken}`,
         "Content-Type":"application/json",
+        Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
       },
-      body,
+      body:createReplyBody,
     });
+  }catch(error){
+    throw new Error(
+      `Outlook provider response was uncertain while creating the reply draft: ${error instanceof Error?error.message:String(error)}`,
+    );
   }
 
-  if(!response.ok)await handleGraphError(userId,response,"reply");
+  if(response.status===401){
+    accessToken=await getAccessToken(userId,true);
 
-  return {sent:true,id:messageId};
+    try{
+      response=await fetch(createReplyUrl,{
+        method:"POST",
+        headers:{
+          Authorization:`Bearer ${accessToken}`,
+          "Content-Type":"application/json",
+          Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
+        },
+        body:createReplyBody,
+      });
+    }catch(error){
+      throw new Error(
+        `Outlook provider response was uncertain while creating the reply draft after token refresh: ${error instanceof Error?error.message:String(error)}`,
+      );
+    }
+  }
+
+  if(!response.ok)await handleGraphError(userId,response,"create reply");
+
+  const replyDraft=await response.json() as MicrosoftGraphMessage;
+
+  if(!replyDraft.id?.trim()){
+    throw new Error("Outlook provider response did not include a reply draft ID.");
+  }
+
+  const draftId=replyDraft.id.trim();
+  const sendUrl=`${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(draftId)}/send`;
+
+  try{
+    response=await fetch(sendUrl,{
+      method:"POST",
+      headers:{
+        Authorization:`Bearer ${accessToken}`,
+        "Content-Length":"0",
+        Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
+      },
+    });
+  }catch(error){
+    throw new Error(
+      `Outlook provider response was uncertain while sending the reply: ${error instanceof Error?error.message:String(error)}`,
+    );
+  }
+
+  if(response.status===401){
+    accessToken=await getAccessToken(userId,true);
+
+    try{
+      response=await fetch(sendUrl,{
+        method:"POST",
+        headers:{
+          Authorization:`Bearer ${accessToken}`,
+          "Content-Length":"0",
+          Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
+        },
+      });
+    }catch(error){
+      throw new Error(
+        `Outlook provider response was uncertain while sending the reply after token refresh: ${error instanceof Error?error.message:String(error)}`,
+      );
+    }
+  }
+
+  if(!response.ok)await handleGraphError(userId,response,"send reply");
+
+  let sentMessage:MicrosoftGraphMessage|null=null;
+
+  for(let attempt=0;attempt<5;attempt++){
+    await new Promise((resolve)=>setTimeout(resolve,500*(attempt+1)));
+
+    let getResponse:Response;
+
+    try{
+      getResponse=await fetch(
+        `${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(draftId)}?$select=id,isDraft,conversationId`,
+        {
+          headers:{
+            Authorization:`Bearer ${accessToken}`,
+            Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
+          },
+        },
+      );
+    }catch(error){
+      if(attempt===4){
+        throw new Error(
+          `Outlook provider response was uncertain after the reply was accepted: ${error instanceof Error?error.message:String(error)}`,
+        );
+      }
+      continue;
+    }
+
+    if(getResponse.status===401){
+      accessToken=await getAccessToken(userId,true);
+
+      try{
+        getResponse=await fetch(
+          `${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(draftId)}?$select=id,isDraft,conversationId`,
+          {
+            headers:{
+              Authorization:`Bearer ${accessToken}`,
+              Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
+            },
+          },
+        );
+      }catch(error){
+        if(attempt===4){
+          throw new Error(
+            `Outlook provider response was uncertain after the reply was accepted: ${error instanceof Error?error.message:String(error)}`,
+          );
+        }
+        continue;
+      }
+    }
+
+    if(getResponse.ok){
+      const message=await getResponse.json() as MicrosoftGraphMessage;
+
+      if(message.id?.trim()&&!message.isDraft){
+        sentMessage=message;
+        break;
+      }
+    }else if(getResponse.status!==404){
+      const text=await getResponse.text();
+      if(attempt===4){
+        throw new Error(
+          `Outlook provider response was uncertain after the reply was accepted: ${getResponse.status} ${text}`,
+        );
+      }
+    }
+  }
+
+  if(!sentMessage?.id?.trim()){
+    throw new Error(
+      "Outlook provider accepted the reply, but the sent message could not be confirmed. Human verification is required before retrying.",
+    );
+  }
+
+  return {
+    sent:true,
+    id:sentMessage.id.trim(),
+    threadId:sentMessage.conversationId??"",
+  };
 }
 
 export async function sendEmail(
@@ -385,6 +525,7 @@ export async function listEmails(userId:string):Promise<InboxEmail[]>{
     headers:{
       Authorization:`Bearer ${accessToken}`,
       "Content-Type":"application/json",
+      Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
     },
   });
 
@@ -394,6 +535,7 @@ export async function listEmails(userId:string):Promise<InboxEmail[]>{
       headers:{
         Authorization:`Bearer ${accessToken}`,
         "Content-Type":"application/json",
+        Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
       },
     });
   }
@@ -450,6 +592,7 @@ export async function listSentEmails(userId:string):Promise<SentEmail[]>{
     headers:{
       Authorization:`Bearer ${accessToken}`,
       "Content-Type":"application/json",
+      Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
     },
   });
 
@@ -459,6 +602,7 @@ export async function listSentEmails(userId:string):Promise<SentEmail[]>{
       headers:{
         Authorization:`Bearer ${accessToken}`,
         "Content-Type":"application/json",
+        Prefer:MICROSOFT_IMMUTABLE_ID_HEADER,
       },
     });
   }

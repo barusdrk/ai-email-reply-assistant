@@ -53,7 +53,6 @@ function extractEmailAddress(value:string):string{
 function extractDisplayName(value:string,email:string):string{
   if(!value)return "";
   if(!email)return value.replace(/[<>]/g,"").trim();
-
   return value
     .replace(email,"")
     .replace(/^["']|["']$/g,"")
@@ -71,9 +70,23 @@ function isCustomerMessage(
     email.senderEmail||extractEmailAddress(email.from),
   );
   const connectedEmail=normalizeAddress(accountEmail??"");
+  const subject=email.subject.trim().toLowerCase();
+  const body=email.body.trim().toLowerCase();
 
   if(!senderEmail)return false;
+
+  // Never process messages sent from the connected support mailbox
+  // as customer messages.
   if(connectedEmail&&senderEmail===connectedEmail)return false;
+
+  // Prevent the application's own email notifications from becoming
+  // customer messages when they arrive back in the support inbox.
+  const isInternalNotification=
+    subject.startsWith("new customer message:")&&
+    body.includes("you have a new customer message in your support inbox.")&&
+    body.includes("open your ai customer support automation dashboard");
+
+  if(isInternalNotification)return false;
 
   return true;
 }
@@ -252,7 +265,6 @@ async function linkEmailsToCustomers(
       linked++;
     }catch(error){
       failed++;
-
       console.error(
         "CRM customer linking failed:",
         {
@@ -313,12 +325,6 @@ async function generateDraftsForNewEmails(
         continue;
       }
 
-      /**
-       * Database-level claim.
-       *
-       * Only one sync worker should perform automatic draft generation
-       * for this email at a time.
-       */
       const claimedEmail=await emailRepository.claimAutomaticDraftGeneration(
         storedEmail._id.toString(),
       );
@@ -351,7 +357,6 @@ async function generateDraftsForNewEmails(
       }
     }catch(error){
       failed++;
-
       console.error(
         "Automatic draft generation failed:",
         {
@@ -450,13 +455,6 @@ async function syncProvider(
       },
     );
 
-    /**
-     * Process the provider batch through the persistent idempotency
-     * boundary instead of relying on the old in-memory newEmails list.
-     *
-     * This is important because another sync can have inserted the
-     * same email between the old snapshot and this point.
-     */
     if(sourceEmails.length>0){
       const draftResult=await generateDraftsForNewEmails(
         userId,

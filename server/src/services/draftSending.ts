@@ -1,6 +1,7 @@
 import {draftRepository} from "../repositories/DraftRepository.js";
 import {emailRepository} from "../repositories/EmailRepository.js";
 import {sendEmail} from "./sendEmail.js";
+import {sendAutomatically} from "./automaticSend.js";
 import {recordDraftAnalytics} from "./supportAnalytics.js";
 
 async function recordSendingAnalytics(data:{
@@ -36,22 +37,60 @@ export async function sendDraft(id:string){
   const draft=await draftRepository.findById(id);
 
   if(!draft)throw new Error("Draft not found.");
-  if(draft.status==="sent")throw new Error("Draft has already been sent.");
-  if(draft.status!=="approved")throw new Error("Only approved drafts can be sent.");
+
+  if(draft.status==="sent"){
+    throw new Error("Draft has already been sent.");
+  }
+
+  if(draft.automaticSendRecoveryRequired){
+    throw new Error("This draft requires send recovery verification before it can be sent.");
+  }
+
+  if(draft.automaticSendInProgress){
+    throw new Error("This draft is already being sent.");
+  }
+
+  if(draft.status!=="approved"){
+    throw new Error("Only approved drafts can be sent.");
+  }
+
+  const userId=draft.userId.toString();
+
+  if(draft.automaticAction==="auto_approve"){
+    try{
+      const result=await sendAutomatically(
+        userId,
+        id,
+      );
+
+      return result;
+    }catch(error){
+      console.error("Automatic draft sending failed:",error);
+      throw error;
+    }
+  }
 
   const email=await emailRepository.findById(draft.emailId.toString());
 
   if(!email)throw new Error("Source email not found.");
-  if(email.userId.toString()!==draft.userId.toString())throw new Error("Source email does not belong to this user.");
-  if(email.provider!==draft.provider)throw new Error("Draft provider does not match the source email provider.");
+
+  if(email.userId.toString()!==draft.userId.toString()){
+    throw new Error("Source email does not belong to this user.");
+  }
+
+  if(email.provider!==draft.provider){
+    throw new Error("Draft provider does not match the source email provider.");
+  }
 
   const recipient=email.senderEmail?.trim()||draft.customer.trim();
 
-  if(!recipient)throw new Error("Customer email address is required.");
+  if(!recipient){
+    throw new Error("Customer email address is required.");
+  }
 
   try{
     await sendEmail({
-      userId:draft.userId.toString(),
+      userId,
       provider:draft.provider,
       to:recipient,
       subject:draft.subject,
@@ -64,10 +103,11 @@ export async function sendDraft(id:string){
     });
   }catch(error){
     await recordSendingAnalytics({
-      userId:draft.userId.toString(),
+      userId,
       draftId:id,
       outcome:"failed",
     });
+
     throw error;
   }
 
@@ -87,7 +127,7 @@ export async function sendDraft(id:string){
   }
 
   await recordSendingAnalytics({
-    userId:draft.userId.toString(),
+    userId,
     draftId:id,
     outcome:"sent",
   });

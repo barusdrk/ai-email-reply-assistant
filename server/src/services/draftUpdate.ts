@@ -9,9 +9,7 @@ import type {UpdateDraftData} from "./draftTypes.js";
 import {SUPPORT_CATEGORIES,type SupportCategory,type DraftStatus} from "../models/Draft.js";
 
 function normalizeSupportCategory(value:string):SupportCategory{
-  return (SUPPORT_CATEGORIES as readonly string[]).includes(value)
-    ?value as SupportCategory
-    :"general_support";
+  return (SUPPORT_CATEGORIES as readonly string[]).includes(value)?value as SupportCategory:"general_support";
 }
 
 function getDraftStatus(action:"auto_approve"|"pending"|"escalate"|"blocked"):DraftStatus{
@@ -31,8 +29,21 @@ async function recordDraftAnalyticsSafely(data:Parameters<typeof recordDraftAnal
 
 export async function updateDraft(id:string,data:UpdateDraftData){
   if(!isValidObjectId(id))throw new Error("Invalid draft ID.");
+
   const existingDraft=await draftRepository.findById(id);
   if(!existingDraft)throw new Error("Draft not found.");
+
+  if(existingDraft.status==="sent"){
+    throw new Error("Sent drafts cannot be modified.");
+  }
+
+  if(existingDraft.automaticSendInProgress){
+    throw new Error("This draft is currently being sent and cannot be modified.");
+  }
+
+  if(existingDraft.automaticSendRecoveryRequired){
+    throw new Error("This draft requires send recovery verification before it can be modified.");
+  }
 
   const userId=existingDraft.userId.toString();
   const emailId=existingDraft.emailId.toString();
@@ -73,10 +84,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     support.supportResult,
   );
 
-  const supportCategory=normalizeSupportCategory(
-    support.supportResult.category,
-  );
-
+  const supportCategory=normalizeSupportCategory(support.supportResult.category);
   const policyIssues=[
     ...support.supportResult.policyIssues,
     ...policy.violations,
@@ -85,7 +93,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
   const status=getDraftStatus(automaticAction.action);
   const now=new Date();
 
-  const updatedDraft=await draftRepository.update(id,{
+  const updateData={
     ...data,
     reply,
     tone,
@@ -104,18 +112,13 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     automaticActionReasons:automaticAction.reasons,
     status,
     escalatedAt:automaticAction.action==="escalate"?now:undefined,
-    escalationReason:automaticAction.action==="escalate"
-      ?automaticAction.reasons[0]
-      :undefined,
-    escalationReasons:automaticAction.action==="escalate"
-      ?automaticAction.reasons
-      :[],
+    escalationReason:automaticAction.action==="escalate"?automaticAction.reasons[0]:undefined,
+    escalationReasons:automaticAction.action==="escalate"?automaticAction.reasons:[],
     approvedAt:automaticAction.action==="auto_approve"?now:undefined,
-    rejectionReason:automaticAction.action==="blocked"
-      ?automaticAction.reasons.join(" ")
-      :undefined,
-    automaticSendInProgress:false,
-  });
+    rejectionReason:automaticAction.action==="blocked"?automaticAction.reasons.join(" "):undefined,
+  };
+
+  const updatedDraft=await draftRepository.updateAutomationState(id,updateData);
 
   if(!updatedDraft)throw new Error("Failed to update draft.");
 
@@ -135,10 +138,10 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     outcome:automaticAction.action==="auto_approve"
       ?"approved"
       :automaticAction.action==="pending"
-        ?"pending_approval"
-        :automaticAction.action==="escalate"
-          ?"escalated"
-          :"blocked",
+      ?"pending_approval"
+      :automaticAction.action==="escalate"
+      ?"escalated"
+      :"blocked",
   });
 
   console.log("DRAFT UPDATED:",{
@@ -152,7 +155,6 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     confidenceLevel:confidence.level,
     policyCompliant:policy.compliant,
     automaticAction:automaticAction.action,
-    status,
     customerContext:{
       email:support.customerContext.email??null,
       name:support.customerContext.name??null,
@@ -169,6 +171,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     }catch(error){
       console.error("Automatic draft sending failed:",error);
     }
+
     return (await draftRepository.findById(
       updatedDraft._id.toString(),
     ))??updatedDraft;

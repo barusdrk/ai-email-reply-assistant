@@ -294,6 +294,18 @@ class DraftRepository {
 
     return result.deletedCount ?? 0;
   }
+
+  async updateAutomationState(id:string,data:Partial<Draft>):Promise<Draft|null>{
+    if(!Types.ObjectId.isValid(id))return null;
+    return DraftModel.findByIdAndUpdate(
+      id,
+      {$set:data},
+      {
+        new:true,
+        runValidators:true,
+      },
+    ).lean<Draft|null>();
+  }
 }
 
 export const draftRepository = new DraftRepository();

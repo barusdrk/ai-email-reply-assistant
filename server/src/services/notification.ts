@@ -20,6 +20,10 @@ function resolveProvider(value:unknown):Provider|null{
   return value==="gmail"||value==="outlook"?value:null;
 }
 
+function normalizeEmail(value?:string|null):string{
+  return value?.trim().toLowerCase()||"";
+}
+
 export async function notify(
   userId:string,
   type:NotificationType,
@@ -72,6 +76,24 @@ export async function notifyNewCustomerEmail(
     const provider=resolveProvider(user.activeEmailProvider);
     if(!provider){
       console.warn(`Email notification skipped for user ${userId}: no active email provider.`);
+      return notification;
+    }
+
+    const notificationRecipient=normalizeEmail(user.email);
+
+    if(!notificationRecipient){
+      console.warn(`Email notification skipped for user ${userId}: invalid notification recipient.`);
+      return notification;
+    }
+
+    const connectedAccountEmail=normalizeEmail(
+      email.senderEmail,
+    );
+
+    if(connectedAccountEmail&&connectedAccountEmail===notificationRecipient){
+      console.warn(
+        `Email notification skipped for user ${userId}: notification recipient matches the inbound sender.`,
+      );
       return notification;
     }
 
