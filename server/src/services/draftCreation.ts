@@ -218,20 +218,22 @@ export async function createDraft(data:CreateDraftData){
     return createdDraft;
   }
 
-  if(automaticAction.action==="auto_approve"){
-    console.log(
-      "AUTOMATIC APPROVAL: sending draft:",
-      {
-        draftId:createdDraft._id.toString(),
-        emailId:data.emailId,
-        provider:data.provider,
-      },
-    );
-
-    await sendAutomatically(
-      data.userId,
-      createdDraft._id.toString(),
-    );
+  if (automaticAction.action === "auto_approve") {
+    console.log("AUTOMATIC APPROVAL: sending draft:", {
+      draftId: createdDraft._id.toString(),
+      userId: data.userId,
+    });
+    try {
+      await sendAutomatically(
+        data.userId,
+        createdDraft._id.toString(),
+      );
+    } catch (error) {
+      console.error(
+        "Automatic support reply failed:",
+        error instanceof Error ? error.message : error,
+      );
+    }
   }else if(
     automaticAction.action==="pending"||
     automaticAction.action==="escalate"

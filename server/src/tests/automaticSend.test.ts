@@ -9,6 +9,7 @@ const mocks=vi.hoisted(()=>({
   releaseAutomaticClaim:vi.fn(),
   markAutomaticRecoveryRequired:vi.fn(),
   emailFindById:vi.fn(),
+  emailCreate:vi.fn(),
   emailUpdate:vi.fn(),
   sendEmail:vi.fn(),
   audit:vi.fn(),
@@ -29,6 +30,7 @@ vi.mock("../repositories/DraftRepository.js",()=>({
 vi.mock("../repositories/EmailRepository.js",()=>({
   emailRepository:{
     findById:mocks.emailFindById,
+    create:mocks.emailCreate,
     update:mocks.emailUpdate,
   },
 }));
@@ -130,23 +132,25 @@ function setupSuccessfulSend(){
 
 beforeEach(()=>{
   vi.clearAllMocks();
-
   draftRepositoryMock.findById.mockReset();
   draftRepositoryMock.claimForAutomaticSend.mockReset();
   draftRepositoryMock.markAutomaticSendStarted.mockReset();
   draftRepositoryMock.markAutomaticSendCompleted.mockReset();
   draftRepositoryMock.releaseAutomaticClaim.mockReset();
   draftRepositoryMock.markAutomaticRecoveryRequired.mockReset();
-
   emailRepositoryMock.findById.mockReset();
+  emailRepositoryMock.create.mockReset();
   emailRepositoryMock.update.mockReset();
-
   sendEmailMock.mockReset();
   auditMock.mockReset();
   notifyMock.mockReset();
-
   draftRepositoryMock.releaseAutomaticClaim.mockResolvedValue(null as never);
   draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue(null as never);
+  emailRepositoryMock.findById.mockResolvedValue(createEmail() as never);
+  emailRepositoryMock.create.mockImplementation(async(data)=>({
+    _id:new Types.ObjectId(),
+    ...data,
+  }) as never);
   auditMock.mockImplementation(async()=>undefined as any);
   notifyMock.mockImplementation(async()=>undefined as any);
 });
@@ -467,6 +471,29 @@ describe("sendAutomatically",()=>{
       {draftId:draftId},
     );
   });
+
+it("creates an outbound email record after successful sending",async()=>{
+  const{draft,email}=setupSuccessfulSend();
+
+  await sendAutomatically(userId.toString(),draftId.toString());
+
+  expect(emailRepositoryMock.create).toHaveBeenCalledWith(
+    expect.objectContaining({
+      userId,
+      draftId:draftId,
+      provider:"gmail",
+      direction:"outbound",
+      messageId:"provider-message-id",
+      threadId:email.threadId,
+      subject:draft.subject,
+      recipientEmail:draft.customer,
+      body:draft.reply,
+      preview:draft.reply,
+      unread:false,
+      archived:false,
+    }),
+  );
+});
 
   it("does not mark a failed provider send as completed",async()=>{
     const draft=createDraft();

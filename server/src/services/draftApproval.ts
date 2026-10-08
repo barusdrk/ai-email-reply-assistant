@@ -209,10 +209,13 @@ export async function submitDraft(id:string,userId:string){
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
 
   const draft=await draftRepository.findById(id);
-  if(!draft)throw new Error("Draft not found.");
-  if(draft.userId.toString()!==userId){
-    throw new Error("You are not authorized to submit this draft.");
-  }
+    if(!draft)throw new Error("Draft not found.");
+    if(draft.userId.toString()!==userId){
+      throw new Error("You are not authorized to submit this draft.");
+    }
+    if(draft.status==="sent"){
+      throw new Error("Sent drafts cannot be submitted.");
+    }
 
   const updated=await draftRepository.update(id,{
     status:"pending",

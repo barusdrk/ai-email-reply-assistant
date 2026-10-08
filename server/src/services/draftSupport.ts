@@ -144,6 +144,13 @@ export function applySupportDecision(
     };
   }
 
+  if (supportResult.policyIssues.length > 0) {
+    return {
+      action: "blocked",
+      reasons: supportResult.policyIssues,
+    };
+  }
+
   if(supportResult.decision==="reject"){
     return {
       action:"blocked",

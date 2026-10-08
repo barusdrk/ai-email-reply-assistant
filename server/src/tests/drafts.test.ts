@@ -3,9 +3,11 @@ import {Types} from "mongoose";
 
 const mocks=vi.hoisted(()=>({
   draftCreate:vi.fn(),
+  draftCreateIfNotExists:vi.fn(),
   draftFindById:vi.fn(),
   draftUpdate:vi.fn(),
   emailUpdate:vi.fn(),
+  emailMarkAutomaticDraftGenerated:vi.fn(),
   analyzeDraftSupport:vi.fn(),
   scoreDraftConfidence:vi.fn(),
   evaluateDraftPolicy:vi.fn(),
@@ -19,6 +21,7 @@ const mocks=vi.hoisted(()=>({
 vi.mock("../repositories/DraftRepository.js",()=>({
   draftRepository:{
     create:mocks.draftCreate,
+    createIfNotExists:mocks.draftCreateIfNotExists,
     findById:mocks.draftFindById,
     update:mocks.draftUpdate,
   },
@@ -27,6 +30,7 @@ vi.mock("../repositories/DraftRepository.js",()=>({
 vi.mock("../repositories/EmailRepository.js",()=>({
   emailRepository:{
     update:mocks.emailUpdate,
+    markAutomaticDraftGenerated:mocks.emailMarkAutomaticDraftGenerated,
   },
 }));
 
@@ -53,6 +57,7 @@ vi.mock("../services/draftApproval.js",()=>({
   approveDraft:vi.fn(),
   rejectDraft:vi.fn(),
   submitDraft:vi.fn(),
+  requestApproval: mocks.requestApproval,
 }));
 
 vi.mock("../services/draftSending.js",()=>({
@@ -210,10 +215,8 @@ function setupAction(action:"auto_approve"|"pending"|"escalate"|"blocked"){
   analyzeDraftSupportMock.mockResolvedValue(
     buildSupportAnalysis({supportResult}),
   );
-
   scoreDraftConfidenceMock.mockResolvedValue(buildConfidence());
   evaluateDraftPolicyMock.mockResolvedValue(buildPolicy());
-
   determineAutomaticActionMock.mockReturnValue({
     action,
     reasons:action==="blocked"
@@ -222,11 +225,15 @@ function setupAction(action:"auto_approve"|"pending"|"escalate"|"blocked"){
         ?["Human review is required."]
         :[],
   });
-
   applySupportDecisionMock.mockImplementation((decision)=>decision);
 
   const draft=buildDraft(action);
-  draftRepositoryMock.create.mockResolvedValue(draft as never);
+
+  draftRepositoryMock.createIfNotExists.mockResolvedValue({
+    created:true,
+    draft,
+  } as never);
+
   emailRepositoryMock.update.mockResolvedValue(null as never);
 
   if(action==="auto_approve"){
@@ -236,7 +243,7 @@ function setupAction(action:"auto_approve"|"pending"|"escalate"|"blocked"){
       draftId:draftId.toString(),
       emailId:emailId.toString(),
       sentAt:new Date(),
-    });
+    } as never);
   }
 
   return draft;
@@ -255,13 +262,12 @@ function buildCreateDraftInput(){
 
 beforeEach(()=>{
   vi.clearAllMocks();
-
   draftRepositoryMock.create.mockReset();
+  draftRepositoryMock.createIfNotExists.mockReset();
   draftRepositoryMock.findById.mockReset();
   draftRepositoryMock.update.mockReset();
-
   emailRepositoryMock.update.mockReset();
-
+  emailRepositoryMock.markAutomaticDraftGenerated.mockReset();
   determineAutomaticActionMock.mockReset();
   analyzeDraftSupportMock.mockReset();
   applySupportDecisionMock.mockReset();
@@ -269,46 +275,43 @@ beforeEach(()=>{
   scoreDraftConfidenceMock.mockReset();
   requestApprovalMock.mockReset();
   sendAutomaticallyMock.mockReset();
-
+  emailRepositoryMock.markAutomaticDraftGenerated.mockResolvedValue(null as never);
   requestApprovalMock.mockResolvedValue(undefined as never);
+  mocks.requestApproval.mockReset();
+  mocks.requestApproval.mockResolvedValue(undefined);
 });
 
 describe("createDraft automatic-send integration",()=>{
   it("automatically sends an approved draft when the action is auto_approve",async()=>{
     const draft=setupAction("auto_approve");
-
     const result=await createDraft(buildCreateDraftInput());
 
-    expect(draftRepositoryMock.create).toHaveBeenCalledTimes(1);
-    expect(draftRepositoryMock.create).toHaveBeenCalledWith(
+    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledTimes(1);
+    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({
         status:"approved",
         automaticAction:"auto_approve",
       }),
     );
-
     expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);
     expect(sendAutomaticallyMock).toHaveBeenCalledWith(
       userId.toString(),
       draftId.toString(),
     );
-
     expect(requestApprovalMock).not.toHaveBeenCalled();
     expect(result).toBe(draft);
   });
 
   it("does not automatically send a pending draft",async()=>{
     setupAction("pending");
-
     await createDraft(buildCreateDraftInput());
 
-    expect(draftRepositoryMock.create).toHaveBeenCalledWith(
+    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({
         status:"pending",
         automaticAction:"pending",
       }),
     );
-
     expect(sendAutomaticallyMock).not.toHaveBeenCalled();
     expect(requestApprovalMock).toHaveBeenCalledTimes(1);
     expect(requestApprovalMock).toHaveBeenCalledWith(
@@ -319,16 +322,14 @@ describe("createDraft automatic-send integration",()=>{
 
   it("does not automatically send an escalated draft",async()=>{
     setupAction("escalate");
-
     await createDraft(buildCreateDraftInput());
 
-    expect(draftRepositoryMock.create).toHaveBeenCalledWith(
+    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({
         status:"escalated",
         automaticAction:"escalate",
       }),
     );
-
     expect(sendAutomaticallyMock).not.toHaveBeenCalled();
     expect(requestApprovalMock).toHaveBeenCalledTimes(1);
     expect(requestApprovalMock).toHaveBeenCalledWith(
@@ -339,16 +340,14 @@ describe("createDraft automatic-send integration",()=>{
 
   it("does not automatically send a blocked draft",async()=>{
     setupAction("blocked");
-
     await createDraft(buildCreateDraftInput());
 
-    expect(draftRepositoryMock.create).toHaveBeenCalledWith(
+    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({
         status:"rejected",
         automaticAction:"blocked",
       }),
     );
-
     expect(sendAutomaticallyMock).not.toHaveBeenCalled();
     expect(requestApprovalMock).not.toHaveBeenCalled();
   });
@@ -374,12 +373,12 @@ describe("createDraft automatic-send integration",()=>{
 
     await createDraft(buildCreateDraftInput());
 
-    expect(emailRepositoryMock.update).toHaveBeenCalledTimes(1);
-    expect(emailRepositoryMock.update).toHaveBeenCalledWith(
+    expect(emailRepositoryMock.markAutomaticDraftGenerated).toHaveBeenCalledTimes(1);
+    expect(emailRepositoryMock.markAutomaticDraftGenerated).toHaveBeenCalledWith(
       emailId.toString(),
-      {draftId},
+      draftId,
     );
-
+    expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);
     expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);
   });
 });

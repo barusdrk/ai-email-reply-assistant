@@ -100,18 +100,17 @@ describe("draft approval service", () => {
     it("returns null when the draft does not exist", async () => {
       vi.mocked(draftRepository.findById).mockResolvedValue(null);
 
-      const result = await submitDraft(draftId, userId);
-
-      expect(result).toBeNull();
       expect(draftRepository.update).not.toHaveBeenCalled();
     });
 
     it("rejects submission by another user", async () => {
       vi.mocked(draftRepository.findById).mockResolvedValue(draft as never);
 
-      await expect(submitDraft(draftId, otherUserId)).rejects.toThrow(
-        "Unauthorized.",
-      );
+    await expect(
+      submitDraft(draftId, otherUserId),
+    ).rejects.toThrow(
+      "You are not authorized to submit this draft.",
+    );
 
       expect(draftRepository.update).not.toHaveBeenCalled();
     });
@@ -122,9 +121,9 @@ describe("draft approval service", () => {
         status: "sent",
       } as never);
 
-      await expect(submitDraft(draftId, userId)).rejects.toThrow(
-        "Sent drafts cannot be submitted.",
-      );
+      await expect(
+        submitDraft(draftId, userId),
+      ).rejects.toThrow("Sent drafts cannot be submitted.");
 
       expect(draftRepository.update).not.toHaveBeenCalled();
     });

@@ -1,109 +1,161 @@
 import {Types} from "mongoose";
-import UserModel from "../models/User.js";
-import Notification from "../models/Notification.js";
+import {notificationRepository} from "../repositories/NotificationRepository.js";
 import {connectedAccountRepository} from "../repositories/ConnectedAccountRepository.js";
-import {sendEmail} from "./sendEmail.js";
+import {emitInbox} from "./websocket.js";
+import {getSettings} from "./settings.js";
+import {sendEmail as sendProviderEmail,type Provider} from "./sendEmail.js";
+import UserModel from "../models/User.js";
 
-type EmailProvider="gmail"|"outlook";
+export type NotificationType="email"|"draft"|"approval"|"sent"|"system"|"error";
 
-type NotifyNewCustomerEmailInput={
-  userId:string;
-  provider:EmailProvider;
-  from:string;
-  subject:string;
-  preview:string;
-  emailId:string;
-};
+export interface NewCustomerEmailNotification{
+  id:string;
+  senderName?:string;
+  senderEmail?:string;
+  subject?:string;
+  preview?:string;
+  referenceId?:string;
+}
 
-function normalizeEmail(value:string):string{
-  return value.trim().toLowerCase();
+function resolveProvider(value:unknown):Provider|null{
+  return value==="gmail"||value==="outlook"?value:null;
+}
+
+function normalizeEmail(value:unknown):string{
+  return typeof value==="string"?value.trim().toLowerCase():"";
+}
+
+export async function notify(
+  userId:string,
+  type:NotificationType,
+  title:string,
+  message:string,
+  referenceId?:string,
+){
+  const notification=await notificationRepository.create({
+    userId:userId as any,
+    type,
+    title,
+    message,
+    referenceId,
+    read:false,
+    createdAt:new Date(),
+  } as any);
+  emitInbox(userId);
+  return notification;
 }
 
 export async function notifyNewCustomerEmail(
-  data:NotifyNewCustomerEmailInput,
+  userId:string,
+  email:NewCustomerEmailNotification,
 ){
-  if(!Types.ObjectId.isValid(data.userId)){
-    throw new Error("Invalid user ID.");
-  }
+  if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
 
-  const user=await UserModel
-    .findById(data.userId)
-    .select("email activeEmailProvider")
-    .lean();
+  const sender=email.senderName?.trim()||email.senderEmail?.trim()||"Customer";
+  const subject=email.subject?.trim()||"New customer message";
+  const preview=email.preview?.trim()||"A new customer message requires your attention.";
 
-  if(!user){
-    throw new Error("User not found.");
-  }
-
-  const notification=await Notification.create({
-    userId:new Types.ObjectId(data.userId),
-    type:"new_customer_email",
-    title:"New customer message",
-    message:data.subject||"You have a new customer message.",
-    emailId:new Types.ObjectId(data.emailId),
-    read:false,
-  });
-
-  const provider=data.provider;
-  const userEmail=normalizeEmail(user.email??"");
-
-  const account=await connectedAccountRepository.findByProvider(
-    data.userId,
-    provider,
+  const notification=await notify(
+    userId,
+    "email",
+    "New customer message",
+    `${sender}: ${subject}`,
+    email.referenceId??email.id,
   );
 
-  const accountEmail=normalizeEmail(account?.email??"");
-
-  if(userEmail&&accountEmail&&userEmail===accountEmail){
-    console.warn(
-      "Email notification skipped because the notification recipient is the connected support inbox:",
-      {
-        userId:data.userId,
-        provider,
-        email:userEmail,
-      },
-    );
-    return notification;
-  }
-
-  if(!userEmail){
-    console.warn(
-      "Email notification skipped because the user has no email address:",
-      {
-        userId:data.userId,
-      },
-    );
-    return notification;
-  }
-
   try{
-    await sendEmail({
-      userId:data.userId,
+    const settings=await getSettings(userId);
+    if(!settings.emailNotifications)return notification;
+
+    const user=await UserModel
+      .findById(userId)
+      .select("email activeEmailProvider")
+      .lean();
+
+    if(!user?.email)return notification;
+
+    const provider=resolveProvider(user.activeEmailProvider);
+    if(!provider){
+      console.warn(`Email notification skipped for user ${userId}: no active email provider.`);
+      return notification;
+    }
+
+    const userEmail=normalizeEmail(user.email);
+    const connectedAccount=await connectedAccountRepository.findByProvider(
+      userId,
       provider,
-      to:userEmail,
-      subject:`New customer message: ${data.subject}`,
+    );
+    const supportInboxEmail=normalizeEmail(connectedAccount?.email);
+
+    if(
+      userEmail&&
+      supportInboxEmail&&
+      userEmail===supportInboxEmail
+    ){
+      console.warn(
+        `Email notification skipped for user ${userId}: notification recipient is the connected ${provider} support inbox.`,
+      );
+      return notification;
+    }
+
+    await sendProviderEmail({
+      userId,
+      provider,
+      to:user.email,
+      subject:`New customer message: ${subject}`,
       reply:[
         "You have a new customer message in your support inbox.",
         "",
-        `From: ${data.from}`,
-        `Subject: ${data.subject}`,
+        `From: ${sender}`,
+        `Subject: ${subject}`,
         "",
-        data.preview,
+        preview,
         "",
         "Open your AI Customer Support Automation dashboard to review the conversation.",
       ].join("\n"),
     });
   }catch(error){
     console.error(
-      "Email notification failed:",
-      {
-        userId:data.userId,
-        provider,
-        recipient:userEmail,
-        error:error instanceof Error?error.message:error,
-      },
+      `Failed to send email notification for user ${userId}:`,
+      error instanceof Error?error.message:error,
     );
   }
 
   return notification;
+}
+
+export function notifications(userId:string){
+  return notificationRepository.findByUser(userId);
+}
+
+export function notification(id:string){
+  return notificationRepository.findById(id);
+}
+
+export function markRead(id:string){
+  return notificationRepository.markRead(id);
+}
+
+export function markAllRead(userId:string){
+  return notificationRepository.markAllRead(userId);
+}
+
+export function removeNotification(id:string){
+  return notificationRepository.delete(id);
+}
+
+export async function broadcast(
+  userIds:string[],
+  type:NotificationType,
+  title:string,
+  message:string,
+){
+  await Promise.all(
+    userIds.map((userId)=>notify(
+      userId,
+      type,
+      title,
+      message,
+    )),
+  );
 }
