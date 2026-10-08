@@ -1,64 +1,53 @@
-import { jsPDF } from "jspdf";
-
 interface DownloadPdfOptions {
   customerEmail: string;
   subject?: string;
   reply: string;
 }
 
-export function downloadPdf({
+export async function downloadPdf({
   customerEmail,
   subject,
   reply,
-}: DownloadPdfOptions) {
+}: DownloadPdfOptions): Promise<void> {
+  const { jsPDF } = await import("jspdf");
   const pdf = new jsPDF();
-
-  const pageWidth =
-    pdf.internal.pageSize.getWidth();
-
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+  const margin = 20;
+  const contentWidth = pageWidth - margin * 2;
   let y = 20;
 
   pdf.setFontSize(20);
-  pdf.text("AI Email Reply", pageWidth / 2, y, {
-    align: "center",
-  });
-
+  pdf.text("AI Email Reply", pageWidth / 2, y, { align: "center" });
   y += 15;
 
   pdf.setFontSize(12);
-
-  pdf.text(
-    `Customer: ${customerEmail}`,
-    20,
-    y
-  );
-
+  pdf.text(`Customer: ${customerEmail}`, margin, y);
   y += 8;
 
   if (subject) {
-    pdf.text(
-      `Subject: ${subject}`,
-      20,
-      y
-    );
-
-    y += 10;
+    const subjectLines = pdf.splitTextToSize(`Subject: ${subject}`, contentWidth);
+    pdf.text(subjectLines, margin, y);
+    y += subjectLines.length * 6 + 4;
   }
 
   pdf.setFont("helvetica", "bold");
-
-  pdf.text("Reply", 20, y);
-
+  pdf.text("Reply", margin, y);
   y += 8;
 
   pdf.setFont("helvetica", "normal");
+  const lines = pdf.splitTextToSize(reply, contentWidth);
+  const lineHeight = 6;
 
-  const lines = pdf.splitTextToSize(
-    reply,
-    170
-  );
+  for (const line of lines) {
+    if (y + lineHeight > pageHeight - margin) {
+      pdf.addPage();
+      y = margin;
+    }
 
-  pdf.text(lines, 20, y);
+    pdf.text(line, margin, y);
+    y += lineHeight;
+  }
 
   pdf.save("email-reply.pdf");
 }

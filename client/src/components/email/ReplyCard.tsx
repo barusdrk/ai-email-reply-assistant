@@ -31,6 +31,8 @@ export default function ReplyCard({
 }: Props) {
   const [saving, setSaving] = useState(false);
   const [sending, setSending] = useState(false);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [message, setMessage] = useState("");
 
   const hasReply = Boolean(reply.trim());
@@ -69,23 +71,16 @@ export default function ReplyCard({
         tone,
         length,
       });
-
       setMessage("Draft saved successfully.");
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to save draft."
-      );
+      setMessage(error instanceof Error ? error.message : "Failed to save draft.");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleSendEmail() {
-    if (sending || saving) {
-      return;
-    }
+    if (sending || saving) return;
 
     if (!hasReply) {
       setMessage("Generate a reply before sending.");
@@ -109,26 +104,59 @@ export default function ReplyCard({
         emailId,
         threadId,
       });
-
       setMessage("Email sent successfully.");
     } catch (error) {
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Failed to send email."
-      );
+      setMessage(error instanceof Error ? error.message : "Failed to send email.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    if (!hasReply || downloadingPdf) return;
+
+    setDownloadingPdf(true);
+    setMessage("");
+
+    try {
+      await downloadPdf({
+        customerEmail: customer,
+        subject,
+        reply,
+      });
+      setMessage("PDF downloaded successfully.");
+    } catch (error) {
+      console.error("Failed to generate PDF:", error);
+      setMessage(error instanceof Error ? error.message : "Failed to generate PDF.");
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
+
+  async function handleDownloadDocx() {
+    if (!hasReply || downloadingDocx) return;
+
+    setDownloadingDocx(true);
+    setMessage("");
+
+    try {
+      await downloadDocx({
+        customerEmail: customer,
+        reply,
+      });
+      setMessage("DOCX downloaded successfully.");
+    } catch (error) {
+      console.error("Failed to generate DOCX:", error);
+      setMessage(error instanceof Error ? error.message : "Failed to generate DOCX.");
+    } finally {
+      setDownloadingDocx(false);
     }
   }
 
   return (
     <section className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
       <div className="mb-4 flex items-center justify-between gap-4">
-        <h2 className="text-lg font-semibold text-(--text-h)">
-          Generated Reply
-        </h2>
-
+        <h2 className="text-lg font-semibold text-(--text-h)">Generated Reply</h2>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -138,7 +166,6 @@ export default function ReplyCard({
           >
             {saving ? "Saving..." : "Save Draft"}
           </button>
-
           <button
             type="button"
             onClick={() => void handleSendEmail()}
@@ -150,7 +177,6 @@ export default function ReplyCard({
           </button>
         </div>
       </div>
-
       <textarea
         value={reply}
         onChange={(event) => onChange?.(event.target.value)}
@@ -158,13 +184,11 @@ export default function ReplyCard({
         rows={10}
         className="min-h-48 w-full resize-y rounded-lg border border-(--input-border) bg-(--input-bg) p-4 text-sm text-(--text) outline-none placeholder:text-(--placeholder) focus:ring-2 focus:ring-(--accent)"
       />
-
       {!hasReply && (
         <p className="mt-3 text-sm text-(--text-secondary)">
           Generate a reply to enable Save Draft and Send Email.
         </p>
       )}
-
       <div className="mt-4 flex flex-wrap gap-3">
         <button
           type="button"
@@ -174,38 +198,25 @@ export default function ReplyCard({
         >
           Copy
         </button>
-
         <button
           type="button"
-          disabled={!hasReply}
-          onClick={() =>
-            void downloadPdf({
-              customerEmail: customer,
-              reply,
-            })
-          }
+          onClick={() => void handleDownloadPdf()}
+          disabled={!hasReply || downloadingPdf}
           className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Download PDF
+          {downloadingPdf ? "Generating PDF..." : "Download PDF"}
         </button>
-
         <button
           type="button"
-          disabled={!hasReply}
-          onClick={() =>
-            void downloadDocx({
-              customerEmail: customer,
-              reply,
-            })
-          }
+          onClick={() => void handleDownloadDocx()}
+          disabled={!hasReply || downloadingDocx}
           className="rounded-lg bg-(--bg-secondary) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60"
         >
-          Download DOCX
+          {downloadingDocx ? "Generating DOCX..." : "Download DOCX"}
         </button>
       </div>
-
       {message && (
-        <p className="mt-3 text-sm text-(--text-secondary)">
+        <p role="status" aria-live="polite" className="mt-3 text-sm text-(--text-secondary)">
           {message}
         </p>
       )}
