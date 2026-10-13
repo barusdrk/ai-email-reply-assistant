@@ -28,60 +28,58 @@ class DraftRepository {
     return draft.toObject() as Draft;
   }
 
-  async createIfNotExists(
-    data: Partial<Draft>,
-  ): Promise<{ created: boolean; draft: Draft }> {
-    if (!data.emailId) {
-      const draft = await this.create(data);
-      return { created: true, draft };
-    }
+  
 
-    const emailId =
-      data.emailId instanceof Types.ObjectId
-        ? data.emailId
-        : new Types.ObjectId(String(data.emailId));
+async createIfNotExists(data: Partial<Draft>): Promise<{ created: boolean; draft: Draft }> {
+  console.log("[createIfNotExists] input:", {
+    userId: String(data.userId ?? ""),
+    emailId: String(data.emailId ?? ""),
+    hasUserId: Boolean(data.userId),
+    hasEmailId: Boolean(data.emailId),
+  });
 
-    const existing = await DraftModel.findOne({ emailId }).lean<Draft | null>();
-
-    if (existing) {
-      return {
-        created: false,
-        draft: existing,
-      };
-    }
-
-    try {
-      const draft = await DraftModel.create({
-        ...data,
-        emailId,
-      });
-
-      return {
-        created: true,
-        draft: draft.toObject() as Draft,
-      };
-    } catch (error: unknown) {
-      if (
-        error &&
-        typeof error === "object" &&
-        "code" in error &&
-        (error as { code?: number }).code === 11000
-      ) {
-        const existing = await DraftModel.findOne({
-          emailId,
-        }).lean<Draft | null>();
-
-        if (existing) {
-          return {
-            created: false,
-            draft: existing,
-          };
-        }
-      }
-
-      throw error;
-    }
+  if (!data.emailId || !data.userId) {
+    console.error("[createIfNotExists] Missing ID; falling back to create.");
+    const draft = await this.create(data);
+    return { created: true, draft };
   }
+
+  const emailId = data.emailId instanceof Types.ObjectId
+    ? data.emailId
+    : new Types.ObjectId(String(data.emailId));
+  const userId = data.userId instanceof Types.ObjectId
+    ? data.userId
+    : new Types.ObjectId(String(data.userId));
+  const filter = { userId, emailId };
+
+  const existing = await DraftModel.findOne(filter).lean<Draft | null>();
+  if (existing) {
+    console.log("[createIfNotExists] Existing draft found:", String(existing._id));
+    return { created: false, draft: existing };
+  }
+
+  try {
+    const draft = await DraftModel.create({ ...data, userId, emailId });
+    console.log("[createIfNotExists] Draft inserted:", String(draft._id));
+    return { created: true, draft: draft.toObject() as Draft };
+  } catch (error: unknown) {
+    const isDuplicateKey = Boolean(
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: number }).code === 11000
+    );
+
+    if (isDuplicateKey) {
+      console.warn("[createIfNotExists] Duplicate-key error; looking up winner.");
+      const existing = await DraftModel.findOne(filter).lean<Draft | null>();
+      if (existing) return { created: false, draft: existing };
+    }
+
+    console.error("[createIfNotExists] Insert failed:", error);
+    throw error;
+  }
+}
 
   async update(id: string, data: Partial<Draft>): Promise<Draft | null> {
     if (!Types.ObjectId.isValid(id)) return null;

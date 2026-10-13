@@ -17,7 +17,10 @@ test.describe("API contracts", () => {
       },
     });
 
-    expect(response.ok()).toBeTruthy();
+    expect(
+      response.ok(),
+      `Login failed with HTTP ${response.status()}: ${await response.text()}`,
+    ).toBeTruthy();
 
     const body = await response.json();
 
@@ -35,7 +38,10 @@ test.describe("API contracts", () => {
       },
     });
 
-    expect(loginResponse.ok()).toBeTruthy();
+    expect(
+      loginResponse.ok(),
+      `Login failed with HTTP ${loginResponse.status()}: ${await loginResponse.text()}`,
+    ).toBeTruthy();
 
     const { token } = await loginResponse.json();
 
@@ -45,7 +51,10 @@ test.describe("API contracts", () => {
       },
     });
 
-    expect(response.ok()).toBeTruthy();
+    expect(
+      response.ok(),
+      `Login failed with HTTP ${response.status()}: ${await response.text()}`,
+    ).toBeTruthy();
 
     const settings = await response.json();
 
@@ -62,7 +71,10 @@ test.describe("API contracts", () => {
       },
     });
 
-    expect(loginResponse.ok()).toBeTruthy();
+    expect(
+      loginResponse.ok(),
+      `Login failed with HTTP ${loginResponse.status()}: ${await loginResponse.text()}`,
+    ).toBeTruthy();
 
     const { token } = await loginResponse.json();
 

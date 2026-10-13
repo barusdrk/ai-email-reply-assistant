@@ -45,15 +45,20 @@ router.get("/:id", async (req: Request<IdParams>, res: Response) => {
   }
 });
 
-router.post("/", async (req: Request, res: Response) => {
-  if (!req.user) {
-    res.status(401).json({message: "Unauthorized"});
+router.post("/", async (req:Request, res:Response) => {
+  if(!req.user){
+    res.status(401).json({message:"Unauthorized"});
     return;
   }
-  try {
-    res.status(201).json(await createDraft({...req.body, userId: req.user.id}));
-  } catch (error) {
-    res.status(400).json({message: error instanceof Error ? error.message : "Failed to create draft."});
+  try{
+    const result=await createDraft({...req.body,userId:req.user.id},{returnCreationResult:true});
+    if(!result.created){
+      res.status(409).json(result.draft);
+      return;
+    }
+    res.status(201).json(result.draft);
+  }catch(error){
+    res.status(400).json({message:error instanceof Error?error.message:"Failed to create draft."});
   }
 });
 

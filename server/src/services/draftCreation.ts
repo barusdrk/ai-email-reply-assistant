@@ -7,6 +7,7 @@ import {SUPPORT_CATEGORIES,type SupportCategory} from "../models/Draft.js";
 import type {CreateDraftData} from "./draftTypes.js";
 import {sendAutomatically} from "./automaticSend.js";
 import {requestApproval} from "./draftApproval.js";
+import type {Draft} from "../models/Draft.js";
 
 function normalizeSupportCategory(
   value:string,
@@ -26,7 +27,7 @@ async function markCreatedDraft(
   );
 }
 
-export async function createDraft(data:CreateDraftData){
+export async function createDraft(data:CreateDraftData, options:{returnCreationResult?:boolean}={}){
   if(!isValidObjectId(data.userId)){
     throw new Error("Invalid user ID.");
   }
@@ -108,7 +109,7 @@ export async function createDraft(data:CreateDraftData){
     );
 
     if(!draftResult.created){
-      return createdDraft;
+      return options.returnCreationResult?{draft:createdDraft,created:false}:createdDraft;
     }
 
     await requestApproval(
@@ -116,7 +117,7 @@ export async function createDraft(data:CreateDraftData){
       data.userId,
     );
 
-    return createdDraft;
+    return options.returnCreationResult?{draft:createdDraft,created:true}:createdDraft;
   }
 
   const confidence=await scoreDraftConfidence(
@@ -215,7 +216,7 @@ export async function createDraft(data:CreateDraftData){
    * same reply or create a second approval request.
    */
   if(!draftResult.created){
-    return createdDraft;
+    return options.returnCreationResult?{draft:createdDraft,created:false}:createdDraft;
   }
 
   if (automaticAction.action === "auto_approve") {
@@ -244,5 +245,5 @@ export async function createDraft(data:CreateDraftData){
     );
   }
 
-  return createdDraft;
+  return options.returnCreationResult?{draft:createdDraft,created:true}:createdDraft;
 }

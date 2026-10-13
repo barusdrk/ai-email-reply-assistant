@@ -6,6 +6,7 @@ import {sendDraft} from "./draftSending.js";
 import {submitDraft as submitDraftService} from "./draftWorkflow.js";
 import {isValidObjectId} from "./draftValidation.js";
 import type {CreateDraftData,DraftStatus,UpdateDraftData} from "./draftTypes.js";
+import type {Draft} from "../models/Draft.js";
 
 export function drafts(userId:string,status?:DraftStatus){
   if(!isValidObjectId(userId))throw new Error("Invalid user ID.");
@@ -17,9 +18,13 @@ export function draft(id:string){
   return draftRepository.findById(id);
 }
 
-export async function createDraft(data:CreateDraftData){
-  if(!isValidObjectId(data.userId))throw new Error("Invalid user ID.");
-  return createDraftFromSupportResult(data);
+type CreateDraftOptions = {returnCreationResult?:boolean};
+type CreateDraftResult = {draft:Draft;created:boolean};
+
+export function createDraft(data:CreateDraftData):Promise<Draft>;
+export function createDraft(data:CreateDraftData,options:{returnCreationResult:true}):Promise<CreateDraftResult>;
+export async function createDraft(data:CreateDraftData,options:CreateDraftOptions={}):Promise<Draft|CreateDraftResult>{
+  return createDraftFromSupportResult(data,options);
 }
 
 export async function updateDraft(id:string,data:UpdateDraftData){

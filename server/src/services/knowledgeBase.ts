@@ -5,7 +5,7 @@ import {buildKnowledgeBaseEmbeddingText,generateEmbedding} from "./embeddings.js
 const SEMANTIC_LIMIT=5;
 const FINAL_RESULT_LIMIT=5;
 const MAX_KEYWORD_TERMS=6;
-const MAX_SEMANTIC_QUERY_CHARS=24000;
+const MAX_SEMANTIC_QUERY_CHARS=4000;
 
 const STOP_WORDS=new Set([
   "a",
@@ -92,38 +92,44 @@ function mergeAndRankArticles(
   keywordArticles:KnowledgeArticle[],
   queryTerms:string[],
 ):KnowledgeArticle[]{
-  const articles=new Map<string,{article:KnowledgeArticle;semanticIndex:number}>();
+  const articles=new Map<string,{article:KnowledgeArticle;semanticIndex:number;keywordIndex:number}>();
 
   semanticArticles.forEach((article,index)=>{
     articles.set(getArticleKey(article),{
       article,
       semanticIndex:index,
+      keywordIndex:Number.MAX_SAFE_INTEGER,
     });
   });
 
   keywordArticles.forEach((article,index)=>{
     const key=getArticleKey(article);
     const existing=articles.get(key);
-
-    if(existing){
-      articles.set(key,{
-        article:existing.article,
-        semanticIndex:existing.semanticIndex,
-      });
-    }else{
-      articles.set(key,{
-        article,
-        semanticIndex:SEMANTIC_LIMIT+index,
-      });
-    }
+    articles.set(key,{
+      article,
+      semanticIndex:existing?.semanticIndex??SEMANTIC_LIMIT+index,
+      keywordIndex:index,
+    });
   });
 
   return [...articles.values()]
-    .map(({article,semanticIndex})=>({
-      article,
-      score:scoreArticle(article,queryTerms,semanticIndex),
-    }))
-    .sort((a,b)=>b.score-a.score)
+    .map(({article,semanticIndex,keywordIndex})=>{
+      const text=`${article.title} ${article.content} ${article.category} ${article.tags.join(" ")}`.toLowerCase();
+      const matchedTerms=queryTerms.filter((term)=>text.includes(term)).length;
+      return {
+        article,
+        matchedTerms,
+        semanticIndex,
+        keywordIndex,
+        score:scoreArticle(article,queryTerms,semanticIndex),
+      };
+    })
+    .sort((a,b)=>{
+      if(a.matchedTerms!==b.matchedTerms)return b.matchedTerms-a.matchedTerms;
+      if(a.keywordIndex!==b.keywordIndex)return a.keywordIndex-b.keywordIndex;
+      if(a.score!==b.score)return b.score-a.score;
+      return a.semanticIndex-b.semanticIndex;
+    })
     .slice(0,FINAL_RESULT_LIMIT)
     .map(({article})=>article);
 }
@@ -238,48 +244,42 @@ export async function createKnowledgeBaseArticle(
   },
 ){
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
-
   const title=typeof data.title==="string"?data.title.trim():"";
   const content=typeof data.content==="string"?data.content.trim():"";
-
   if(!title)throw new Error("Article title is required.");
   if(!content)throw new Error("Article content is required.");
-
   const category=typeof data.category==="string"&&data.category.trim()
     ?data.category.trim().toLowerCase()
     :"general";
-
   const tags=Array.isArray(data.tags)
-    ?data.tags
-      .map((tag)=>typeof tag==="string"?tag.trim().toLowerCase():"")
-      .filter(Boolean)
+    ?data.tags.map((tag)=>typeof tag==="string"?tag.trim().toLowerCase():"").filter(Boolean)
     :[];
-
-  const active=data.active??true;
-
   const article=await knowledgeBaseRepository.create({
     userId,
     title,
     content,
     category,
     tags,
-    active,
+    active:data.active??true,
   });
-
-  const embeddingText=buildKnowledgeBaseEmbeddingText({
-    title:article.title,
-    content:article.content,
-    category:article.category,
-    tags:article.tags,
-  });
-
-  const embedding=await generateEmbedding(embeddingText);
-
-  return knowledgeBaseRepository.update(
-    userId,
-    article._id.toString(),
-    {embedding},
-  );
+  void (async()=>{
+    try{
+      const embeddingText=buildKnowledgeBaseEmbeddingText({
+        title:article.title,
+        content:article.content,
+        category:article.category,
+        tags:article.tags,
+      });
+      const embedding=await generateEmbedding(embeddingText);
+      await knowledgeBaseRepository.update(userId,article._id.toString(),{embedding});
+    }catch(error){
+      console.error("Knowledge base embedding generation failed:",{
+        articleId:article._id.toString(),
+        error:error instanceof Error?error.message:error,
+      });
+    }
+  })();
+  return article;
 }
 
 export async function updateKnowledgeBaseArticle(
