@@ -18,7 +18,10 @@ export function useDrafts() {
     try {
       setLoading(true);
       setError("");
-      setDrafts(await getDrafts());
+      const loadedDrafts = await getDrafts();
+      console.log("[useDrafts] Loaded drafts:", loadedDrafts.length);
+      console.log("[useDrafts] Escalated drafts:", loadedDrafts.filter((draft) => draft.status === "escalated"));
+      setDrafts(loadedDrafts);
     } catch (err) {
       setError(
         err instanceof Error

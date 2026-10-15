@@ -9,27 +9,40 @@ import {analyzeSupportRequest,type SupportEngineResult} from "./supportEngine.js
 import {type AutomaticActionResult} from "./automaticActions.js";
 import {getSourceEmail} from "./draftValidation.js";
 
+
 export async function getDraftSupportContext(userId:string,emailId:string){
   const sourceEmail=await getSourceEmail(userId,emailId);
   const customerEmailBody=sourceEmail.body?.trim()||"";
   if(!customerEmailBody)throw new Error("The original customer email has no body.");
-  const knowledgeBase=await searchKnowledgeBase(userId,customerEmailBody);
-  const companyPolicies=await getCompanyPolicies(userId);
-  const conversationHistory=sourceEmail.threadId
-    ?await getConversationHistory(userId,sourceEmail.threadId,emailId)
-    :[];
+
+  const emailCustomerContext=getCustomerContextFromEmail(sourceEmail);
+
+  const [
+    knowledgeBase,
+    companyPolicies,
+    conversationHistory,
+    persistedCustomer,
+  ]=await Promise.all([
+    searchKnowledgeBase(userId,customerEmailBody),
+    getCompanyPolicies(userId),
+    sourceEmail.threadId
+      ?getConversationHistory(userId,sourceEmail.threadId,emailId)
+      :Promise.resolve([]),
+    emailCustomerContext.email
+      ?customerRepository.findByEmail(userId,emailCustomerContext.email)
+      :Promise.resolve(null),
+  ]);
+
   const supportConversationHistory=conversationHistory.map((message)=>({
     role:message.role==="customer"?"customer" as const:"agent" as const,
     content:message.content,
     createdAt:message.timestamp??undefined,
   }));
-  const emailCustomerContext=getCustomerContextFromEmail(sourceEmail);
-  const persistedCustomer=emailCustomerContext.email
-    ?await customerRepository.findByEmail(userId,emailCustomerContext.email)
-    :null;
+
   const persistedCustomerContext=buildCustomerContextFromCustomer(persistedCustomer);
   let customerContext=mergeCustomerContext(persistedCustomerContext,emailCustomerContext);
   customerContext=await enrichCustomerContextWithCrm(userId,customerContext);
+
   return {
     sourceEmail,
     customerEmailBody,
