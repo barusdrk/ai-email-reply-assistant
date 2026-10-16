@@ -1,5 +1,6 @@
 import {Types} from "mongoose";
 import EmailModel,{type EmailDocument} from "../models/Email.js";
+import {randomUUID} from "node:crypto";
 
 class EmailRepository {
   findAll(userId:string){
@@ -124,47 +125,48 @@ class EmailRepository {
    * A stale claim can be recovered after 15 minutes. The Draft unique
    * index remains the final protection if two processes ever overlap.
    */
-  async claimAutomaticDraftGeneration(
-    id:string,
-    staleAfterMs=15*60*1000,
-  ){
-    if(!Types.ObjectId.isValid(id))return null;
-
-    const cutoff=new Date(Date.now()-staleAfterMs);
-
-    return EmailModel.findOneAndUpdate(
-      {
-        _id:new Types.ObjectId(id),
-        direction:"inbound",
-        automaticDraftGenerated:false,
-        $or:[
-          {automaticDraftGenerationInProgress:{$ne:true}},
-          {
-            automaticDraftGenerationInProgress:true,
-            automaticDraftGenerationStartedAt:{$lt:cutoff},
-          },
-        ],
-      },
-      {
-        $set:{
+  
+async claimAutomaticDraftGeneration(id:string,staleAfterMs=15*60*1000){
+  if(!Types.ObjectId.isValid(id))return null;
+  const now=new Date();
+  const cutoff=new Date(now.getTime()-staleAfterMs);
+  const claimToken=randomUUID();
+  const email=await EmailModel.findOneAndUpdate(
+    {
+      _id:new Types.ObjectId(id),
+      direction:"inbound",
+      automaticDraftGenerated:false,
+      $or:[
+        {automaticDraftGenerationInProgress:{$ne:true}},
+        {
           automaticDraftGenerationInProgress:true,
-          automaticDraftGenerationStartedAt:new Date(),
+          automaticDraftGenerationStartedAt:{$lt:cutoff},
         },
+      ],
+    },
+    {
+      $set:{
+        automaticDraftGenerationInProgress:true,
+        automaticDraftGenerationStartedAt:now,
+        automaticDraftGenerationClaimToken:claimToken,
       },
-      {
-        returnDocument:"after",
-      },
-    );
-  }
+    },
+    {returnDocument:"after"},
+  );
+  return email;
+}
 
-  async markAutomaticDraftGenerated(
-    emailId:string,
-    draftId:Types.ObjectId,
-  ){
+  
+  async markAutomaticDraftGenerated(emailId:string,draftId:Types.ObjectId,claimToken?:string){
     if(!Types.ObjectId.isValid(emailId))return null;
-
-    return EmailModel.findByIdAndUpdate(
-      emailId,
+    const filter:Record<string,unknown>={_id:new Types.ObjectId(emailId)};
+    if(claimToken){
+      filter.automaticDraftGenerationClaimToken=claimToken;
+      filter.automaticDraftGenerationInProgress=true;
+      filter.automaticDraftGenerated=false;
+    }
+    return EmailModel.findOneAndUpdate(
+      filter,
       {
         $set:{
           draftId,
@@ -173,38 +175,35 @@ class EmailRepository {
         },
         $unset:{
           automaticDraftGenerationStartedAt:1,
+          automaticDraftGenerationClaimToken:1,
         },
       },
-      {
-        returnDocument:"after",
-      },
+      {returnDocument:"after"},
     );
   }
 
-  async releaseAutomaticDraftGeneration(
-    emailId:string,
-  ){
-    if(!Types.ObjectId.isValid(emailId))return null;
 
-    return EmailModel.findOneAndUpdate(
-      {
-        _id:new Types.ObjectId(emailId),
-        automaticDraftGenerated:false,
-        automaticDraftGenerationInProgress:true,
+  
+async releaseAutomaticDraftGeneration(emailId:string,claimToken?:string){
+  if(!Types.ObjectId.isValid(emailId))return null;
+  const filter:Record<string,unknown>={
+    _id:new Types.ObjectId(emailId),
+    automaticDraftGenerated:false,
+    automaticDraftGenerationInProgress:true,
+  };
+  if(claimToken)filter.automaticDraftGenerationClaimToken=claimToken;
+  return EmailModel.findOneAndUpdate(
+    filter,
+    {
+      $set:{automaticDraftGenerationInProgress:false},
+      $unset:{
+        automaticDraftGenerationStartedAt:1,
+        automaticDraftGenerationClaimToken:1,
       },
-      {
-        $set:{
-          automaticDraftGenerationInProgress:false,
-        },
-        $unset:{
-          automaticDraftGenerationStartedAt:1,
-        },
-      },
-      {
-        returnDocument:"after",
-      },
-    );
-  }
+    },
+    {returnDocument:"after"},
+  );
+}
 
   async clearDraftReference(
     emailId:string,

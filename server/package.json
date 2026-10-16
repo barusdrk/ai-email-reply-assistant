@@ -49,6 +49,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.13.3",
     "@types/sanitize-html": "^2.16.1",
+    "mongodb-memory-server": "^11.3.0",
     "tsx": "^4.20.3",
     "typescript": "^5.9.3",
     "vitest": "^5.0.0"

@@ -17,14 +17,15 @@ function normalizeSupportCategory(
     :"general_support";
 }
 
-async function markCreatedDraft(
-  emailId:string,
-  draftId:any,
-){
-  await emailRepository.markAutomaticDraftGenerated(
+async function markCreatedDraft(emailId:string,draftId:any,claimToken?:string){
+  const updated=await emailRepository.markAutomaticDraftGenerated(
     emailId,
     draftId,
+    claimToken,
   );
+  if(claimToken&&!updated){
+    throw new Error("Automatic draft-generation claim was lost before completion.");
+  }
 }
 
 export async function createDraft(data:CreateDraftData, options:{returnCreationResult?:boolean}={}){
@@ -106,6 +107,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     await markCreatedDraft(
       data.emailId,
       createdDraft._id,
+      data.automaticDraftGenerationClaimToken,
     );
 
     if(!draftResult.created){
@@ -207,6 +209,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
   await markCreatedDraft(
     data.emailId,
     createdDraft._id,
+    data.automaticDraftGenerationClaimToken,
   );
 
   /**

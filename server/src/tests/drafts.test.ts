@@ -377,6 +377,7 @@ describe("createDraft automatic-send integration",()=>{
     expect(emailRepositoryMock.markAutomaticDraftGenerated).toHaveBeenCalledWith(
       emailId.toString(),
       draftId,
+      undefined,
     );
     expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);
     expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);

@@ -13,6 +13,7 @@ export interface CreateDraftData {
   reply?:string;
   tone?:DraftTone;
   length?:DraftLength;
+  automaticDraftGenerationClaimToken?:string;
 }
 
 export interface UpdateDraftData {

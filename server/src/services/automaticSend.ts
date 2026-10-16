@@ -68,14 +68,11 @@ async function markAutomaticRecoveryRequired(
   );
 }
 
-async function recordAutomaticSendAnalytics(
-  userId:string,
-  draftId:string,
-):Promise<void>{
+async function recordAutomaticSendAnalytics(userId:string,draftId:string):Promise<void>{
   try{
     const draft=await draftRepository.findById(draftId);
     if(!draft)return;
-
+    const policyIssues=Array.isArray(draft.supportPolicyIssues)?draft.supportPolicyIssues:[];
     await recordDraftAnalytics({
       userId,
       emailId:draft.emailId.toString(),
@@ -84,8 +81,8 @@ async function recordAutomaticSendAnalytics(
       category:draft.supportCategory,
       confidenceScore:draft.confidence?.score??null,
       confidenceLevel:draft.confidence?.level??null,
-      policyCompliant:draft.supportPolicyIssues.length===0,
-      policyViolationCount:draft.supportPolicyIssues.length,
+      policyCompliant:policyIssues.length===0,
+      policyViolationCount:policyIssues.length,
       automaticAction:draft.automaticAction,
       supportDecision:draft.supportDecision,
       supportNeedsHuman:draft.supportNeedsHuman,

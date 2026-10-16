@@ -72,10 +72,10 @@ const draftSchema=new Schema({
   sentAt:Date,
 },{timestamps:true});
 
-draftSchema.index({emailId:1},{unique:true});
 draftSchema.index({userId:1,status:1});
 draftSchema.index({userId:1,createdAt:-1});
 draftSchema.index({userId:1,automaticAction:1});
+draftSchema.index({userId:1,emailId:1},{unique:true});
 draftSchema.index({automaticSendInProgress:1,automaticSendClaimedAt:1});
 draftSchema.index({automaticSendRecoveryRequired:1,createdAt:-1});
 

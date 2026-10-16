@@ -331,6 +331,8 @@ async function generateDraftsForNewEmails(
       }
 
       try{
+        const claimToken=claimedEmail.automaticDraftGenerationClaimToken;
+        if(!claimToken)throw new Error("Automatic draft-generation claim token is missing.");
         const result=await createDraft({
           userId,
           emailId:storedEmail._id.toString(),
@@ -338,7 +340,8 @@ async function generateDraftsForNewEmails(
           subject:email.subject,
           customer:email.senderEmail||email.senderName,
           email:email.body,
-        });
+          automaticDraftGenerationClaimToken:claimToken,
+        },{returnCreationResult:true});
 
         if(result){
           created++;

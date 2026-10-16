@@ -47,6 +47,10 @@ vi.mock("../services/notification.js",()=>({
   notify:mocks.notify,
 }));
 
+vi.mock("../services/supportAnalytics.js",()=>({
+  recordDraftAnalytics:vi.fn().mockResolvedValue(undefined),
+}));
+
 import {draftRepository} from "../repositories/DraftRepository.js";
 import {emailRepository} from "../repositories/EmailRepository.js";
 import {sendEmail} from "../services/sendEmail.js";
@@ -308,6 +312,34 @@ describe("sendAutomatically",()=>{
     );
 
     expect(draftRepositoryMock.claimForAutomaticSend).not.toHaveBeenCalled();
+  });
+
+  it("rejects an escalated draft before claiming it for automatic sending",async()=>{
+    draftRepositoryMock.findById.mockResolvedValue(
+      createDraft({
+        status:"escalated",
+        automaticAction:"escalate",
+      }) as never,
+    );
+    await expect(
+      sendAutomatically(userId.toString(),draftId.toString()),
+    ).rejects.toThrow("This draft is not approved for automatic sending.");
+    expect(draftRepositoryMock.claimForAutomaticSend).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects an escalated draft even if its status is approved",async()=>{
+    draftRepositoryMock.findById.mockResolvedValue(
+      createDraft({
+        status:"approved",
+        automaticAction:"escalate",
+      }) as never,
+    );
+    await expect(
+      sendAutomatically(userId.toString(),draftId.toString()),
+    ).rejects.toThrow("This draft is not approved for automatic sending.");
+    expect(draftRepositoryMock.claimForAutomaticSend).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("rejects when the automatic-send claim is lost",async()=>{
