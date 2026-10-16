@@ -131,6 +131,52 @@ describe("supportEngine logic", () => {
     expect(result.reason).toBe("The request should not receive an automated response.");
   });
 
+  
+  it("preserves documented refund policy facts while requiring human review", () => {
+    const knowledgeBase = [{
+      title: "Refund Policy",
+      content: "Customers can request a refund within 30 days of purchase. Refunds are issued to the original payment method after the refund request is approved.",
+    }];
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.98,
+      category: "refund",
+      sentiment: "negative",
+      reason: "Refund requests require human review.",
+      reply: "You can request a refund within 30 days of purchase. If your request is approved, the refund will be issued to your original payment method.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "How long do I have to request a refund, and how will it be paid?");
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toContain("30 days");
+    expect(result.reply).toContain("original payment method");
+    expect(result.reply).not.toMatch(/your refund (?:is|has been) approved/i);
+  });
+
+  it("uses a safe fallback for an unsupported refund promise while requiring human review", () => {
+    const knowledgeBase = [{
+      title: "Refund Policy",
+      content: "Customers can request a refund within 30 days of purchase. Refunds are issued to the original payment method after the refund request is approved.",
+    }];
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.98,
+      category: "refund",
+      sentiment: "negative",
+      reason: "Refund requests require human review.",
+      reply: "Your refund is approved and will be paid today.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "Please refund my purchase.");
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+    expect(result.reply).not.toMatch(/refund is approved|will be paid today/i);
+  });
+
   it("normalizes an invalid category to general_support", () => {
     const result = normalizeResult({
       decision: "reply",
