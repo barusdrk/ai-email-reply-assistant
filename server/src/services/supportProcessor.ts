@@ -237,7 +237,7 @@ export async function processNewInboundEmail(
   }
 
   try{
-    const draft=await createDraftFromSupportResult({
+    const draftResult = await createDraftFromSupportResult({
       userId,
       emailId,
       provider:request.provider,
@@ -247,16 +247,18 @@ export async function processNewInboundEmail(
       length:"medium",
     });
 
-    console.log("SUPPORT PROCESSING COMPLETE:",{
-      userId,
-      emailId,
-      draftId:String(draft._id),
-      automaticAction:draft.automaticAction,
-      status:draft.status,
-      confidence:draft.confidence,
-      supportDecision:draft.supportDecision,
-      supportCategory:draft.supportCategory,
-      supportNeedsHuman:draft.supportNeedsHuman,
+    const draft = "draft" in draftResult
+      ? draftResult.draft
+      : draftResult;
+
+    console.log({
+      draftId: String(draft._id),
+      automaticAction: draft.automaticAction,
+      status: draft.status,
+      confidence: draft.confidence,
+      supportDecision: draft.supportDecision,
+      supportCategory: draft.supportCategory,
+      supportNeedsHuman: draft.supportNeedsHuman,
     });
 
     return {

@@ -1,3 +1,4 @@
+
 import {describe, expect, it, vi, beforeEach} from "vitest";
 import {Types} from "mongoose";
 
@@ -86,78 +87,177 @@ describe("knowledgeBase", () => {
     expect(knowledgeBaseRepository.findById).not.toHaveBeenCalled();
   });
 
-it("uses semantic and keyword search for company knowledge",async()=>{
-  const articles=[createArticle()];
+  describe("searchKnowledgeBase", () => {
+    it("uses semantic and keyword search for company knowledge", async () => {
+      const articles = [createArticle()];
+      vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(articles as never);
+      vi.mocked(knowledgeBaseRepository.search).mockImplementation(
+        ((_userId: string, term: string) => {
+          if (term === "request" || term === "refund") return Promise.resolve(articles);
+          return Promise.resolve([]);
+        }) as never,
+      );
 
-  vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(
-    articles as never,
-  );
+      const result = await searchKnowledgeBase(userId, "How can I request a refund?");
 
-  vi.mocked(knowledgeBaseRepository.search).mockImplementation(
-    ((_userId:string,term:string)=>{
-      if(term==="request"||term==="refund"){
-        return Promise.resolve(articles);
-      }
-      return Promise.resolve([]);
-    }) as never,
-  );
+      expect(result).toEqual(articles);
+      expect(generateEmbedding).toHaveBeenCalledWith("How can I request a refund?");
+      expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(userId, [0.1, 0.2, 0.3], 5);
+      expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "request");
+      expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "refund");
+    });
 
-  const result=await searchKnowledgeBase(
-    userId,
-    "How can I request a refund?",
-  );
+    it("falls back to keyword search when semantic search fails", async () => {
+      const articles = [createArticle()];
+      vi.mocked(knowledgeBaseRepository.semanticSearch).mockRejectedValue(new Error("Vector search unavailable"));
+      vi.mocked(knowledgeBaseRepository.search).mockResolvedValue(articles as never);
 
-  expect(result).toEqual(articles);
-  expect(generateEmbedding).toHaveBeenCalledWith(
-    "How can I request a refund?",
-  );
-  expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(
-    userId,
-    [0.1,0.2,0.3],
-    5,
-  );
-  expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(
-    userId,
-    "request",
-  );
-  expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(
-    userId,
-    "refund",
-  );
-});
+      const result = await searchKnowledgeBase(userId, "refund");
 
-  it("falls back to keyword search when semantic search fails", async () => {
-    const articles = [createArticle()];
-    vi.mocked(knowledgeBaseRepository.semanticSearch).mockRejectedValue(new Error("Vector search unavailable"));
-    vi.mocked(knowledgeBaseRepository.search).mockResolvedValue(articles as never);
+      expect(result).toEqual(articles);
+      expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "refund");
+    });
 
-    const result = await searchKnowledgeBase(userId, "refund");
+    it("falls back to keyword search when semantic search returns no articles", async () => {
+      const articles = [createArticle()];
+      vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue([] as never);
+      vi.mocked(knowledgeBaseRepository.search).mockResolvedValue(articles as never);
 
-    expect(result).toEqual(articles);
-    expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "refund");
-  });
+      const result = await searchKnowledgeBase(userId, "refund");
 
-  it("falls back to keyword search when semantic search returns no articles", async () => {
-    const articles = [createArticle()];
-    vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue([] as never);
-    vi.mocked(knowledgeBaseRepository.search).mockResolvedValue(articles as never);
+      expect(result).toEqual(articles);
+      expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "refund");
+    });
 
-    const result = await searchKnowledgeBase(userId, "refund");
+    it("uses active articles when the search query is empty", async () => {
+      const articles = [createArticle()];
+      vi.mocked(knowledgeBaseRepository.findActive).mockResolvedValue(articles as never);
 
-    expect(result).toEqual(articles);
-    expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "refund");
-  });
+      const result = await searchKnowledgeBase(userId, "   ");
 
-  it("uses active articles when the search query is empty", async () => {
-    const articles = [createArticle()];
-    vi.mocked(knowledgeBaseRepository.findActive).mockResolvedValue(articles as never);
+      expect(result).toEqual(articles);
+      expect(knowledgeBaseRepository.findActive).toHaveBeenCalledWith(userId);
+      expect(generateEmbedding).not.toHaveBeenCalled();
+      expect(knowledgeBaseRepository.semanticSearch).not.toHaveBeenCalled();
+    });
 
-    const result = await searchKnowledgeBase(userId, "   ");
+    it("returns the B2B product description instead of unrelated semantic results", async () => {
+      const productArticle = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Product / Service Description",
+        content: "Our B2B customer support automation platform helps businesses manage customer support.",
+        category: "products",
+        tags: ["b2b", "product", "services"],
+      });
+      const shippingArticle = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Shipping",
+        content: "Orders are usually shipped within five business days.",
+        category: "shipping",
+        tags: ["delivery", "orders"],
+      });
+      const refundArticle = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Prohibit Refunds without Authorization",
+        content: "Refunds require authorization before they can be processed.",
+        category: "refund_policy",
+        tags: ["refunds", "authorization"],
+      });
 
-    expect(result).toEqual(articles);
-    expect(knowledgeBaseRepository.findActive).toHaveBeenCalledWith(userId);
-    expect(generateEmbedding).not.toHaveBeenCalled();
-    expect(knowledgeBaseRepository.semanticSearch).not.toHaveBeenCalled();
+      vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(
+        [shippingArticle, refundArticle, productArticle] as never,
+      );
+      vi.mocked(knowledgeBaseRepository.search).mockImplementation(
+        ((_userId: string, term: string) => Promise.resolve(term === "b2b" ? [productArticle] : [])) as never,
+      );
+
+      const result = await searchKnowledgeBase(userId, "b2b");
+
+      expect(result).toEqual([productArticle]);
+      expect(result).not.toContain(shippingArticle);
+      expect(result).not.toContain(refundArticle);
+      expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "b2b");
+    });
+
+    it("does not return irrelevant semantic results when no article matches the query", async () => {
+      const shippingArticle = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Shipping",
+        content: "Orders are shipped within five business days.",
+        category: "shipping",
+        tags: ["delivery"],
+      });
+      const refundArticle = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Refund Policy",
+        content: "Customers can request a refund within 30 days.",
+        category: "refund_policy",
+        tags: ["refund", "billing"],
+      });
+
+      vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(
+        [shippingArticle, refundArticle] as never,
+      );
+      vi.mocked(knowledgeBaseRepository.search).mockResolvedValue([] as never);
+
+      const result = await searchKnowledgeBase(userId, "zzqv-unrelated-term");
+
+      expect(result).toEqual([]);
+    });
+
+    it("ranks a direct title match ahead of a content-only match", async () => {
+      const contentMatch = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Delivery Information",
+        content: "Our shipping process normally takes three business days.",
+        category: "general",
+        tags: ["orders"],
+      });
+      const titleMatch = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Shipping Policy",
+        content: "Please check your order confirmation for delivery details.",
+        category: "shipping",
+        tags: ["delivery"],
+      });
+
+      vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(
+        [contentMatch, titleMatch] as never,
+      );
+      vi.mocked(knowledgeBaseRepository.search).mockImplementation(
+        ((_userId: string, term: string) => Promise.resolve(term === "shipping" ? [contentMatch, titleMatch] : [])) as never,
+      );
+
+      const result = await searchKnowledgeBase(userId, "shipping");
+
+      expect(result[0]).toEqual(titleMatch);
+      expect(result).toContain(contentMatch);
+    });
+
+    it("deduplicates an article returned by semantic and keyword search", async () => {
+      const article = createArticle({
+        _id: new Types.ObjectId(),
+        title: "Refund Policy",
+        content: "Customers can request a refund within 30 days.",
+        category: "refund_policy",
+        tags: ["refund", "billing"],
+      });
+
+      vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue([article] as never);
+      vi.mocked(knowledgeBaseRepository.search).mockResolvedValue([article] as never);
+
+      const result = await searchKnowledgeBase(userId, "refund");
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual(article);
+    });
+
+    it("rejects an invalid user ID when searching the knowledge base", async () => {
+      await expect(searchKnowledgeBase("invalid-id", "refund")).rejects.toThrow("Invalid user ID.");
+      expect(generateEmbedding).not.toHaveBeenCalled();
+      expect(knowledgeBaseRepository.semanticSearch).not.toHaveBeenCalled();
+      expect(knowledgeBaseRepository.search).not.toHaveBeenCalled();
+    });
   });
 
   it("creates a company knowledge-base article and generates its embedding", async () => {
@@ -171,7 +271,6 @@ it("uses semantic and keyword search for company knowledge",async()=>{
       ...createdArticle,
       embedding: [0.1, 0.2, 0.3],
     });
-
     vi.mocked(knowledgeBaseRepository.create).mockResolvedValue(createdArticle as never);
     vi.mocked(knowledgeBaseRepository.update).mockResolvedValue(updatedArticle as never);
 
@@ -316,6 +415,7 @@ it("uses semantic and keyword search for company knowledge",async()=>{
   it("gets relevant company knowledge through the knowledge-base search", async () => {
     const articles = [createArticle()];
     vi.mocked(knowledgeBaseRepository.semanticSearch).mockResolvedValue(articles as never);
+    vi.mocked(knowledgeBaseRepository.search).mockResolvedValue(articles as never);
 
     const result = await getRelevantKnowledgeBase(userId, "billing information");
 

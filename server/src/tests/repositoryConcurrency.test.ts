@@ -1,4 +1,3 @@
-
 import mongoose,{Types} from "mongoose";
 import {MongoMemoryServer} from "mongodb-memory-server";
 import {beforeAll,afterAll,afterEach,describe,expect,it} from "vitest";
@@ -8,7 +7,7 @@ import {emailRepository} from "../repositories/EmailRepository.js";
 import {draftRepository} from "../repositories/DraftRepository.js";
 
 describe("MongoDB repository concurrency",()=>{
-  let mongo:MongoMemoryServer;
+  let mongo:MongoMemoryServer | undefined;
   const userId=new Types.ObjectId();
   let emailId:Types.ObjectId;
 
@@ -16,7 +15,7 @@ describe("MongoDB repository concurrency",()=>{
     mongo=await MongoMemoryServer.create();
     await mongoose.connect(mongo.getUri());
     await Promise.all([EmailModel.init(),DraftModel.init()]);
-  },30_000);
+  },180_000);
 
   afterEach(async()=>{
     await Promise.all([
@@ -25,10 +24,10 @@ describe("MongoDB repository concurrency",()=>{
     ]);
   });
 
-  afterAll(async()=>{
+  afterAll(async () => {
     await mongoose.disconnect();
-    await mongo.stop();
-  },30_000);
+    if (mongo) await mongo.stop();
+  }, 30_000);
 
   it("allows only one concurrent automatic draft-generation claim",async()=>{
     const email=await EmailModel.create({

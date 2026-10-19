@@ -65,35 +65,43 @@ function getQueryTerms(query:string):string[]{
   )].slice(0,MAX_KEYWORD_TERMS);
 }
 
+function normalizeSearchText(value:string):string{
+  return value
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g," ")
+    .replace(/\s+/g," ")
+    .trim();
+}
+function getArticleSearchFields(article:KnowledgeArticle){
+  return {
+    title:normalizeSearchText(article.title),
+    content:normalizeSearchText(article.content),
+    category:normalizeSearchText(article.category),
+    tags:article.tags.map(normalizeSearchText),
+  };
+}
 function scoreArticle(article:KnowledgeArticle,queryTerms:string[],semanticIndex:number):number{
-  const title=article.title.toLowerCase();
-  const content=article.content.toLowerCase();
-  const category=article.category.toLowerCase();
-  const tags=article.tags.map((tag)=>tag.toLowerCase());
+  const fields=getArticleSearchFields(article);
   let score=0;
-
   for(const term of queryTerms){
-    if(title.includes(term))score+=10;
-    if(tags.some((tag)=>tag.includes(term)))score+=8;
-    if(category.includes(term))score+=7;
-    if(content.includes(term))score+=2;
+    if(fields.title.split(" ").includes(term))score+=12;
+    if(fields.tags.some((tag)=>tag.split(" ").includes(term)))score+=10;
+    if(fields.category.split(" ").includes(term))score+=6;
+    if(fields.content.split(" ").includes(term))score+=2;
   }
-
   if(typeof article.score==="number"){
-    score+=Math.max(0,Math.min(article.score,1))*3;
+    score+=Math.max(0,Math.min(article.score,1))*2;
   }
-
-  score+=Math.max(0,SEMANTIC_LIMIT-semanticIndex)*0.01;
+  score+=Math.max(0,SEMANTIC_LIMIT-semanticIndex)*0.001;
   return score;
 }
-
 function mergeAndRankArticles(
   semanticArticles:KnowledgeArticle[],
   keywordArticles:KnowledgeArticle[],
   queryTerms:string[],
 ):KnowledgeArticle[]{
   const articles=new Map<string,{article:KnowledgeArticle;semanticIndex:number;keywordIndex:number}>();
-
   semanticArticles.forEach((article,index)=>{
     articles.set(getArticleKey(article),{
       article,
@@ -101,7 +109,6 @@ function mergeAndRankArticles(
       keywordIndex:Number.MAX_SAFE_INTEGER,
     });
   });
-
   keywordArticles.forEach((article,index)=>{
     const key=getArticleKey(article);
     const existing=articles.get(key);
@@ -111,20 +118,32 @@ function mergeAndRankArticles(
       keywordIndex:index,
     });
   });
-
   return [...articles.values()]
     .map(({article,semanticIndex,keywordIndex})=>{
-      const text=`${article.title} ${article.content} ${article.category} ${article.tags.join(" ")}`.toLowerCase();
-      const matchedTerms=queryTerms.filter((term)=>text.includes(term)).length;
+      const fields=getArticleSearchFields(article);
+      const searchableText=[
+        fields.title,
+        fields.content,
+        fields.category,
+        ...fields.tags,
+      ].join(" ").split(" ");
+      const matchedTerms=queryTerms.filter((term)=>searchableText.includes(term)).length;
+      const titleMatches=queryTerms.filter((term)=>fields.title.split(" ").includes(term)).length;
+      const tagMatches=queryTerms.filter((term)=>fields.tags.some((tag)=>tag.split(" ").includes(term))).length;
       return {
         article,
         matchedTerms,
+        titleMatches,
+        tagMatches,
         semanticIndex,
         keywordIndex,
         score:scoreArticle(article,queryTerms,semanticIndex),
       };
     })
+    .filter((result)=>queryTerms.length===0||result.matchedTerms>0)
     .sort((a,b)=>{
+      if(a.titleMatches!==b.titleMatches)return b.titleMatches-a.titleMatches;
+      if(a.tagMatches!==b.tagMatches)return b.tagMatches-a.tagMatches;
       if(a.matchedTerms!==b.matchedTerms)return b.matchedTerms-a.matchedTerms;
       if(a.keywordIndex!==b.keywordIndex)return a.keywordIndex-b.keywordIndex;
       if(a.score!==b.score)return b.score-a.score;
@@ -217,15 +236,9 @@ export async function searchKnowledgeBase(userId:string,query:string){
   if(semanticArticles.length===0&&keywordArticles.length===0){
     throw new Error("Unable to search knowledge base.");
   }
-
-  if(semanticArticles.length===0){
-    return keywordArticles.slice(0,FINAL_RESULT_LIMIT);
-  }
-
-  if(keywordArticles.length===0){
+  if(queryTerms.length===0){
     return semanticArticles.slice(0,FINAL_RESULT_LIMIT);
   }
-
   return mergeAndRankArticles(
     semanticArticles,
     keywordArticles,
