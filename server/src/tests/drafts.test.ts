@@ -281,94 +281,35 @@ beforeEach(()=>{
   mocks.requestApproval.mockResolvedValue(undefined);
 });
 
-describe("createDraft automatic-send integration",()=>{
-  it("automatically sends an approved draft when the action is auto_approve",async()=>{
-    const draft=setupAction("auto_approve");
-    const result=await createDraft(buildCreateDraftInput());
 
-    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledTimes(1);
-    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status:"approved",
-        automaticAction:"auto_approve",
-      }),
-    );
-    expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);
-    expect(sendAutomaticallyMock).toHaveBeenCalledWith(
-      userId.toString(),
-      draftId.toString(),
-    );
-    expect(requestApprovalMock).not.toHaveBeenCalled();
-    expect(result).toBe(draft);
-  });
+describe("createDraft human-approval workflow",()=>{
+  it.each(["auto_approve","pending","escalate","blocked"] as const)(
+    "keeps a %s decision pending and requires human approval",
+    async(action)=>{
+      setupAction(action);
+      await createDraft(buildCreateDraftInput());
 
-  it("does not automatically send a pending draft",async()=>{
-    setupAction("pending");
-    await createDraft(buildCreateDraftInput());
+      expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledTimes(1);
+      expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status:"pending",
+          automaticAction:"pending",
+          supportNeedsHuman:true,
+          approvedAt:undefined,
+          escalatedAt:undefined,
+          rejectionReason:undefined,
+        }),
+      );
+      expect(sendAutomaticallyMock).not.toHaveBeenCalled();
+      expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+      expect(requestApprovalMock).toHaveBeenCalledWith(
+        draftId.toString(),
+        userId.toString(),
+      );
+    },
+  );
 
-    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status:"pending",
-        automaticAction:"pending",
-      }),
-    );
-    expect(sendAutomaticallyMock).not.toHaveBeenCalled();
-    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
-    expect(requestApprovalMock).toHaveBeenCalledWith(
-      draftId.toString(),
-      userId.toString(),
-    );
-  });
-
-  it("does not automatically send an escalated draft",async()=>{
-    setupAction("escalate");
-    await createDraft(buildCreateDraftInput());
-
-    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status:"escalated",
-        automaticAction:"escalate",
-      }),
-    );
-    expect(sendAutomaticallyMock).not.toHaveBeenCalled();
-    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
-    expect(requestApprovalMock).toHaveBeenCalledWith(
-      draftId.toString(),
-      userId.toString(),
-    );
-  });
-
-  it("does not automatically send a blocked draft",async()=>{
-    setupAction("blocked");
-    await createDraft(buildCreateDraftInput());
-
-    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
-      expect.objectContaining({
-        status:"rejected",
-        automaticAction:"blocked",
-      }),
-    );
-    expect(sendAutomaticallyMock).not.toHaveBeenCalled();
-    expect(requestApprovalMock).not.toHaveBeenCalled();
-  });
-
-  it("continues draft creation when automatic sending fails",async()=>{
-    const draft=setupAction("auto_approve");
-
-    sendAutomaticallyMock.mockRejectedValue(
-      new Error("Provider unavailable."),
-    );
-
-    const result=await createDraft(buildCreateDraftInput());
-
-    expect(sendAutomaticallyMock).toHaveBeenCalledWith(
-      userId.toString(),
-      draftId.toString(),
-    );
-    expect(result).toBe(draft);
-  });
-
-  it("updates the source email with the created draft ID before automatic sending",async()=>{
+  it("links the source email to the new draft before requesting approval",async()=>{
     setupAction("auto_approve");
 
     await createDraft(buildCreateDraftInput());
@@ -379,7 +320,50 @@ describe("createDraft automatic-send integration",()=>{
       draftId,
       undefined,
     );
-    expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);
-    expect(sendAutomaticallyMock).toHaveBeenCalledTimes(1);
+    expect(
+      emailRepositoryMock.markAutomaticDraftGenerated.mock.invocationCallOrder[0],
+    ).toBeLessThan(
+      requestApprovalMock.mock.invocationCallOrder[0],
+    );
+    expect(sendAutomaticallyMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not request approval again when the draft already exists",async()=>{
+    const draft=setupAction("pending");
+    draftRepositoryMock.createIfNotExists.mockResolvedValue({
+      created:false,
+      draft,
+    } as never);
+
+    await createDraft(buildCreateDraftInput());
+
+    expect(emailRepositoryMock.markAutomaticDraftGenerated).toHaveBeenCalledTimes(1);
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(sendAutomaticallyMock).not.toHaveBeenCalled();
+  });
+
+  it("does not automatically send a high-confidence reply",async()=>{
+    setupAction("auto_approve");
+    scoreDraftConfidenceMock.mockResolvedValue({
+      ...buildConfidence(),
+      score:98,
+      level:"high",
+    });
+
+    await createDraft(buildCreateDraftInput());
+
+    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
+      expect.objectContaining({
+        status:"pending",
+        automaticAction:"pending",
+        confidence:expect.objectContaining({
+          score:98,
+          level:"high",
+        }),
+      }),
+    );
+    expect(sendAutomaticallyMock).not.toHaveBeenCalled();
+    expect(requestApprovalMock).toHaveBeenCalledTimes(1);
   });
 });

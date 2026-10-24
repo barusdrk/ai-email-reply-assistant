@@ -1,4 +1,4 @@
-import {describe,expect,it,vi} from "vitest";
+import {describe,expect,it,vi,beforeEach} from "vitest";
 import {Types} from "mongoose";
 
 vi.mock("../repositories/DraftRepository.js",()=>({
@@ -68,7 +68,11 @@ function mockPolicy(overrides:Partial<Awaited<ReturnType<typeof checkReplyPolicy
 }
 
 describe("evaluateDraftAutomation",()=>{
-  it("auto approves high-confidence compliant replies",async()=>{
+  beforeEach(()=>{
+    vi.clearAllMocks();
+  });
+
+  it("keeps high-confidence compliant replies pending for human approval",async()=>{
     vi.mocked(draftRepository.findById).mockResolvedValue(draft as any);
     vi.mocked(draftRepository.update).mockResolvedValue(draft as any);
     vi.mocked(approvalRepository.findPendingByDraft).mockResolvedValue(null);
@@ -78,31 +82,22 @@ describe("evaluateDraftAutomation",()=>{
 
     const result=await evaluateDraftAutomation({userId,draftId});
 
-    expect(result?.action).toBe("auto_approve");
-    expect(result?.status).toBe("approved");
+    expect(result?.action).toBe("pending");
+    expect(result?.status).toBe("pending");
     expect(result?.confidence.score).toBe(92);
     expect(draftRepository.update).toHaveBeenCalledWith(
       draftId,
       expect.objectContaining({
-        automaticAction:"auto_approve",
-        status:"approved",
+        automaticAction:"pending",
+        status:"pending",
+        confidence:expect.objectContaining({score:92,level:"high"}),
+        automaticActionReasons:expect.arrayContaining([
+          "Human approval is required before the response can be sent.",
+          "Automatic sending is disabled.",
+        ]),
       }),
     );
-    expect(approvalRepository.create).not.toHaveBeenCalled();
-  });
-
-  it("creates a pending approval for medium confidence",async()=>{
-    vi.mocked(draftRepository.findById).mockResolvedValue(draft as any);
-    vi.mocked(draftRepository.update).mockResolvedValue(draft as any);
-    vi.mocked(approvalRepository.findPendingByDraft).mockResolvedValue(null);
-    mockConfidence(62,"medium");
-    mockPolicy();
-    vi.mocked(determineEscalation).mockReturnValue({escalated:false,reasons:[]});
-
-    const result=await evaluateDraftAutomation({userId,draftId});
-
-    expect(result?.action).toBe("pending");
-    expect(result?.status).toBe("pending");
+    expect(approvalRepository.create).toHaveBeenCalledTimes(1);
     expect(approvalRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
         draftId:draft._id,
@@ -115,16 +110,38 @@ describe("evaluateDraftAutomation",()=>{
     );
   });
 
-  it("escalates low-confidence requests",async()=>{
+  it("creates a pending approval for medium-confidence replies",async()=>{
+    vi.mocked(draftRepository.findById).mockResolvedValue(draft as any);
+    vi.mocked(draftRepository.update).mockResolvedValue(draft as any);
+    vi.mocked(approvalRepository.findPendingByDraft).mockResolvedValue(null);
+    mockConfidence(62,"medium");
+    mockPolicy();
+    vi.mocked(determineEscalation).mockReturnValue({escalated:false,reasons:[]});
+
+    const result=await evaluateDraftAutomation({userId,draftId});
+
+    expect(result?.action).toBe("pending");
+    expect(result?.status).toBe("pending");
+    expect(approvalRepository.create).toHaveBeenCalledTimes(1);
+    expect(approvalRepository.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        draftId:draft._id,
+        emailId,
+        requesterId:draft.userId,
+        reviewerId:draft.userId,
+        status:"pending",
+        priority:"medium",
+      }),
+    );
+  });
+
+  it("escalates low-confidence requests for human review",async()=>{
     vi.mocked(draftRepository.findById).mockResolvedValue(draft as any);
     vi.mocked(draftRepository.update).mockResolvedValue(draft as any);
     vi.mocked(approvalRepository.findPendingByDraft).mockResolvedValue(null);
     mockConfidence(30,"low");
     mockPolicy();
-    vi.mocked(determineEscalation).mockReturnValue({
-      escalated:false,
-      reasons:[],
-    });
+    vi.mocked(determineEscalation).mockReturnValue({escalated:false,reasons:[]});
 
     const result=await evaluateDraftAutomation({userId,draftId});
 
@@ -132,12 +149,17 @@ describe("evaluateDraftAutomation",()=>{
     expect(result?.status).toBe("escalated");
     expect(approvalRepository.create).toHaveBeenCalledWith(
       expect.objectContaining({
+        draftId:draft._id,
+        emailId,
+        requesterId:draft.userId,
+        reviewerId:draft.userId,
+        status:"pending",
         priority:"high",
       }),
     );
   });
 
-  it("blocks policy violations",async()=>{
+  it("blocks policy violations without creating an approval",async()=>{
     vi.mocked(draftRepository.findById).mockResolvedValue(draft as any);
     vi.mocked(draftRepository.update).mockResolvedValue(draft as any);
     vi.mocked(approvalRepository.findPendingByDraft).mockResolvedValue(null);
@@ -147,10 +169,7 @@ describe("evaluateDraftAutomation",()=>{
       score:0,
       violations:["The reply contradicts company policy."],
     });
-    vi.mocked(determineEscalation).mockReturnValue({
-      escalated:false,
-      reasons:[],
-    });
+    vi.mocked(determineEscalation).mockReturnValue({escalated:false,reasons:[]});
 
     const result=await evaluateDraftAutomation({userId,draftId});
 
@@ -177,14 +196,12 @@ describe("evaluateDraftAutomation",()=>{
     } as any);
     mockConfidence(65,"medium");
     mockPolicy();
-    vi.mocked(determineEscalation).mockReturnValue({
-      escalated:false,
-      reasons:[],
-    });
+    vi.mocked(determineEscalation).mockReturnValue({escalated:false,reasons:[]});
 
     const result=await evaluateDraftAutomation({userId,draftId});
 
     expect(result?.action).toBe("pending");
+    expect(result?.status).toBe("pending");
     expect(approvalRepository.create).not.toHaveBeenCalled();
   });
 
@@ -194,9 +211,9 @@ describe("evaluateDraftAutomation",()=>{
       userId:new Types.ObjectId(),
     } as any);
 
-    await expect(
-      evaluateDraftAutomation({userId,draftId}),
-    ).rejects.toThrow("Unauthorized.");
+    await expect(evaluateDraftAutomation({userId,draftId})).rejects.toThrow("Unauthorized.");
+    expect(draftRepository.update).not.toHaveBeenCalled();
+    expect(approvalRepository.create).not.toHaveBeenCalled();
   });
 
   it("returns null when the draft does not exist",async()=>{
@@ -205,5 +222,7 @@ describe("evaluateDraftAutomation",()=>{
     const result=await evaluateDraftAutomation({userId,draftId});
 
     expect(result).toBeNull();
+    expect(draftRepository.update).not.toHaveBeenCalled();
+    expect(approvalRepository.create).not.toHaveBeenCalled();
   });
 });

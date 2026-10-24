@@ -5,7 +5,6 @@ import {analyzeDraftSupport,applySupportDecision,evaluateDraftPolicy,scoreDraftC
 import {isValidObjectId} from "./draftValidation.js";
 import {SUPPORT_CATEGORIES,type SupportCategory} from "../models/Draft.js";
 import type {CreateDraftData} from "./draftTypes.js";
-import {sendAutomatically} from "./automaticSend.js";
 import {requestApproval} from "./draftApproval.js";
 import type {Draft} from "../models/Draft.js";
 
@@ -50,7 +49,6 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
 
   const supportResult=support.supportResult;
 
-  // The centralized support engine is the authoritative source for automatic replies.
   const reply=supportResult.reply.trim();
 
   if(!reply){
@@ -100,10 +98,6 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
 
     const createdDraft=draftResult.draft;
 
-    /**
-     * If another sync/process already created the draft, do not
-     * request another approval or perform another side effect.
-     */
     await markCreatedDraft(
       data.emailId,
       createdDraft._id,
@@ -139,7 +133,9 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     support.knowledgeBase,
   );
 
-  const automaticAction=applySupportDecision(
+
+
+  const evaluatedAction=applySupportDecision(
     determineAutomaticAction(
       support.customerEmailBody,
       confidence,
@@ -148,15 +144,15 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     supportResult,
   );
 
-  const status=automaticAction.action==="escalate"
-    ?"escalated"
-    :automaticAction.action==="auto_approve"
-      ?"approved"
-      :automaticAction.action==="blocked"
-        ?"rejected"
-        :"pending";
+  const automaticAction={
+    action:"pending" as const,
+    reasons:[
+      "Automatic sending is disabled. Human approval is required for every outgoing reply.",
+      ...evaluatedAction.reasons,
+    ],
+  };
 
-  const now=new Date();
+  const status="pending" as const;
 
   const draftResult=await draftRepository.createIfNotExists({
     userId:data.userId as any,
@@ -177,76 +173,34 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     supportSentiment:supportResult.sentiment,
     supportConfidence:supportResult.confidence,
     supportDecision:supportResult.decision,
-    supportNeedsHuman:supportResult.needsHuman,
+    supportNeedsHuman:true,
     supportReason:supportResult.reason,
     supportSuggestedActions:supportResult.suggestedActions,
     supportMissingInformation:supportResult.missingInformation,
     supportPolicyIssues:supportResult.policyIssues,
-    escalatedAt:status==="escalated"
-      ?now
-      :undefined,
-    escalationReason:status==="escalated"
-      ?automaticAction.reasons[0]
-      :undefined,
-    escalationReasons:status==="escalated"
-      ?automaticAction.reasons
-      :[],
-    approvedAt:status==="approved"
-      ?now
-      :undefined,
-    rejectionReason:status==="rejected"
-      ?automaticAction.reasons.join(" ")
-      :undefined,
+    escalatedAt:undefined,
+    escalationReason:undefined,
+    escalationReasons:[],
+    approvedAt:undefined,
+    rejectionReason:undefined,
   });
 
   const createdDraft=draftResult.draft;
 
-  /**
-   * Mark the source email as permanently processed for automatic
-   * draft generation. Deleting this draft later must not make the
-   * source email eligible for automatic regeneration.
-   */
   await markCreatedDraft(
     data.emailId,
     createdDraft._id,
     data.automaticDraftGenerationClaimToken,
   );
 
-  /**
-   * Another worker already created this draft.
-   *
-   * Returning here is critical: the losing worker must not send the
-   * same reply or create a second approval request.
-   */
-  if(!draftResult.created){
-    return options.returnCreationResult?{draft:createdDraft,created:false}:createdDraft;
-  }
-
-  if (automaticAction.action === "auto_approve") {
-    console.log("AUTOMATIC APPROVAL: sending draft:", {
-      draftId: createdDraft._id.toString(),
-      userId: data.userId,
-    });
-    try {
-      await sendAutomatically(
-        data.userId,
-        createdDraft._id.toString(),
-      );
-    } catch (error) {
-      console.error(
-        "Automatic support reply failed:",
-        error instanceof Error ? error.message : error,
-      );
-    }
-  }else if(
-    automaticAction.action==="pending"||
-    automaticAction.action==="escalate"
-  ){
+  if(draftResult.created){
     await requestApproval(
       createdDraft._id.toString(),
       data.userId,
     );
   }
 
-  return options.returnCreationResult?{draft:createdDraft,created:true}:createdDraft;
+  return options.returnCreationResult
+    ?{draft:createdDraft,created:draftResult.created}
+    :createdDraft;
 }

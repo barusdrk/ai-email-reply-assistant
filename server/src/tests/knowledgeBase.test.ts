@@ -101,8 +101,8 @@ describe("knowledgeBase", () => {
       const result = await searchKnowledgeBase(userId, "How can I request a refund?");
 
       expect(result).toEqual(articles);
-      expect(generateEmbedding).toHaveBeenCalledWith("How can I request a refund?");
-      expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(userId, [0.1, 0.2, 0.3], 5);
+      expect(generateEmbedding).toHaveBeenCalledWith("How can I request a refund? refund return refund policy how long does a refund take");
+      expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(userId, [0.1, 0.2, 0.3], 10);
       expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "request");
       expect(knowledgeBaseRepository.search).toHaveBeenCalledWith(userId, "refund");
     });
@@ -420,6 +420,6 @@ describe("knowledgeBase", () => {
     const result = await getRelevantKnowledgeBase(userId, "billing information");
 
     expect(result).toEqual(articles);
-    expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(userId, [0.1, 0.2, 0.3], 5);
+    expect(knowledgeBaseRepository.semanticSearch).toHaveBeenCalledWith(userId, [0.1, 0.2, 0.3], 10);
   });
 });

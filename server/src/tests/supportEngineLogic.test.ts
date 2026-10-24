@@ -2,6 +2,7 @@ import {describe, expect, it} from "vitest";
 import {
   CONFIDENCE_THRESHOLD,
   buildPrompt,
+  groundSupportReply,
   normalizeResult,
 } from "../services/supportEngineLogic.js";
 
@@ -11,24 +12,24 @@ const HUMAN_REVIEW_REPLY =
 describe("supportEngine logic", () => {
   it("keeps a safe high-confidence reply", () => {
     const result = normalizeResult(
-  {
-    decision: "reply",
-    confidence: 0.92,
-    category: "billing",
-    sentiment: "neutral",
-    reason: "The payment status is confirmed.",
-    reply: "Your payment was successfully processed.",
-    suggestedActions: [],
-    missingInformation: [],
-    policyIssues: [],
-  },
-  [
-    {
-      title: "Payment Status",
-      content: "The customer's payment was successfully processed.",
-    },
-  ],
-);
+      {
+        decision: "reply",
+        confidence: 0.92,
+        category: "billing",
+        sentiment: "neutral",
+        reason: "The payment status is confirmed.",
+        reply: "Your payment was successfully processed.",
+        suggestedActions: [],
+        missingInformation: [],
+        policyIssues: [],
+      },
+      [
+        {
+          title: "Payment Status",
+          content: "The customer's payment was successfully processed.",
+        },
+      ],
+    );
 
     expect(result.decision).toBe("reply");
     expect(result.confidence).toBe(0.92);
@@ -153,6 +154,29 @@ describe("supportEngine logic", () => {
     expect(result.reply).toContain("30 days");
     expect(result.reply).toContain("original payment method");
     expect(result.reply).not.toMatch(/your refund (?:is|has been) approved/i);
+  });
+
+  
+  it("preserves a documented shipping estimate while requiring human review", () => {
+    const knowledgeBase = [{
+      title: "Shipping Policy",
+      content: "Orders normally arrive within 3–5 business days.",
+    }];
+    const result = normalizeResult({
+      decision: "human_review",
+      confidence: 0.98,
+      category: "shipping",
+      sentiment: "neutral",
+      reason: "The shipping request requires human review.",
+      reply: "Orders normally arrive within 3–5 business days.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "When should my order arrive?");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toContain("3–5 business days");
   });
 
   it("uses a safe fallback for an unsupported refund promise while requiring human review", () => {
@@ -340,4 +364,21 @@ describe("supportEngine logic", () => {
     expect(prompt).toContain("Do not transform a general instruction into a more specific UI instruction");
     expect(prompt).toContain("plausible but unsupported details");
   });
+
+  
+  it("preserves a knowledge-base-supported shipping estimate during grounding", () => {
+    const knowledgeBase = [{
+      title: "Shipping Policy",
+      content: "Orders normally arrive within 3–5 business days.",
+    }];
+
+    const reply = groundSupportReply(
+      "Orders normally arrive within 3–5 business days.",
+      knowledgeBase,
+      true,
+    );
+
+    expect(reply).toContain("3–5 business days");
+  });
+
 });

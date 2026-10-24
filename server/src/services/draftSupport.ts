@@ -23,7 +23,19 @@ export async function getDraftSupportContext(userId:string,emailId:string){
     conversationHistory,
     persistedCustomer,
   ]=await Promise.all([
-    searchKnowledgeBase(userId,customerEmailBody),
+    searchKnowledgeBase(userId,customerEmailBody).then((articles)=>{
+      console.log("[KB RETRIEVAL DIAGNOSTIC]",{
+        query:customerEmailBody.slice(0,500),
+        count:articles.length,
+        articles:articles.map((article)=>({
+          title:article.title,
+          category:article.category,
+          contentPreview:article.content.slice(0,300),
+          hasShippingEstimate: /3\s*(?:[-–]|to)\s*5\s+business\s+days/i.test(article.content),
+        })),
+      });
+      return articles;
+    }),
     getCompanyPolicies(userId),
     sourceEmail.threadId
       ?getConversationHistory(userId,sourceEmail.threadId,emailId)

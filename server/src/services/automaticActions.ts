@@ -83,16 +83,16 @@ export function determineAutomaticAction(
     };
   }
 
-  if(confidence.level==="high"){
-    return {
-      action:"auto_approve",
-      reasons:[
-        `High AI confidence: ${confidence.score}/100.`,
-        "The response is eligible for automatic approval.",
-        "Policy check passed.",
-      ],
-    };
-  }
+if(confidence.level==="high"){
+  return {
+    action:"pending",
+    reasons:[
+      `High AI confidence: ${confidence.score}/100.`,
+      "Human approval is required before the response can be sent.",
+      "Automatic sending is disabled.",
+    ],
+  };
+}
 
   return {
     action:"pending",
