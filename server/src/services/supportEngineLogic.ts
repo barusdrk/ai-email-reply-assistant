@@ -339,6 +339,29 @@ function buildGroundedHumanReviewReply(
   return "Thanks for reaching out. We've received your support request, and our team will review it.";
 }
 
+function answersDeliveryTimingQuestion(
+  customerMessage: string,
+  reply: string,
+): boolean {
+  if (!customerMessage.trim()) return true;
+
+  const message = customerMessage.toLowerCase();
+
+  const asksForDuration =
+    /\bhow long\b|\bhow many (?:business )?days\b/i.test(message) &&
+    /\b(?:deliver\w*|ship\w*|arriv\w*|order)\b/i.test(message);
+
+  const asksWhen =
+    /\bwhen\b/i.test(message) &&
+    /\b(?:deliver\w*|ship\w*|arriv\w*)\b/i.test(message);
+
+  if (!asksForDuration && !asksWhen) return true;
+
+  return (
+    /\b\d+(?:\s*[-–]\s*\d+)?\s*(?:business\s+)?(?:hours?|days?|weeks?)\b/i.test(reply) ||
+    /\b(?:same|next)\s+(?:business\s+)?day\b/i.test(reply)
+  );
+}
 
 export function groundSupportReply(
   reply:string,
@@ -368,6 +391,8 @@ export function normalizeResult(
 ):SupportEngineResult{
   const confidence=clampConfidence(result.confidence??0);
   const rawReply=limitText(result.reply??"",MAX_REPLY_LENGTH);
+  const responseAdequacyFailed =
+  !answersDeliveryTimingQuestion(customerMessage, rawReply);
   const requestedDecision=result.decision;
   const policyIssues=cleanStringArray(result.policyIssues);
   const missingInformation=cleanStringArray(result.missingInformation);
@@ -385,17 +410,18 @@ export function normalizeResult(
     decision="human_review";
   }else if(requestedDecision==="reject"){
     decision="reject";
-  }else if(
-    sensitiveDispute||
-    result.needsHuman===true||
-    !validDecision||
-    confidence<CONFIDENCE_THRESHOLD||
-    policyIssues.length>0||
-    !rawReply
-  ){
-    decision="human_review";
-  }else{
-    decision="reply";
+    } else if (
+    sensitiveDispute ||
+    result.needsHuman === true ||
+    !validDecision ||
+    confidence < CONFIDENCE_THRESHOLD ||
+    policyIssues.length > 0 ||
+    !rawReply ||
+    responseAdequacyFailed
+  ) {
+    decision = "human_review";
+  } else {
+    decision = "reply";
   }
 
   const category=
@@ -422,20 +448,29 @@ export function normalizeResult(
       ?result.sentiment
       :"neutral";
 
-  const needsHuman=
-    result.needsHuman===true||
-    decision==="human_review"||
-    decision==="reject";
+  let needsHuman =
+    result.needsHuman === true ||
+    decision === "human_review" ||
+    decision === "reject";
 
-  const groundedReply=groundSupportReply(
+  const groundedReply = groundSupportReply(
     rawReply,
     knowledgeBase,
     needsHuman,
   );
 
-  const normalizedReply=
-    groundedReply||
-    (needsHuman?buildGroundedHumanReviewReply(knowledgeBase):"");
+  // A failed grounding check must never leave an empty reply
+  // marked as eligible for automatic sending.
+  if (!groundedReply && decision === "reply") {
+    decision = "human_review";
+    needsHuman = true;
+  }
+
+  const normalizedReply =
+    responseAdequacyFailed
+      ? buildGroundedHumanReviewReply(knowledgeBase)
+      : groundedReply ||
+        (needsHuman ? buildGroundedHumanReviewReply(knowledgeBase) : "");
 
   const reason=
     cleanText(result.reason??"")||

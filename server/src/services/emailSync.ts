@@ -282,99 +282,116 @@ async function linkEmailsToCustomers(
   };
 }
 
-async function generateDraftsForNewEmails(
-  userId:string,
-  emails:NormalizedEmail[],
-  accountEmail?:string,
-){
-  let created=0,skipped=0,failed=0;
 
-  const inboundEmails=emails.filter(
-    email=>email.direction==="inbound",
+
+async function generateDraftsForNewEmails(
+  userId: string,
+  emails: NormalizedEmail[],
+  accountEmail?: string,
+) {
+  let created = 0, skipped = 0, failed = 0;
+
+  const inboundEmails = emails.filter(
+    email => email.direction === "inbound",
   );
 
-  for(const email of inboundEmails){
-    try{
-      if(!isCustomerMessage(email,accountEmail)){
+  for (const email of inboundEmails) {
+    try {
+      if (!isCustomerMessage(email, accountEmail)) {
         skipped++;
         continue;
       }
 
-      if(!email.body.trim()){
+      if (!email.body.trim()) {
         skipped++;
         continue;
       }
 
-      const storedEmail=await emailRepository.findByMessageId(
+      const customer = email.senderEmail || email.senderName;
+
+      if (!customer?.trim()) {
+        skipped++;
+        console.warn(
+          "Skipping automatic draft generation: sender details are missing.",
+          {
+            provider: email.provider,
+            messageId: email.messageId,
+          },
+        );
+        continue;
+      }
+
+      const storedEmail = await emailRepository.findByMessageId(
         userId,
         email.provider,
         email.messageId,
       );
 
-      if(!storedEmail){
+      if (!storedEmail || storedEmail.automaticDraftGenerated) {
         skipped++;
         continue;
       }
 
-      if(storedEmail.automaticDraftGenerated){
-        skipped++;
-        continue;
-      }
-
-      const claimedEmail=await emailRepository.claimAutomaticDraftGeneration(
+      const claimedEmail = await emailRepository.claimAutomaticDraftGeneration(
         storedEmail._id.toString(),
       );
 
-      if(!claimedEmail){
+      if (!claimedEmail) {
         skipped++;
         continue;
       }
 
-      try{
-        const claimToken=claimedEmail.automaticDraftGenerationClaimToken;
-        if(!claimToken)throw new Error("Automatic draft-generation claim token is missing.");
-        const result=await createDraft({
-          userId,
-          emailId:storedEmail._id.toString(),
-          provider:email.provider,
-          subject:email.subject,
-          customer:email.senderEmail||email.senderName,
-          email:email.body,
-          automaticDraftGenerationClaimToken:claimToken,
-        },{returnCreationResult:true});
+      let claimToken: string | undefined;
 
-        if(result){
+      try {
+        claimToken = claimedEmail.automaticDraftGenerationClaimToken ?? undefined;
+
+        if (!claimToken) {
+          throw new Error("Automatic draft-generation claim token is missing.");
+        }
+
+        const result = await createDraft({
+          userId,
+          emailId: storedEmail._id.toString(),
+          provider: email.provider,
+          subject: email.subject,
+          customer,
+          email: email.body,
+          automaticDraftGenerationClaimToken: claimToken,
+        }, { returnCreationResult: true });
+
+        if (result && "created" in result && result.created) {
           created++;
-        }else{
+        } else {
           skipped++;
         }
-      }catch(error){
-        await emailRepository.releaseAutomaticDraftGeneration(
-          storedEmail._id.toString(),
-        );
+      } catch (error) {
+        if (claimToken) {
+          await emailRepository.releaseAutomaticDraftGeneration(
+            storedEmail._id.toString(),
+            claimToken,
+          );
+        }
+
         throw error;
       }
-    }catch(error){
+    } catch (error) {
       failed++;
       console.error(
         "Automatic draft generation failed:",
         {
-          provider:email.provider,
-          messageId:email.messageId,
-          senderEmail:email.senderEmail,
-          error:error instanceof Error
-            ?error.message
-            :error,
+          provider: email.provider,
+          messageId: email.messageId,
+          senderEmail: email.senderEmail,
+          error: error instanceof Error
+            ? error.message
+            : error,
         },
       );
     }
   }
 
-  return {
-    created,
-    skipped,
-    failed,
-  };
+  return { created, skipped, failed };
 }
 
 async function syncProvider(

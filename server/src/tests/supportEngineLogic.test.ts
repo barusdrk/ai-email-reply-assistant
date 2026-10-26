@@ -202,6 +202,12 @@ describe("supportEngine logic", () => {
   });
 
   it("normalizes an invalid category to general_support", () => {
+    const knowledgeBase = [
+      {
+        title: "General Support",
+        content: "We can help with your request.",
+      },
+    ];
     const result = normalizeResult({
       decision: "reply",
       confidence: 0.9,
@@ -212,13 +218,21 @@ describe("supportEngine logic", () => {
       suggestedActions: [],
       missingInformation: [],
       policyIssues: [],
-    });
+    },knowledgeBase);
 
     expect(result.category).toBe("general_support");
     expect(result.decision).toBe("reply");
   });
 
+
   it("normalizes an invalid sentiment to neutral", () => {
+    const knowledgeBase = [
+      {
+        title: "General Support",
+        content: "We can help with your request.",
+      },
+    ];
+
     const result = normalizeResult({
       decision: "reply",
       confidence: 0.9,
@@ -229,7 +243,7 @@ describe("supportEngine logic", () => {
       suggestedActions: [],
       missingInformation: [],
       policyIssues: [],
-    });
+    }, knowledgeBase);
 
     expect(result.sentiment).toBe("neutral");
     expect(result.decision).toBe("reply");
@@ -381,4 +395,56 @@ describe("supportEngine logic", () => {
     expect(reply).toContain("3–5 business days");
   });
 
+  
+  it("routes a grounded but nonresponsive shipping reply to human review", () => {
+    const knowledgeBase = [
+      {
+        title: "Shipping Policy",
+        content: "Standard delivery takes 3-5 business days after dispatch.",
+      },
+    ];
+
+    const result = normalizeResult(
+      {
+        decision: "reply",
+        confidence: 0.98,
+        category: "shipping",
+        sentiment: "neutral",
+        reason: "The response is relevant to the order.",
+        reply: "Thanks for contacting us about your order.",
+        suggestedActions: [],
+        missingInformation: [],
+        policyIssues: [],
+      },
+      knowledgeBase,
+      "How long does delivery usually take?",
+    );
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+  });
+
+  it("preserves a supported answer to a shipping timing question", () => {
+    const knowledgeBase = [{
+      title: "Shipping Policy",
+      content: "Standard delivery takes 3-5 business days after dispatch.",
+    }];
+
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.98,
+      category: "shipping",
+      sentiment: "neutral",
+      reason: "The delivery estimate is documented.",
+      reply: "Standard delivery takes 3-5 business days after dispatch.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "How long does delivery usually take?");
+
+    expect(result.decision).toBe("reply");
+    expect(result.needsHuman).toBe(false);
+    expect(result.reply).toContain("3-5 business days");
+  });
 });

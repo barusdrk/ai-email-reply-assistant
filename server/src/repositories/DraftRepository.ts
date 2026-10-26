@@ -16,6 +16,23 @@ class DraftRepository {
     return DraftModel.findById(id).lean<Draft | null>();
   }
 
+  async claimForManualSend(id: string): Promise<Draft | null> {
+  if (!Types.ObjectId.isValid(id)) return null;
+
+  return DraftModel.findOneAndUpdate(
+    {
+      _id: new Types.ObjectId(id),
+      status: "approved",
+      automaticSendInProgress: { $ne: true },
+      automaticSendRecoveryRequired: { $ne: true },
+    },
+    {
+      $set: { automaticSendInProgress: true },
+    },
+    { new: true },
+  ).lean<Draft | null>();
+}
+
   async findByEmailId(emailId: string): Promise<Draft | null> {
     if (!Types.ObjectId.isValid(emailId)) return null;
     return DraftModel.findOne({
