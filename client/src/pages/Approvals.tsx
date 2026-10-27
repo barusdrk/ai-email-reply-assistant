@@ -16,7 +16,6 @@ export default function Approvals() {
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [resubmittingId, setResubmittingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
-
   const actionInProgress = saving || rejecting || approvingId !== null || resubmittingId !== null;
 
   function openEdit(draft: Draft) {
@@ -105,13 +104,8 @@ export default function Approvals() {
     }
   }
 
-  if (loading) {
-    return <div className="p-6 text-(--text)">Loading approvals...</div>;
-  }
-
-  if (error) {
-    return <div className="p-6 text-(--danger-text)">{error}</div>;
-  }
+  if (loading) return <div className="p-6 text-(--text)">Loading approvals...</div>;
+  if (error) return <div className="p-6 text-(--danger-text)">{error}</div>;
 
   const escalatedCount = approvals.filter((approval) => approval.draft.status === "escalated").length;
   const pendingCount = approvals.filter((approval) => approval.draft.status === "pending").length;
@@ -160,6 +154,18 @@ export default function Approvals() {
                   disabled={actionInProgress}
                   approving={approvingId === approval.id}
                 />
+                {escalated && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleResubmit(approval.id)}
+                      disabled={actionInProgress}
+                      className="rounded-lg border border-(--accent) bg-(--surface) px-4 py-2 text-sm font-medium text-(--accent) transition hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {resubmittingId === approval.id ? "Resubmitting..." : "Mark Reviewed & Resubmit"}
+                    </button>
+                  </div>
+                )}
               </div>
             );
           })}
@@ -174,9 +180,7 @@ export default function Approvals() {
             aria-labelledby="edit-draft-title"
             className="w-full max-w-2xl rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl"
           >
-            <h2 id="edit-draft-title" className="text-xl font-bold text-(--text-h)">
-              Edit Draft Reply
-            </h2>
+            <h2 id="edit-draft-title" className="text-xl font-bold text-(--text-h)">Edit Draft Reply</h2>
             <p className="mt-2 text-sm text-(--text-secondary)">{editingDraft.subject}</p>
             <textarea
               value={editedReply}
@@ -215,12 +219,8 @@ export default function Approvals() {
             aria-labelledby="reject-draft-title"
             className="w-full max-w-lg rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl"
           >
-            <h2 id="reject-draft-title" className="text-xl font-bold text-(--text-h)">
-              Reject Draft
-            </h2>
-            <p className="mt-2 text-sm text-(--text-secondary)">
-              {rejectingApproval.draft.subject}
-            </p>
+            <h2 id="reject-draft-title" className="text-xl font-bold text-(--text-h)">Reject Draft</h2>
+            <p className="mt-2 text-sm text-(--text-secondary)">{rejectingApproval.draft.subject}</p>
             <p className="mt-4 text-sm text-(--text)">
               Are you sure you want to reject this draft? You can optionally provide a reason for the rejection.
             </p>

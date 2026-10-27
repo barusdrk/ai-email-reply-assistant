@@ -134,4 +134,100 @@ describe("MongoDB repository concurrency",()=>{
       reclaimed?.automaticDraftGenerationClaimToken,
     );
   });
+
+  
+it("allows only one concurrent automatic-send claim", async () => {
+  const draft = await DraftModel.create({
+    userId,
+    emailId: new Types.ObjectId(),
+    provider: "gmail",
+    subject: "Re: Test",
+    customer: "staging-customer@example.com",
+    reply: "This is a repository test.",
+    status: "approved",
+    automaticAction: "auto_approve",
+    automaticSendInProgress: false,
+    automaticSendPhase: "idle",
+    automaticSendAttempts: 0,
+    automaticSendRecoveryRequired: false,
+  });
+
+  const claims = await Promise.all([
+    draftRepository.claimForAutomaticSend(
+      draft._id.toString(),
+      userId.toString(),
+    ),
+    draftRepository.claimForAutomaticSend(
+      draft._id.toString(),
+      userId.toString(),
+    ),
+  ]);
+
+  expect(claims.filter(Boolean)).toHaveLength(1);
+
+  const stored = await DraftModel.findById(draft._id).lean();
+
+  expect(stored?.automaticSendInProgress).toBe(true);
+  expect(stored?.automaticSendPhase).toBe("claimed");
+  expect(stored?.automaticSendAttempts).toBe(1);
+
+  expect(
+    await draftRepository.claimForAutomaticSend(
+      draft._id.toString(),
+      userId.toString(),
+    ),
+  ).toBeNull();
+});
+
+  it("refuses automatic-send claims for sending and recovery-required drafts", async () => {
+    const sendingDraft = await DraftModel.create({
+      userId,
+      emailId: new Types.ObjectId(),
+      provider: "gmail",
+      subject: "Re: Sending test",
+      customer: "staging-customer@example.com",
+      reply: "This is a repository test.",
+      status: "approved",
+      automaticAction: "auto_approve",
+      automaticSendInProgress: true,
+      automaticSendPhase: "sending",
+      automaticSendAttempts: 1,
+      automaticSendRecoveryRequired: false,
+    });
+
+    const recoveryDraft = await DraftModel.create({
+      userId,
+      emailId: new Types.ObjectId(),
+      provider: "gmail",
+      subject: "Re: Recovery test",
+      customer: "staging-customer@example.com",
+      reply: "This is a repository test.",
+      status: "pending",
+      automaticAction: "pending",
+      automaticSendInProgress: false,
+      automaticSendPhase: "recovery_required",
+      automaticSendAttempts: 1,
+      automaticSendRecoveryRequired: true,
+    });
+
+    expect(
+      await draftRepository.claimForAutomaticSend(
+        sendingDraft._id.toString(),
+        userId.toString(),
+      ),
+    ).toBeNull();
+
+    expect(
+      await draftRepository.claimForAutomaticSend(
+        recoveryDraft._id.toString(),
+        userId.toString(),
+      ),
+    ).toBeNull();
+
+    const storedSending = await DraftModel.findById(sendingDraft._id).lean();
+    const storedRecovery = await DraftModel.findById(recoveryDraft._id).lean();
+
+    expect(storedSending?.automaticSendAttempts).toBe(1);
+    expect(storedRecovery?.automaticSendAttempts).toBe(1);
+  });
 });

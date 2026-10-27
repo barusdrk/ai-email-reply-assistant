@@ -682,6 +682,39 @@ it("creates an outbound email record after successful sending",async()=>{
     expect(emailRepositoryMock.update).not.toHaveBeenCalled();
   });
 
+    it("does not resend when completion and recovery persistence both fail", async () => {
+    const { draft } = setupSuccessfulSend();
+
+    draftRepositoryMock.markAutomaticSendCompleted.mockResolvedValue(null);
+    draftRepositoryMock.markAutomaticRecoveryRequired.mockRejectedValue(
+      new Error("Recovery persistence failed."),
+    );
+
+    await expect(
+      sendAutomatically(userId.toString(), draftId.toString()),
+    ).rejects.toThrow("Recovery persistence failed.");
+
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+
+    // Simulate the database retaining the original sending claim.
+    draftRepositoryMock.findById.mockResolvedValue({
+      ...draft,
+      automaticSendInProgress: true,
+      automaticSendPhase: "sending",
+      automaticSendRecoveryRequired: false,
+    } as never);
+
+    draftRepositoryMock.claimForAutomaticSend.mockResolvedValueOnce(null);
+
+    await expect(
+      sendAutomatically(userId.toString(), draftId.toString()),
+    ).rejects.toThrow(
+      "Draft is no longer available for automatic sending.",
+    );
+
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+  });
+
   it("passes Outlook conversation metadata to the provider",async()=>{
     const draft=createDraft({provider:"outlook"});
     const email=createEmail({
