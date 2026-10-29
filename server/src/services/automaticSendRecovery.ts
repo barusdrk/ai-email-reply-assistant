@@ -25,9 +25,16 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
       const phase=draft.automaticSendPhase;
 
       if(phase==="claimed"){
+        const claimedAt=draft.automaticSendClaimedAt;
+        if(!claimedAt||Number.isNaN(claimedAt.getTime())){
+          throw new Error(`Stale automatic claim ${draftId} has no valid claim timestamp.`);
+        }
+
         const recovered=await draftRepository.releaseAutomaticClaim(
           draftId,
           "Automatic send claim expired before the provider send started.",
+          "claimed",
+          claimedAt,
         );
 
         if(!recovered)continue;
@@ -41,7 +48,7 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
           userId,
           {
             phase,
-            claimedAt:draft.automaticSendClaimedAt,
+            claimedAt,
           },
         );
 
@@ -50,9 +57,15 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
 
       if(phase!=="sending")continue;
 
+      const startedAt=draft.automaticSendStartedAt;
+      if(!startedAt||Number.isNaN(startedAt.getTime())){
+        throw new Error(`Interrupted automatic send ${draftId} has no valid start timestamp.`);
+      }
+
       const recovered=await draftRepository.markAutomaticRecoveryRequired(
         draftId,
         "Automatic sending was interrupted after the provider send began. Human verification is required before another send attempt.",
+        startedAt,
       );
 
       if(!recovered)continue;
@@ -67,7 +80,7 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
         {
           phase,
           claimedAt:draft.automaticSendClaimedAt,
-          startedAt:draft.automaticSendStartedAt,
+          startedAt,
           attempts:draft.automaticSendAttempts,
         },
       );

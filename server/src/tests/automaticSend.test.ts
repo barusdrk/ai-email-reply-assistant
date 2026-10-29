@@ -527,80 +527,91 @@ it("creates an outbound email record after successful sending",async()=>{
   );
 });
 
-  it("does not mark a failed provider send as completed",async()=>{
-    const draft=createDraft();
-    const email=createEmail();
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
-    emailRepositoryMock.findById.mockResolvedValue(email as never);
-    draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue({
-      ...draft,
-      automaticSendInProgress:true,
-      automaticSendPhase:"sending",
-      automaticSendAttempts:1,
-    } as never);
-    sendEmailMock.mockRejectedValue(new Error("Gmail send failed."));
+it("does not mark a failed provider send as completed",async()=>{
+  const draft=createDraft();
+  const email=createEmail();
+  draftRepositoryMock.findById.mockResolvedValue(draft as never);
+  draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+  emailRepositoryMock.findById.mockResolvedValue(email as never);
+  draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue({
+    ...draft,
+    automaticSendInProgress:true,
+    automaticSendPhase:"sending",
+    automaticSendAttempts:1,
+  } as never);
+  sendEmailMock.mockRejectedValue(new Error("Gmail send failed."));
+  draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue({
+    ...draft,
+    automaticSendRecoveryRequired:true,
+    automaticSendInProgress:false,
+    automaticSendPhase:"pending",
+    supportNeedsHuman:true,
+  } as never);
 
-    await expect(
-      sendAutomatically(userId.toString(),draftId.toString()),
-    ).rejects.toThrow("Gmail send failed.");
+  await expect(
+    sendAutomatically(userId.toString(),draftId.toString()),
+  ).rejects.toThrow("Gmail send failed.");
 
-    expect(
-      draftRepositoryMock.markAutomaticSendCompleted,
-    ).not.toHaveBeenCalled();
+  expect(draftRepositoryMock.markAutomaticSendCompleted).not.toHaveBeenCalled();
+  expect(draftRepositoryMock.releaseAutomaticClaim).not.toHaveBeenCalled();
+  expect(draftRepositoryMock.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
+    draftId.toString(),
+    expect.stringContaining("Gmail send failed."),
+  );
+  expect(sendEmailMock).toHaveBeenCalledTimes(1);
+});
 
-    expect(
-      draftRepositoryMock.releaseAutomaticClaim,
-    ).toHaveBeenCalledWith(
-      draftId.toString(),
-      "Gmail send failed.",
-    );
-
-    expect(
-      draftRepositoryMock.markAutomaticRecoveryRequired,
-    ).not.toHaveBeenCalled();
+it("requires human verification after an ambiguous provider failure and blocks retries",async()=>{
+  const draft=createDraft();
+  const email=createEmail();
+  const recoveryDraft=createDraft({
+    automaticSendRecoveryRequired:true,
+    automaticSendInProgress:false,
+    automaticSendPhase:"recovery_required",
+    supportNeedsHuman:true,
   });
+  draftRepositoryMock.findById
+    .mockResolvedValueOnce(draft as never)
+    .mockResolvedValueOnce(recoveryDraft as never);
+  draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+  emailRepositoryMock.findById.mockResolvedValue(email as never);
+  draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue({
+    ...draft,
+    automaticSendInProgress:true,
+    automaticSendPhase:"sending",
+    automaticSendAttempts:1,
+  } as never);
+  draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue(
+    recoveryDraft as never,
+  );
+  sendEmailMock.mockRejectedValue(
+    new Error("Network timeout while contacting Gmail."),
+  );
 
-  it("does not safely release an ambiguous provider failure",async()=>{
-    const draft=createDraft();
-    const email=createEmail();
+  await expect(
+    sendAutomatically(userId.toString(),draftId.toString()),
+  ).rejects.toThrow(
+    "Automatic sending could not be confirmed. Human verification is required before retrying.",
+  );
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
-    emailRepositoryMock.findById.mockResolvedValue(email as never);
-    draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue({
-      ...draft,
-      automaticSendInProgress:true,
-      automaticSendPhase:"sending",
-      automaticSendAttempts:1,
-    } as never);
-    draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue({
-      ...draft,
-      automaticSendRecoveryRequired:true,
-      automaticSendPhase:"recovery_required",
-    } as never);
-    sendEmailMock.mockRejectedValue(
-      new Error("Network timeout while contacting Gmail."),
-    );
+  expect(draftRepositoryMock.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
+    draftId.toString(),
+    "Automatic send result is uncertain: Network timeout while contacting Gmail.",
+  );
+  expect(draftRepositoryMock.releaseAutomaticClaim).not.toHaveBeenCalled();
+  expect(draftRepositoryMock.markAutomaticSendCompleted).not.toHaveBeenCalled();
+  expect(emailRepositoryMock.create).not.toHaveBeenCalled();
 
-    await expect(
-      sendAutomatically(userId.toString(),draftId.toString()),
-    ).rejects.toThrow(
-      "Automatic sending could not be confirmed. Human verification is required before retrying.",
-    );
+  await expect(
+    sendAutomatically(userId.toString(),draftId.toString()),
+  ).rejects.toThrow(
+    "This draft requires human verification before another automatic send attempt.",
+  );
 
-    expect(
-      draftRepositoryMock.markAutomaticRecoveryRequired,
-    ).toHaveBeenCalledWith(
-      draftId.toString(),
-      "Automatic send result is uncertain: Network timeout while contacting Gmail.",
-    );
-
-    expect(
-      draftRepositoryMock.releaseAutomaticClaim,
-    ).not.toHaveBeenCalled();
-  });
+  expect(draftRepositoryMock.claimForAutomaticSend).toHaveBeenCalledTimes(1);
+  expect(sendEmailMock).toHaveBeenCalledTimes(1);
+});
 
   it("requires recovery when sending fails after the provider send begins",async()=>{
     const draft=createDraft();
@@ -642,7 +653,7 @@ it("creates an outbound email record after successful sending",async()=>{
     ).not.toHaveBeenCalled();
   });
 
-  it("requires recovery when the provider succeeds but completion cannot be confirmed",async()=>{
+  it("The automatic reply may have been sent, but its outbound record could not be saved. Human verification is required.",async()=>{
     const draft=createDraft();
     const email=createEmail();
 
@@ -682,18 +693,65 @@ it("creates an outbound email record after successful sending",async()=>{
     expect(emailRepositoryMock.update).not.toHaveBeenCalled();
   });
 
-    it("does not resend when completion and recovery persistence both fail", async () => {
-    const { draft } = setupSuccessfulSend();
+  
+  it("requires human verification when the provider succeeds but saving the outbound record fails",async()=>{
+    const {draft}=setupSuccessfulSend();
+    const recoveryDraft=createDraft({
+      automaticSendRecoveryRequired:true,
+      automaticSendInProgress:false,
+      automaticSendPhase:"recovery_required",
+      supportNeedsHuman:true,
+    });
 
-    draftRepositoryMock.markAutomaticSendCompleted.mockResolvedValue(null);
-    draftRepositoryMock.markAutomaticRecoveryRequired.mockRejectedValue(
-      new Error("Recovery persistence failed."),
+    draftRepositoryMock.findById
+      .mockResolvedValueOnce(draft as never)
+      .mockResolvedValueOnce(recoveryDraft as never);
+    emailRepositoryMock.create.mockRejectedValue(
+      new Error("Mongo write failed."),
+    );
+    draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue(
+      recoveryDraft as never,
     );
 
     await expect(
-      sendAutomatically(userId.toString(), draftId.toString()),
-    ).rejects.toThrow("Recovery persistence failed.");
+      sendAutomatically(userId.toString(),draftId.toString()),
+    ).rejects.toThrow(
+      "The automatic reply may have been sent, but its outbound record could not be saved. Human verification is required.",
+    );
 
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+    expect(emailRepositoryMock.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        direction:"outbound",
+        messageId:"provider-message-id",
+      }),
+    );
+    expect(draftRepositoryMock.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
+      draftId.toString(),
+      "The provider accepted the automatic reply, but the outbound email record could not be saved: Mongo write failed.",
+    );
+    expect(draftRepositoryMock.markAutomaticSendCompleted).not.toHaveBeenCalled();
+    expect(draftRepositoryMock.releaseAutomaticClaim).not.toHaveBeenCalled();
+    expect(emailRepositoryMock.update).not.toHaveBeenCalled();
+
+    await expect(
+      sendAutomatically(userId.toString(),draftId.toString()),
+    ).rejects.toThrow(
+      "This draft requires human verification before another automatic send attempt.",
+    );
+
+    expect(draftRepositoryMock.claimForAutomaticSend).toHaveBeenCalledTimes(1);
+    expect(sendEmailMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not resend when completion and recovery persistence both fail", async () => {
+    const { draft } = setupSuccessfulSend();
+    const startedAt = new Date();
+
+    draftRepositoryMock.markAutomaticSendCompleted.mockResolvedValue(null);
+    draftRepositoryMock.markAutomaticRecoveryRequired.mockRejectedValue(new Error("Recovery persistence failed."));
+
+    await expect(sendAutomatically(userId.toString(), draftId.toString())).rejects.toThrow("Recovery persistence failed.");
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
 
     // Simulate the database retaining the original sending claim.
@@ -701,17 +759,12 @@ it("creates an outbound email record after successful sending",async()=>{
       ...draft,
       automaticSendInProgress: true,
       automaticSendPhase: "sending",
+      automaticSendStartedAt: startedAt,
       automaticSendRecoveryRequired: false,
     } as never);
-
     draftRepositoryMock.claimForAutomaticSend.mockResolvedValueOnce(null);
 
-    await expect(
-      sendAutomatically(userId.toString(), draftId.toString()),
-    ).rejects.toThrow(
-      "Draft is no longer available for automatic sending.",
-    );
-
+    await expect(sendAutomatically(userId.toString(), draftId.toString())).rejects.toThrow("Draft is no longer available for automatic sending.");
     expect(sendEmailMock).toHaveBeenCalledTimes(1);
   });
 
@@ -731,11 +784,13 @@ it("creates an outbound email record after successful sending",async()=>{
     draftRepositoryMock.findById.mockResolvedValue(draft as never);
     draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
     emailRepositoryMock.findById.mockResolvedValue(email as never);
+    const startedAt = new Date();
     draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue({
       ...draft,
       automaticSendInProgress:true,
       automaticSendPhase:"sending",
       automaticSendAttempts:1,
+      automaticSendStartedAt:startedAt,
     } as never);
     draftRepositoryMock.markAutomaticSendCompleted.mockResolvedValue({
       ...draft,
