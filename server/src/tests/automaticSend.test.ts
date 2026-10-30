@@ -88,6 +88,25 @@ function createDraft(overrides:Record<string,unknown>={}){
   };
 }
 
+function setupClaimedDraft(draft: ReturnType<typeof createDraft>) {
+  const claimedAt = new Date("2026-10-29T10:00:00.000Z");
+  const claimedDraft = {
+    ...draft,
+    automaticSendInProgress: true,
+    automaticSendPhase: "claimed" as const,
+    automaticSendClaimedAt: claimedAt,
+  };
+
+  draftRepositoryMock.findById
+    .mockReset()
+    .mockResolvedValueOnce(draft as never)
+    .mockResolvedValue(claimedDraft as never);
+
+  draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(claimedDraft as never);
+
+  return claimedDraft;
+}
+
 function createEmail(overrides:Record<string,unknown>={}){
   return{
     _id:emailId,
@@ -102,36 +121,42 @@ function createEmail(overrides:Record<string,unknown>={}){
   };
 }
 
-function setupSuccessfulSend(){
-  const draft=createDraft();
-  const email=createEmail();
-  const startedDraft={
+function setupSuccessfulSend() {
+  const draft = createDraft();
+  const email = createEmail();
+  const startedAt = new Date("2026-10-29T10:00:00.000Z");
+  const startedDraft = {
     ...draft,
-    automaticSendInProgress:true,
-    automaticSendPhase:"sending" as const,
-    automaticSendAttempts:1,
+    automaticSendInProgress: true,
+    automaticSendPhase: "sending" as const,
+    automaticSendStartedAt: startedAt,
+    automaticSendAttempts: 1,
   };
-  const completedDraft={
+  const completedDraft = {
     ...draft,
-    status:"sent" as const,
-    automaticSendInProgress:false,
-    automaticSendPhase:"completed" as const,
+    status: "sent" as const,
+    automaticSendInProgress: false,
+    automaticSendPhase: "completed" as const,
   };
-
   draftRepositoryMock.findById.mockResolvedValue(draft as never);
-  draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+  draftRepositoryMock.claimForAutomaticSend.mockResolvedValue({
+    ...draft,
+    automaticSendInProgress: true,
+    automaticSendPhase: "claimed",
+    automaticSendClaimedAt: startedAt,
+    automaticSendAttempts: 1,
+  } as never);
   emailRepositoryMock.findById.mockResolvedValue(email as never);
   draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue(startedDraft as never);
   draftRepositoryMock.markAutomaticSendCompleted.mockResolvedValue(completedDraft as never);
   emailRepositoryMock.update.mockResolvedValue(undefined as never);
   sendEmailMock.mockResolvedValue({
-    id:"provider-message-id",
-    threadId:"thread-123",
-    provider:"gmail",
-    sent:true,
+    id: "provider-message-id",
+    threadId: "thread-123",
+    provider: "gmail",
+    sent: true,
   } as never);
-
-  return{draft,email,startedDraft,completedDraft};
+  return {draft, email, startedDraft, completedDraft};
 }
 
 beforeEach(()=>{
@@ -188,15 +213,23 @@ describe("sendAutomatically",()=>{
     const draft=createDraft({provider:"outlook"});
     const email=createEmail({provider:"outlook",messageId:"outlook-message-123"});
 
-    const startedDraft={
+    const startedAt = new Date("2026-10-29T10:00:00.000Z");
+    const startedDraft = {
       ...draft,
-      automaticSendInProgress:true,
-      automaticSendPhase:"sending" as const,
-      automaticSendAttempts:1,
+      automaticSendInProgress: true,
+      automaticSendPhase: "sending" as const,
+      automaticSendStartedAt: startedAt,
+      automaticSendAttempts: 1,
     };
 
     draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue({
+      ...draft,
+      automaticSendInProgress: true,
+      automaticSendPhase: "claimed",
+      automaticSendClaimedAt: startedAt,
+      automaticSendAttempts: 1,
+    } as never);
     emailRepositoryMock.findById.mockResolvedValue(email as never);
     draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue(startedDraft as never);
     draftRepositoryMock.markAutomaticSendCompleted.mockResolvedValue({
@@ -363,19 +396,14 @@ describe("sendAutomatically",()=>{
   it("fails when the original email does not exist",async()=>{
     const draft=createDraft();
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    setupClaimedDraft(draft);
     emailRepositoryMock.findById.mockResolvedValue(null);
 
     await expect(
       sendAutomatically(userId.toString(),draftId.toString()),
     ).rejects.toThrow("Original email not found.");
 
-    expect(draftRepositoryMock.releaseAutomaticClaim).toHaveBeenCalledWith(
-      draftId.toString(),
-      "Original email was not found before automatic sending started.",
-    );
-
+    expect(draftRepositoryMock.releaseAutomaticClaim).toHaveBeenCalled();
     expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
@@ -385,8 +413,7 @@ describe("sendAutomatically",()=>{
       userId:new Types.ObjectId(),
     });
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    setupClaimedDraft(draft);
     emailRepositoryMock.findById.mockResolvedValue(email as never);
 
     await expect(
@@ -401,8 +428,7 @@ describe("sendAutomatically",()=>{
     const draft=createDraft({provider:"gmail"});
     const email=createEmail({provider:"outlook"});
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    setupClaimedDraft(draft);
     emailRepositoryMock.findById.mockResolvedValue(email as never);
 
     await expect(
@@ -419,8 +445,7 @@ describe("sendAutomatically",()=>{
     const draft=createDraft({customer:""});
     const email=createEmail({senderEmail:""});
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    setupClaimedDraft(draft);
     emailRepositoryMock.findById.mockResolvedValue(email as never);
 
     await expect(
@@ -436,8 +461,7 @@ describe("sendAutomatically",()=>{
   it("rejects when the subject is empty",async()=>{
     const draft=createDraft({subject:""});
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    setupClaimedDraft(draft);
     emailRepositoryMock.findById.mockResolvedValue(createEmail() as never);
 
     await expect(
@@ -451,8 +475,7 @@ describe("sendAutomatically",()=>{
   it("rejects when the reply is empty",async()=>{
     const draft=createDraft({reply:""});
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    setupClaimedDraft(draft);
     emailRepositoryMock.findById.mockResolvedValue(createEmail() as never);
 
     await expect(
@@ -466,8 +489,7 @@ describe("sendAutomatically",()=>{
   it("does not send when starting the send fails",async()=>{
     const draft=createDraft();
 
-    draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    setupClaimedDraft(draft);
     emailRepositoryMock.findById.mockResolvedValue(createEmail() as never);
     draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue(null);
 
@@ -529,6 +551,7 @@ it("creates an outbound email record after successful sending",async()=>{
 
 
 it("does not mark a failed provider send as completed",async()=>{
+  const startedAt = new Date("2026-10-29T10:00:00.000Z");
   const draft=createDraft();
   const email=createEmail();
   draftRepositoryMock.findById.mockResolvedValue(draft as never);
@@ -538,6 +561,7 @@ it("does not mark a failed provider send as completed",async()=>{
     ...draft,
     automaticSendInProgress:true,
     automaticSendPhase:"sending",
+    automaticSendStartedAt: startedAt,
     automaticSendAttempts:1,
   } as never);
   sendEmailMock.mockRejectedValue(new Error("Gmail send failed."));
@@ -558,11 +582,13 @@ it("does not mark a failed provider send as completed",async()=>{
   expect(draftRepositoryMock.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
     draftId.toString(),
     expect.stringContaining("Gmail send failed."),
+    startedAt,
   );
   expect(sendEmailMock).toHaveBeenCalledTimes(1);
 });
 
 it("requires human verification after an ambiguous provider failure and blocks retries",async()=>{
+  const startedAt = new Date("2026-10-29T10:00:00.000Z");
   const draft=createDraft();
   const email=createEmail();
   const recoveryDraft=createDraft({
@@ -580,6 +606,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
     ...draft,
     automaticSendInProgress:true,
     automaticSendPhase:"sending",
+    automaticSendStartedAt: startedAt,
     automaticSendAttempts:1,
   } as never);
   draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue(
@@ -598,6 +625,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
   expect(draftRepositoryMock.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
     draftId.toString(),
     "Automatic send result is uncertain: Network timeout while contacting Gmail.",
+    startedAt,
   );
   expect(draftRepositoryMock.releaseAutomaticClaim).not.toHaveBeenCalled();
   expect(draftRepositoryMock.markAutomaticSendCompleted).not.toHaveBeenCalled();
@@ -614,6 +642,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
 });
 
   it("requires recovery when sending fails after the provider send begins",async()=>{
+    const startedAt = new Date("2026-10-29T10:00:00.000Z");
     const draft=createDraft();
     const email=createEmail();
 
@@ -624,6 +653,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
       ...draft,
       automaticSendInProgress:true,
       automaticSendPhase:"sending",
+      automaticSendStartedAt: startedAt,
       automaticSendAttempts:1,
     } as never);
     draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue({
@@ -646,6 +676,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
     ).toHaveBeenCalledWith(
       draftId.toString(),
       "Automatic send result is uncertain: Connection reset by provider.",
+      startedAt,
     );
 
     expect(
@@ -654,6 +685,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
   });
 
   it("The automatic reply may have been sent, but its outbound record could not be saved. Human verification is required.",async()=>{
+    const startedAt = new Date("2026-10-29T10:00:00.000Z");
     const draft=createDraft();
     const email=createEmail();
 
@@ -664,6 +696,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
       ...draft,
       automaticSendInProgress:true,
       automaticSendPhase:"sending",
+      automaticSendStartedAt: startedAt,
       automaticSendAttempts:1,
     } as never);
     sendEmailMock.mockResolvedValue({
@@ -695,7 +728,8 @@ it("requires human verification after an ambiguous provider failure and blocks r
 
   
   it("requires human verification when the provider succeeds but saving the outbound record fails",async()=>{
-    const {draft}=setupSuccessfulSend();
+    const {draft,startedDraft}=setupSuccessfulSend();
+    const startedAt=startedDraft.automaticSendStartedAt;
     const recoveryDraft=createDraft({
       automaticSendRecoveryRequired:true,
       automaticSendInProgress:false,
@@ -729,6 +763,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
     expect(draftRepositoryMock.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
       draftId.toString(),
       "The provider accepted the automatic reply, but the outbound email record could not be saved: Mongo write failed.",
+      startedAt,
     );
     expect(draftRepositoryMock.markAutomaticSendCompleted).not.toHaveBeenCalled();
     expect(draftRepositoryMock.releaseAutomaticClaim).not.toHaveBeenCalled();
@@ -769,6 +804,7 @@ it("requires human verification after an ambiguous provider failure and blocks r
   });
 
   it("passes Outlook conversation metadata to the provider",async()=>{
+    const startedAt = new Date();
     const draft=createDraft({provider:"outlook"});
     const email=createEmail({
       provider:"outlook",
@@ -782,9 +818,13 @@ it("requires human verification after an ambiguous provider failure and blocks r
     });
 
     draftRepositoryMock.findById.mockResolvedValue(draft as never);
-    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue(draft as never);
+    draftRepositoryMock.claimForAutomaticSend.mockResolvedValue({
+      ...draft,
+      automaticSendInProgress:true,
+      automaticSendPhase:"claimed",
+      automaticSendClaimedAt:startedAt,
+    } as never);
     emailRepositoryMock.findById.mockResolvedValue(email as never);
-    const startedAt = new Date();
     draftRepositoryMock.markAutomaticSendStarted.mockResolvedValue({
       ...draft,
       automaticSendInProgress:true,

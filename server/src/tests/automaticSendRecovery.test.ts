@@ -61,6 +61,8 @@ describe("recoverStaleAutomaticSends",()=>{
     expect(draftRepository.releaseAutomaticClaim).toHaveBeenCalledWith(
       "draft-1",
       "Automatic send claim expired before the provider send started.",
+      "claimed",
+      new Date("2026-09-22T10:00:00.000Z"),
     );
 
     expect(audit).toHaveBeenCalledWith(
@@ -105,6 +107,7 @@ describe("recoverStaleAutomaticSends",()=>{
     expect(draftRepository.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
       "draft-2",
       "Automatic sending was interrupted after the provider send began. Human verification is required before another send attempt.",
+      new Date("2026-09-22T10:00:01.000Z"),
     );
 
     expect(draftRepository.releaseAutomaticClaim).not.toHaveBeenCalled();
