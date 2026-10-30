@@ -1,4 +1,3 @@
-
 import {beforeEach,describe,expect,it,vi} from "vitest";
 import {Types} from "mongoose";
 
@@ -42,6 +41,8 @@ import {sendDraft} from "../services/draftSending.js";
 const userId=new Types.ObjectId();
 const draftId=new Types.ObjectId();
 const emailId=new Types.ObjectId();
+
+const startedAt=new Date("2026-10-30T10:00:00.000Z");
 
 const draft={
   _id:draftId,
@@ -88,7 +89,11 @@ describe("sendDraft failure recovery",()=>{
     mocks.claimForManualSend.mockImplementation(async()=>{
       if(claimed)return null;
       claimed=true;
-      return {...draft,automaticSendInProgress:true};
+      return {
+        ...draft,
+        automaticSendInProgress:true,
+        automaticSendStartedAt:startedAt,
+      };
     });
   });
 
@@ -135,6 +140,7 @@ describe("sendDraft failure recovery",()=>{
     expect(mocks.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
       draftId.toString(),
       expect.stringContaining("requires verification"),
+      startedAt,
     );
   });
 
@@ -145,6 +151,7 @@ describe("sendDraft failure recovery",()=>{
       provider:"gmail",
       sent:true,
     });
+
     mocks.update.mockRejectedValue(new Error("Database connection lost"));
 
     await expect(sendDraft(draftId.toString())).rejects.toThrow("Database connection lost");
@@ -154,6 +161,7 @@ describe("sendDraft failure recovery",()=>{
     expect(mocks.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
       draftId.toString(),
       expect.stringContaining("requires verification"),
+      startedAt,
     );
   });
 

@@ -55,71 +55,77 @@ export async function sendDraft(id:string){
   const claimedDraft=await draftRepository.claimForManualSend(id);
   if(!claimedDraft)throw new Error("Draft is already being sent or is no longer eligible to send.");
 
-  let providerCallStarted = false;
+  const expectedStartedAt=claimedDraft.automaticSendStartedAt;
+  if(!(expectedStartedAt instanceof Date)||Number.isNaN(expectedStartedAt.getTime())){
+    await draftRepository.update(id,{automaticSendInProgress:false});
+    throw new Error("Manual send start timestamp is missing or invalid.");
+  }
 
-  try {
-    const email = await emailRepository.findById(claimedDraft.emailId.toString());
-    if (!email) throw new Error("Source email not found.");
-    if (email.userId.toString() !== claimedDraft.userId.toString()) throw new Error("Source email does not belong to this user.");
-    if (email.provider !== claimedDraft.provider) throw new Error("Draft provider does not match the source email provider.");
+  let providerCallStarted=false;
 
-    const recipient = email.senderEmail?.trim() || claimedDraft.customer.trim();
-    if (!recipient) throw new Error("Customer email address is required.");
+  try{
+    const email=await emailRepository.findById(claimedDraft.emailId.toString());
+    if(!email)throw new Error("Source email not found.");
+    if(email.userId.toString()!==claimedDraft.userId.toString())throw new Error("Source email does not belong to this user.");
+    if(email.provider!==claimedDraft.provider)throw new Error("Draft provider does not match the source email provider.");
 
-    providerCallStarted = true;
-    const providerResult = await sendEmail({
+    const recipient=email.senderEmail?.trim()||claimedDraft.customer.trim();
+    if(!recipient)throw new Error("Customer email address is required.");
+
+    providerCallStarted=true;
+    const providerResult=await sendEmail({
       userId,
-      provider: claimedDraft.provider,
-      to: recipient,
-      subject: claimedDraft.subject,
-      reply: claimedDraft.reply,
-      threadId: email.threadId || undefined,
-      inReplyTo: email.messageIdHeader || undefined,
-      references: email.references?.filter(Boolean),
-      originalMessageId: email.messageId || undefined,
-      originalMessageIdHeader: email.messageIdHeader || undefined,
+      provider:claimedDraft.provider,
+      to:recipient,
+      subject:claimedDraft.subject,
+      reply:claimedDraft.reply,
+      threadId:email.threadId||undefined,
+      inReplyTo:email.messageIdHeader||undefined,
+      references:email.references?.filter(Boolean),
+      originalMessageId:email.messageId||undefined,
+      originalMessageIdHeader:email.messageIdHeader||undefined,
     });
 
-    if (!providerResult?.sent || !providerResult.id?.trim()) {
+    if(!providerResult?.sent||!providerResult.id?.trim()){
       throw new Error("The provider did not confirm the sent message. Human verification is required.");
     }
 
-    const updatedDraft = await draftRepository.update(id, {
-      status: "sent",
-      sentAt: new Date(),
-      automaticSendInProgress: false,
-      automaticSendRecoveryRequired: false,
-      rejectionReason: undefined,
-      escalatedAt: undefined,
-      escalationReason: undefined,
-      escalationReasons: [],
+    const updatedDraft=await draftRepository.update(id,{
+      status:"sent",
+      sentAt:new Date(),
+      automaticSendInProgress:false,
+      automaticSendRecoveryRequired:false,
+      rejectionReason:undefined,
+      escalatedAt:undefined,
+      escalationReason:undefined,
+      escalationReasons:[],
     });
+    if(!updatedDraft)throw new Error("The email may have been sent, but the draft could not be updated.");
 
-    if (!updatedDraft) throw new Error("The email may have been sent, but the draft could not be updated.");
-
-    await recordSendingAnalytics({ userId, draftId: id, outcome: "sent" });
+    await recordSendingAnalytics({userId,draftId:id,outcome:"sent"});
     return updatedDraft;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "Unknown send failure.";
+  }catch(error){
+    const message=error instanceof Error?error.message:"Unknown send failure.";
 
-    if (providerCallStarted) {
-      try {
+    if(providerCallStarted){
+      try{
         await draftRepository.markAutomaticRecoveryRequired(
           id,
           `Manual send outcome requires verification: ${message}`,
+          expectedStartedAt,
         );
-      } catch (recoveryError) {
-        console.error("Manual send recovery marking failed:", recoveryError);
+      }catch(recoveryError){
+        console.error("Manual send recovery marking failed:",recoveryError);
       }
-    } else {
-      try {
-        await draftRepository.update(id, { automaticSendInProgress: false });
-      } catch (releaseError) {
-        console.error("Manual send claim release failed:", releaseError);
+    }else{
+      try{
+        await draftRepository.update(id,{automaticSendInProgress:false});
+      }catch(releaseError){
+        console.error("Manual send claim release failed:",releaseError);
       }
     }
 
-    await recordSendingAnalytics({ userId, draftId: id, outcome: "failed" });
+    await recordSendingAnalytics({userId,draftId:id,outcome:"failed"});
     throw error;
   }
 }
