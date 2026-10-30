@@ -62,7 +62,7 @@ describe("recoverStaleAutomaticSends",()=>{
       "draft-1",
       "Automatic send claim expired before the provider send started.",
       "claimed",
-      new Date("2026-09-22T10:00:00.000Z"),
+      draft.automaticSendClaimedAt,
     );
 
     expect(audit).toHaveBeenCalledWith(
@@ -107,7 +107,7 @@ describe("recoverStaleAutomaticSends",()=>{
     expect(draftRepository.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
       "draft-2",
       "Automatic sending was interrupted after the provider send began. Human verification is required before another send attempt.",
-      new Date("2026-09-22T10:00:01.000Z"),
+      draft.automaticSendStartedAt,
     );
 
     expect(draftRepository.releaseAutomaticClaim).not.toHaveBeenCalled();
@@ -142,5 +142,41 @@ describe("recoverStaleAutomaticSends",()=>{
 
     expect(result.scanned).toBe(1);
     expect(result.errors).toBe(1);
+  });
+
+  it("does not count a stale claim as recovered when its timestamp no longer matches",async()=>{
+    const claimedAt=new Date("2026-09-22T10:00:00Z");
+    const draft={
+      _id:{toString:()=>"draft-4"},
+      userId:{toString:()=>"user-4"},
+      automaticSendPhase:"claimed",
+      automaticSendClaimedAt:claimedAt,
+      automaticSendAttempts:1,
+    };
+
+    vi.mocked(draftRepository.findStaleAutomaticClaims).mockResolvedValue([
+      draft as any,
+    ]);
+    vi.mocked(draftRepository.releaseAutomaticClaim).mockResolvedValue(null);
+
+    const result=await recoverStaleAutomaticSends();
+
+    expect(result.scanned).toBe(1);
+    expect(result.released).toBe(0);
+    expect(result.errors).toBe(0);
+    expect(draftRepository.releaseAutomaticClaim).toHaveBeenCalledWith(
+      "draft-4",
+      expect.any(String),
+      "claimed",
+      claimedAt,
+    );
+  });
+
+  it("rejects an invalid stale interval",async()=>{
+    await expect(recoverStaleAutomaticSends(0)).rejects.toThrow(
+      "Stale automatic-send interval must be a positive number.",
+    );
+
+    expect(draftRepository.findStaleAutomaticClaims).not.toHaveBeenCalled();
   });
 });

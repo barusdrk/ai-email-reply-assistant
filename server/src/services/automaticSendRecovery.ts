@@ -11,7 +11,17 @@ export interface AutomaticSendRecoveryResult {
   errors:number;
 }
 
-export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINUTES):Promise<AutomaticSendRecoveryResult>{
+function isValidDate(value:unknown):value is Date{
+  return value instanceof Date&&!Number.isNaN(value.getTime());
+}
+
+export async function recoverStaleAutomaticSends(
+  staleMinutes=DEFAULT_STALE_MINUTES,
+):Promise<AutomaticSendRecoveryResult>{
+  if(!Number.isFinite(staleMinutes)||staleMinutes<=0){
+    throw new Error("Stale automatic-send interval must be a positive number.");
+  }
+
   const cutoff=new Date(Date.now()-staleMinutes*60*1000);
   const drafts=await draftRepository.findStaleAutomaticClaims(cutoff);
   let released=0;
@@ -19,14 +29,15 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
   let errors=0;
 
   for(const draft of drafts){
-    try{
-      const draftId=draft._id.toString();
-      const userId=draft.userId.toString();
-      const phase=draft.automaticSendPhase;
+    const draftId=draft._id.toString();
+    const userId=draft.userId.toString();
+    const phase=draft.automaticSendPhase;
 
+    try{
       if(phase==="claimed"){
         const claimedAt=draft.automaticSendClaimedAt;
-        if(!claimedAt||Number.isNaN(claimedAt.getTime())){
+
+        if(!isValidDate(claimedAt)){
           throw new Error(`Stale automatic claim ${draftId} has no valid claim timestamp.`);
         }
 
@@ -37,6 +48,7 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
           claimedAt,
         );
 
+        // A null result means the claim changed or was already recovered.
         if(!recovered)continue;
 
         released+=1;
@@ -46,10 +58,7 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
           "draft",
           draftId,
           userId,
-          {
-            phase,
-            claimedAt,
-          },
+          {phase,claimedAt},
         );
 
         continue;
@@ -58,7 +67,8 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
       if(phase!=="sending")continue;
 
       const startedAt=draft.automaticSendStartedAt;
-      if(!startedAt||Number.isNaN(startedAt.getTime())){
+
+      if(!isValidDate(startedAt)){
         throw new Error(`Interrupted automatic send ${draftId} has no valid start timestamp.`);
       }
 
@@ -68,6 +78,7 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
         startedAt,
       );
 
+      // Never count a stale recovery as successful if its conditional update lost.
       if(!recovered)continue;
 
       requiresHumanReview+=1;
@@ -94,7 +105,11 @@ export async function recoverStaleAutomaticSends(staleMinutes=DEFAULT_STALE_MINU
       );
     }catch(error){
       errors+=1;
-      console.error("Automatic-send recovery failed:",error);
+      console.error("Automatic-send recovery failed:",{
+        draftId,
+        phase,
+        error,
+      });
     }
   }
 
