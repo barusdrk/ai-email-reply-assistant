@@ -2,18 +2,35 @@ import {describe, expect, it} from "vitest";
 import {determineAutomaticAction} from "../services/automaticActions.js";
 import type {ConfidenceScore} from "../ai/types.js";
 import type {PolicyCheckResult} from "../services/policyChecker.js";
+import type {SupportEngineResult} from "../services/supportEngineLogic.js";
 
-function confidence(score:number,level:ConfidenceScore["level"]):ConfidenceScore{
+function confidence(score:number,level:ConfidenceScore["level"]):ConfidenceScore {
   return {score,level,reasons:[]};
 }
 
-function policy(compliant=true,warnings:string[]=[],violations:string[]=[]):PolicyCheckResult{
+function policy(compliant=true,warnings:string[]=[],violations:string[]=[]):PolicyCheckResult {
   return {
     compliant,
     score:compliant?100:0,
     warnings,
     violations,
     suggestions:[],
+  };
+}
+
+function supportResult(overrides:Partial<SupportEngineResult>={}):SupportEngineResult {
+  return {
+    decision:"reply",
+    confidence:0.99,
+    category:"shipping",
+    sentiment:"neutral",
+    needsHuman:false,
+    reason:"",
+    reply:"Your order is being processed.",
+    suggestedActions:[],
+    missingInformation:[],
+    policyIssues:[],
+    ...overrides,
   };
 }
 
@@ -111,5 +128,66 @@ describe("automaticActions",()=>{
     );
     expect(result.action).toBe("blocked");
     expect(result.reasons).toEqual(violations);
+  });
+
+  it("escalates human-review responses despite high confidence",()=>{
+    const result=determineAutomaticAction(
+      "When will my order arrive?",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"human_review",
+        needsHuman:true,
+        reason:"Unsupported delivery estimate.",
+      }),
+    );
+    expect(result.action).toBe("escalate");
+    expect(result.reasons).toContain("Unsupported delivery estimate.");
+  });
+
+  it("escalates when needsHuman is true despite a reply decision",()=>{
+    const result=determineAutomaticAction(
+      "When will my order arrive?",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"reply",
+        needsHuman:true,
+        reason:"The delivery estimate needs verification.",
+      }),
+    );
+    expect(result.action).toBe("escalate");
+    expect(result.reasons).toContain("The delivery estimate needs verification.");
+  });
+
+  it("escalates support-engine policy issues despite high confidence",()=>{
+    const policyIssues=["The delivery estimate is not supported by the knowledge base."];
+    const result=determineAutomaticAction(
+      "When will my order arrive?",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"reply",
+        needsHuman:false,
+        policyIssues,
+      }),
+    );
+    expect(result.action).toBe("escalate");
+    expect(result.reasons).toEqual(policyIssues);
+  });
+
+  it("blocks rejected support responses despite high confidence",()=>{
+    const result=determineAutomaticAction(
+      "When will my order arrive?",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"reject",
+        needsHuman:true,
+        reason:"The response contains unsupported claims.",
+      }),
+    );
+    expect(result.action).toBe("blocked");
+    expect(result.reasons).toContain("The response contains unsupported claims.");
   });
 });

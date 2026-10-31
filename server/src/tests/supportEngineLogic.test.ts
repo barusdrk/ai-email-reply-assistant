@@ -447,4 +447,50 @@ describe("supportEngine logic", () => {
     expect(result.needsHuman).toBe(false);
     expect(result.reply).toContain("3-5 business days");
   });
+
+  it("rejects an unsupported delivery estimate", () => {
+    const knowledgeBase = [{
+      title: "Shipping Policy",
+      content: "Orders normally arrive within 3–5 business days.",
+    }];
+
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.98,
+      category: "shipping",
+      sentiment: "neutral",
+      reason: "The delivery estimate is documented.",
+      reply: "Orders normally arrive within 10 business days.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "When should my order arrive?");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).not.toContain("10 business days");
+  });
+
+  it("requires documented evidence for delivery estimates", () => {
+    const knowledgeBase = [{
+      title: "Delivery Information",
+      content: "We provide standard and express delivery options.",
+    }];
+
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.99,
+      category: "shipping",
+      sentiment: "neutral",
+      reason: "The delivery information is available.",
+      reply: "Delivery takes 5 business days.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "How long does delivery take?");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).not.toContain("5 business days");
+  });
 });

@@ -35,6 +35,13 @@ export function determineAutomaticAction(
     };
   }
 
+  if(supportResult?.policyIssues.length){
+    return {
+      action:"escalate",
+      reasons:supportResult.policyIssues,
+    };
+  }
+
   if(supportResult?.needsHuman||supportResult?.decision==="human_review"){
     const reasons=[
       supportResult.reason||"The support engine determined that human review is required.",

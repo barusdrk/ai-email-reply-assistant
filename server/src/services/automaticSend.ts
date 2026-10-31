@@ -148,9 +148,30 @@ export async function sendAutomatically(
   if(existingDraft.automaticSendRecoveryRequired) {
     throw new Error("This draft requires human verification before another automatic send attempt.");
   }
-  if(existingDraft.status!=="approved"||existingDraft.automaticAction!=="auto_approve") {
+  if (
+    existingDraft.status !== "approved" ||
+    existingDraft.automaticAction !== "auto_approve"
+  ) {
     throw new Error("This draft is not approved for automatic sending.");
   }
+
+  // Additional support-safety validation
+  const supportPolicyIssues = Array.isArray(existingDraft.supportPolicyIssues)
+    ? existingDraft.supportPolicyIssues
+    : [];
+
+  if (
+    existingDraft.supportNeedsHuman ||
+    existingDraft.supportDecision !== "reply" ||
+    supportPolicyIssues.length > 0
+  ) {
+    throw new Error(
+      "This draft requires human review and cannot be sent automatically.",
+    );
+  }
+
+// Existing automatic-send claim logic continues below
+
 
   const claimedDraft=await draftRepository.claimForAutomaticSend(draftId,userId);
   if(!claimedDraft) {

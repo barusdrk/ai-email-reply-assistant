@@ -339,9 +339,46 @@ function buildGroundedHumanReviewReply(
   return "Thanks for reaching out. We've received your support request, and our team will review it.";
 }
 
+function extractDeliveryTimeframes(value: string): string[] {
+  const pattern = /\b(\d+)(?:\s*[-–]\s*(\d+))?\s*(business\s+)?(hours?|days?|weeks?)\b/gi;
+  return Array.from(value.matchAll(pattern), (match) => {
+    const minimum = Number(match[1]);
+    const maximum = Number(match[2] ?? match[1]);
+    const business = match[3] ? "business" : "calendar";
+    const unit = match[4].toLowerCase().replace(/s$/, "");
+    return `${minimum}-${maximum}:${business}:${unit}`;
+  });
+}
+
+function hasSupportedDeliveryTimingEstimate(
+  reply: string,
+  knowledgeBase: KnowledgeBaseItem[],
+): boolean {
+  const replyTimeframes = extractDeliveryTimeframes(reply);
+
+  if (!replyTimeframes.length) return false;
+
+  const deliverySources = knowledgeBase
+    .filter((item) =>
+      /\b(ship(?:ping)?|deliver(?:y|ies)?|dispatch|fulfil(?:lment)?|order)\b/i
+        .test(`${item.title} ${item.category ?? ""} ${(item.tags ?? []).join(" ")}`),
+    )
+    .map((item) => item.content)
+    .join("\n");
+
+  if (!deliverySources.trim()) return false;
+
+  const documentedTimeframes = extractDeliveryTimeframes(deliverySources);
+
+  return replyTimeframes.every((timeframe) =>
+    documentedTimeframes.includes(timeframe),
+  );
+}
+
 function answersDeliveryTimingQuestion(
   customerMessage: string,
   reply: string,
+  knowledgeBase: KnowledgeBaseItem[],
 ): boolean {
   if (!customerMessage.trim()) return true;
 
@@ -357,10 +394,13 @@ function answersDeliveryTimingQuestion(
 
   if (!asksForDuration && !asksWhen) return true;
 
-  return (
+  const containsDuration =
     /\b\d+(?:\s*[-–]\s*\d+)?\s*(?:business\s+)?(?:hours?|days?|weeks?)\b/i.test(reply) ||
-    /\b(?:same|next)\s+(?:business\s+)?day\b/i.test(reply)
-  );
+    /\b(?:same|next)\s+(?:business\s+)?day\b/i.test(reply);
+
+  if (!containsDuration) return false;
+
+  return hasSupportedDeliveryTimingEstimate(reply, knowledgeBase);
 }
 
 export function groundSupportReply(
@@ -392,7 +432,11 @@ export function normalizeResult(
   const confidence=clampConfidence(result.confidence??0);
   const rawReply=limitText(result.reply??"",MAX_REPLY_LENGTH);
   const responseAdequacyFailed =
-  !answersDeliveryTimingQuestion(customerMessage, rawReply);
+    !answersDeliveryTimingQuestion(
+      customerMessage,
+      rawReply,
+      knowledgeBase,
+    );
   const requestedDecision=result.decision;
   const policyIssues=cleanStringArray(result.policyIssues);
   const missingInformation=cleanStringArray(result.missingInformation);
@@ -459,8 +503,6 @@ export function normalizeResult(
     needsHuman,
   );
 
-  // A failed grounding check must never leave an empty reply
-  // marked as eligible for automatic sending.
   if (!groundedReply && decision === "reply") {
     decision = "human_review";
     needsHuman = true;

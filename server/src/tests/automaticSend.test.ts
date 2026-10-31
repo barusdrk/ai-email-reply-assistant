@@ -68,8 +68,8 @@ const userId=new Types.ObjectId();
 const draftId=new Types.ObjectId();
 const emailId=new Types.ObjectId();
 
-function createDraft(overrides:Record<string,unknown>={}){
-  return{
+function createDraft(overrides:Record<string,unknown>={}) {
+  return {
     _id:draftId,
     userId,
     emailId,
@@ -80,6 +80,9 @@ function createDraft(overrides:Record<string,unknown>={}){
     status:"approved" as const,
     automaticAction:"auto_approve" as const,
     automaticActionReasons:[],
+    supportDecision:"reply",
+    supportNeedsHuman:false,
+    supportPolicyIssues:[],
     automaticSendInProgress:false,
     automaticSendPhase:"idle" as const,
     automaticSendAttempts:0,
