@@ -17,6 +17,7 @@ const mocks=vi.hoisted(()=>({
   accountUpdate:vi.fn(),
   findDraftByEmailId:vi.fn(),
   createDraft:vi.fn(),
+  getSettings:vi.fn(),
 }));
 
 vi.mock("../repositories/EmailRepository.js",()=>({
@@ -64,6 +65,10 @@ vi.mock("../services/drafts.js",()=>({
   createDraft:mocks.createDraft,
 }));
 
+vi.mock("../services/settings.js",()=>({
+  getSettings:mocks.getSettings,
+}));
+
 import {syncGmail} from "../services/emailSync.js";
 
 describe("email sync duplicate prevention",()=>{
@@ -89,6 +94,7 @@ describe("email sync duplicate prevention",()=>{
 
   beforeEach(()=>{
     vi.clearAllMocks();
+    mocks.getSettings.mockResolvedValue({autoDraft:true,autoSendEnabled:false});
     mocks.emails.splice(0,mocks.emails.length);
     mocks.listGmailEmails.mockResolvedValue([providerEmail]);
     mocks.findAll.mockImplementation(async()=>[...mocks.emails]);
