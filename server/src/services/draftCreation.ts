@@ -6,6 +6,7 @@ import {isValidObjectId} from "./draftValidation.js";
 import {SUPPORT_CATEGORIES,type SupportCategory} from "../models/Draft.js";
 import type {CreateDraftData} from "./draftTypes.js";
 import {requestApproval} from "./draftApproval.js";
+import {getSettings} from "./settings.js";
 import type {Draft} from "../models/Draft.js";
 
 function normalizeSupportCategory(
@@ -38,6 +39,8 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
 
   const tone=data.tone??"professional";
   const length=data.length??"medium";
+  const settings=await getSettings(data.userId);
+  const autoSendEnabled=settings.autoSendEnabled===true;
 
   const support=await analyzeDraftSupport(
     data.userId,
@@ -140,19 +143,19 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
       support.customerEmailBody,
       confidence,
       policy,
+      supportResult,
+      autoSendEnabled,
     ),
     supportResult,
   );
-
-  const automaticAction={
-    action:"pending" as const,
-    reasons:[
-      "Automatic sending is disabled. Human approval is required for every outgoing reply.",
-      ...evaluatedAction.reasons,
-    ],
-  };
-
-  const status="pending" as const;
+  const automaticAction=evaluatedAction;
+  const status=automaticAction.action==="auto_approve"
+    ?"approved" as const
+    :automaticAction.action==="escalate"
+      ?"escalated" as const
+      :automaticAction.action==="blocked"
+        ?"pending" as const
+        :"pending" as const;
 
   const draftResult=await draftRepository.createIfNotExists({
     userId:data.userId as any,
@@ -173,15 +176,15 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     supportSentiment:supportResult.sentiment,
     supportConfidence:supportResult.confidence,
     supportDecision:supportResult.decision,
-    supportNeedsHuman:true,
+    supportNeedsHuman:supportResult.needsHuman||supportResult.decision!=="reply"||supportResult.policyIssues.length>0,
     supportReason:supportResult.reason,
     supportSuggestedActions:supportResult.suggestedActions,
     supportMissingInformation:supportResult.missingInformation,
     supportPolicyIssues:supportResult.policyIssues,
-    escalatedAt:undefined,
-    escalationReason:undefined,
-    escalationReasons:[],
-    approvedAt:undefined,
+    escalatedAt:status==="escalated"?new Date():undefined,
+    escalationReason:status==="escalated"?automaticAction.reasons[0]:undefined,
+    escalationReasons:status==="escalated"?automaticAction.reasons:[],
+    approvedAt:status==="approved"?new Date():undefined,
     rejectionReason:undefined,
   });
 
@@ -193,7 +196,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     data.automaticDraftGenerationClaimToken,
   );
 
-  if(draftResult.created){
+  if(draftResult.created&&(status==="pending"||status==="escalated")){
     await requestApproval(
       createdDraft._id.toString(),
       data.userId,
