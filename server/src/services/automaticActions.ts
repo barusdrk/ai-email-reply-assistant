@@ -17,9 +17,9 @@ function isSafeDocumentedPasswordReset(
   if(!supportResult||supportResult.decision!=="reply"||supportResult.needsHuman||supportResult.policyIssues.length>0||!supportResult.reply.trim())return false;
   const message=email.toLowerCase();
   const reply=supportResult.reply.toLowerCase();
-  const isPasswordResetRequest=/\\b(?:forgot|reset|resetting)\\b.{0,50}\\bpassword\\b|\\bpassword\\s+reset\\b/.test(message);
-  const indicatesFailedAttempt=/\\b(?:already\\s+)?(?:tried|attempted|requested)\\b.{0,60}\\b(?:reset|password)\\b|\\b(?:reset|password)\\s+(?:email|link)\\b.{0,50}\\b(?:not\\s+(?:received|arrived)|never\\s+(?:received|arrived)|didn['’]?t\\s+(?:receive|arrive)|missing)\\b|\\b(?:account\\s+(?:is\\s+)?locked|locked\\s+out|unauthorized|unauthorised|hacked|compromised|someone\\s+(?:may\\s+have\\s+)?accessed)\\b/.test(message);
-  const confirmsDocumentedInstructions=/\\bdocumented\\s+password[- ]reset\\s+instructions\\b/.test(reply);
+  const isPasswordResetRequest=/\b(?:forgot|reset|resetting)\b.{0,50}\bpassword\b|\bpassword\s+reset\b/.test(message);
+  const indicatesFailedAttempt=/\b(?:already\s+)?(?:tried|attempted|requested)\b.{0,60}\b(?:reset|password)\b|\b(?:reset|password)\s+(?:email|link)\b.{0,50}\b(?:not\s+(?:received|arrived)|never\s+(?:received|arrived)|didn['’]?t\s+(?:receive|arrive)|missing)\b|\b(?:account\s+(?:is\s+)?locked|locked\s+out|unauthorized|unauthorised|hacked|compromised|someone\s+(?:may\s+have\s+)?accessed)\b/.test(message);
+  const confirmsDocumentedInstructions=/\bdocumented\s+password[- ]reset\s+instructions\b/.test(reply);
   return isPasswordResetRequest&&!indicatesFailedAttempt&&confirmsDocumentedInstructions;
 }
 
