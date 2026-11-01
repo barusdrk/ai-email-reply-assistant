@@ -13,6 +13,7 @@ export interface SettingsUpdate {
   defaultLength?: ReplyLength;
   signature?: string;
   autoDraft?: boolean;
+  autoSendEnabled?: boolean;
   emailNotifications?: boolean;
   desktopNotifications?: boolean;
 }
@@ -25,6 +26,7 @@ const DEFAULT_SETTINGS = {
   temperature: 0.7,
   signature: "Customer Support",
   autoDraft: false,
+  autoSendEnabled: false,
   emailNotifications: true,
   desktopNotifications: false,
 };
