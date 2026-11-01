@@ -333,6 +333,11 @@ function hasGroundingSupport(
     /\bpricing\b/,
     /\bdiscount\b/,
     /\bsubscription\b/,
+    /\bpassword\b/,
+    /\bcurrent password\b/,
+    /\bnew password\b/,
+    /\bpassword-reset option\b/,
+    /\blogin page\b/,
   ];
 
   for(const pattern of sensitiveClaimPatterns){
