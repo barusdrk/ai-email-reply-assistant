@@ -265,6 +265,24 @@ describe("supportEngine logic", () => {
     expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
   });
 
+  it("escalates suspected unauthorized account access even without an account-lock report", () => {
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.99,
+      category: "account",
+      sentiment: "negative",
+      reason: "The request can be handled with general instructions.",
+      reply: "Please contact support for help with your account.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, [], "Someone may have accessed my account without permission.");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+  });
+
   it("allows a password-change procedure when the Knowledge Base explicitly documents it", () => {
     const knowledgeBase = [{
       title: "Change Password",
