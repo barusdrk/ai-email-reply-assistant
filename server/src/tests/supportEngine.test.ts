@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {CONFIDENCE_THRESHOLD} from "../services/supportEngine.js";
+import {CONFIDENCE_THRESHOLD, getAccountAccessReviewReason} from "../services/supportEngine.js";
 
 describe("supportEngine", () => {
   it("uses the expected automatic-response confidence threshold", () => {
@@ -18,5 +18,17 @@ describe("supportEngine", () => {
 
   it("exports the support engine confidence threshold", () => {
     expect(typeof CONFIDENCE_THRESHOLD).toBe("number");
+  });
+
+  it("identifies account-access requests that require human review", () => {
+    expect(getAccountAccessReviewReason(
+      "I already tried resetting my password, but I never received the reset email.",
+      [{title:"Password Reset",content:"Use the password-reset option on the login page."}],
+    )).toContain("already attempted password recovery");
+
+    expect(getAccountAccessReviewReason(
+      "How can I change my password?",
+      [{title:"Account Settings",content:"Customers can update profile information from Account Settings."}],
+    )).toContain("does not document a password-change procedure");
   });
 });
