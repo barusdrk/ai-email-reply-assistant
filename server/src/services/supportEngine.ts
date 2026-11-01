@@ -32,6 +32,7 @@ export type {
 export {
   buildPrompt,
   normalizeResult,
+  getAccountAccessReviewReason,
   DEFAULT_TONE,
   DEFAULT_LENGTH,
   CONFIDENCE_THRESHOLD,
@@ -88,6 +89,7 @@ export async function analyzeSupportRequest(input:SupportEngineInput):Promise<Su
         JSON.parse(fenced[1]),
         input.knowledgeBase??[],
         customerMessage,
+        input.conversationHistory??[],
       );
     }catch{
       throw new Error("AI customer-support engine returned invalid JSON.");
