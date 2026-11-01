@@ -35,14 +35,26 @@ function supportResult(overrides:Partial<SupportEngineResult>={}):SupportEngineR
 }
 
 describe("automaticActions",()=>{
-  it("keeps high-confidence compliant replies pending for human approval",()=>{
+  it("keeps high-confidence compliant replies pending when automatic sending is disabled",()=>{
     const result=determineAutomaticAction(
       "Can you tell me when my order will arrive?",
       confidence(95,"high"),
       policy(),
+      supportResult(),
+      false,
     );
     expect(result.action).toBe("pending");
     expect(result.reasons.length).toBeGreaterThan(0);
+  });
+
+  it("auto-approves only high-confidence safe replies when automatic sending is enabled",()=>{
+    const result=determineAutomaticAction("When will my order arrive?",confidence(99,"high"),policy(),supportResult(),true);
+    expect(result.action).toBe("auto_approve");
+  });
+
+  it("does not auto-approve when support review is required",()=>{
+    const result=determineAutomaticAction("When will my order arrive?",confidence(99,"high"),policy(),supportResult({needsHuman:true}),true);
+    expect(result.action).toBe("escalate");
   });
 
   it("keeps medium-confidence replies pending",()=>{
