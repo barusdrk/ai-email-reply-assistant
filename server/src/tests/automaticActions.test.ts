@@ -146,6 +146,17 @@ describe("automaticActions",()=>{
     expect(result.reasons.some(reason=>reason.includes("account is locked"))).toBe(true);
   });
 
+  it("escalates suspected unauthorized account access without requiring an account-lock report",()=>{
+    const result=determineAutomaticAction(
+      "Someone may have accessed my account without permission.",
+      confidence(99,"high"),
+      policy(),
+      supportResult(),
+      true,
+    );
+    expect(result.action).toBe("escalate");
+  });
+
   it("prioritizes sensitive topics over high confidence",()=>{
     const result=determineAutomaticAction(
       "My account was hacked and I need help.",
