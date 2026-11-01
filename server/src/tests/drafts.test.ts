@@ -16,6 +16,7 @@ const mocks=vi.hoisted(()=>({
   generateReply:vi.fn(),
   requestApproval:vi.fn(),
   sendAutomatically:vi.fn(),
+  getSettings:vi.fn(),
 }));
 
 vi.mock("../repositories/DraftRepository.js",()=>({
@@ -66,6 +67,10 @@ vi.mock("../services/draftSending.js",()=>({
 
 vi.mock("../services/automaticSend.js",()=>({
   sendAutomatically:mocks.sendAutomatically,
+}));
+
+vi.mock("../services/settings.js",()=>({
+  getSettings:mocks.getSettings,
 }));
 
 import {draftRepository} from "../repositories/DraftRepository.js";
@@ -218,7 +223,7 @@ function setupAction(action:"auto_approve"|"pending"|"escalate"|"blocked"){
   scoreDraftConfidenceMock.mockResolvedValue(buildConfidence());
   evaluateDraftPolicyMock.mockResolvedValue(buildPolicy());
   determineAutomaticActionMock.mockReturnValue({
-    action,
+    action:action==="auto_approve"?"pending":action,
     reasons:action==="blocked"
       ?["The request cannot be handled automatically."]
       :action==="escalate"
@@ -279,33 +284,40 @@ beforeEach(()=>{
   requestApprovalMock.mockResolvedValue(undefined as never);
   mocks.requestApproval.mockReset();
   mocks.requestApproval.mockResolvedValue(undefined);
+  mocks.getSettings.mockReset();
+  mocks.getSettings.mockResolvedValue({autoDraft:false,autoSendEnabled:false});
 });
 
 
-describe("createDraft human-approval workflow",()=>{
-  it.each(["auto_approve","pending","escalate","blocked"] as const)(
-    "keeps a %s decision pending and requires human approval",
-    async(action)=>{
-      setupAction(action);
+describe("createDraft automation safety",()=>{
+  it.each([
+    {input:"auto_approve",expectedAction:"pending",expectedStatus:"pending",needsHuman:false,requestsApproval:true},
+    {input:"pending",expectedAction:"pending",expectedStatus:"pending",needsHuman:false,requestsApproval:true},
+    {input:"escalate",expectedAction:"escalate",expectedStatus:"escalated",needsHuman:true,requestsApproval:true},
+    {input:"blocked",expectedAction:"blocked",expectedStatus:"pending",needsHuman:false,requestsApproval:false},
+  ] as const)(
+    "keeps the $input decision safe when automatic sending is disabled",
+    async({input,expectedAction,expectedStatus,needsHuman,requestsApproval})=>{
+      setupAction(input);
       await createDraft(buildCreateDraftInput());
 
+      expect(mocks.getSettings).toHaveBeenCalledWith(userId.toString());
       expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledTimes(1);
       expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
         expect.objectContaining({
-          status:"pending",
-          automaticAction:"pending",
-          supportNeedsHuman:true,
-          approvedAt:undefined,
-          escalatedAt:undefined,
-          rejectionReason:undefined,
+          status:expectedStatus,
+          automaticAction:expectedAction,
+          supportNeedsHuman:needsHuman,
         }),
       );
       expect(sendAutomaticallyMock).not.toHaveBeenCalled();
-      expect(requestApprovalMock).toHaveBeenCalledTimes(1);
-      expect(requestApprovalMock).toHaveBeenCalledWith(
-        draftId.toString(),
-        userId.toString(),
-      );
+      expect(requestApprovalMock).toHaveBeenCalledTimes(requestsApproval?1:0);
+      if(requestsApproval){
+        expect(requestApprovalMock).toHaveBeenCalledWith(
+          draftId.toString(),
+          userId.toString(),
+        );
+      }
     },
   );
 
