@@ -14,6 +14,7 @@ const mocks=vi.hoisted(()=>({
   sendEmail:vi.fn(),
   audit:vi.fn(),
   notify:vi.fn(),
+  getSettings:vi.fn(),
 }));
 
 vi.mock("../repositories/DraftRepository.js",()=>({
@@ -46,6 +47,8 @@ vi.mock("../services/audit.js",()=>({
 vi.mock("../services/notification.js",()=>({
   notify:mocks.notify,
 }));
+
+vi.mock("../services/settings.js",()=>({getSettings:mocks.getSettings}));
 
 vi.mock("../services/supportAnalytics.js",()=>({
   recordDraftAnalytics:vi.fn().mockResolvedValue(undefined),
@@ -176,6 +179,7 @@ beforeEach(()=>{
   sendEmailMock.mockReset();
   auditMock.mockReset();
   notifyMock.mockReset();
+  mocks.getSettings.mockReset().mockResolvedValue({autoSendEnabled:true});
   draftRepositoryMock.releaseAutomaticClaim.mockResolvedValue(null as never);
   draftRepositoryMock.markAutomaticRecoveryRequired.mockResolvedValue(null as never);
   emailRepositoryMock.findById.mockResolvedValue(createEmail() as never);
@@ -331,6 +335,14 @@ describe("sendAutomatically",()=>{
     );
 
     expect(draftRepositoryMock.claimForAutomaticSend).not.toHaveBeenCalled();
+  });
+
+  it("rejects automatic sending when the account setting is disabled",async()=>{
+    mocks.getSettings.mockResolvedValue({autoSendEnabled:false});
+    draftRepositoryMock.findById.mockResolvedValue(createDraft() as never);
+    await expect(sendAutomatically(userId.toString(),draftId.toString())).rejects.toThrow("Automatic sending is disabled in your AI settings.");
+    expect(draftRepositoryMock.claimForAutomaticSend).not.toHaveBeenCalled();
+    expect(sendEmailMock).not.toHaveBeenCalled();
   });
 
   it("rejects a draft that is not approved for automatic sending",async()=>{

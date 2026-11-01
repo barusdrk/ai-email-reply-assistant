@@ -15,6 +15,7 @@ export function determineAutomaticAction(
   confidence:ConfidenceScore,
   policy:PolicyCheckResult,
   supportResult?:SupportEngineResult,
+  autoSendEnabled=false,
 ):AutomaticActionResult{
   if(!policy.compliant||policy.violations.length>0){
     return {
@@ -91,14 +92,10 @@ export function determineAutomaticAction(
   }
 
 if(confidence.level==="high"){
-  return {
-    action:"pending",
-    reasons:[
-      `High AI confidence: ${confidence.score}/100.`,
-      "Human approval is required before the response can be sent.",
-      "Automatic sending is disabled.",
-    ],
-  };
+  if(autoSendEnabled&&supportResult?.decision==="reply"&&!supportResult.needsHuman&&supportResult.reply.trim()&&supportResult.policyIssues.length===0){
+    return {action:"auto_approve",reasons:[`High AI confidence: ${confidence.score}/100.`,"Support checks passed and automatic sending is enabled."]};
+  }
+  return {action:"pending",reasons:[`High AI confidence: ${confidence.score}/100.`,"Human approval is required before the response can be sent.",...(autoSendEnabled?["The support result is not eligible for automatic sending."]:["Automatic sending is disabled."])]};
 }
 
   return {

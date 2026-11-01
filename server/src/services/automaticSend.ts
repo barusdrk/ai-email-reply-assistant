@@ -5,6 +5,7 @@ import {sendEmail} from "./sendEmail.js";
 import {notify} from "./notification.js";
 import {audit} from "./audit.js";
 import {recordDraftAnalytics} from "./supportAnalytics.js";
+import {getSettings} from "./settings.js";
 
 export interface AutomaticSendResult {
   sent:boolean;
@@ -148,6 +149,8 @@ export async function sendAutomatically(
   if(existingDraft.automaticSendRecoveryRequired) {
     throw new Error("This draft requires human verification before another automatic send attempt.");
   }
+  const settings=await getSettings(userId);
+  if(settings.autoSendEnabled!==true)throw new Error("Automatic sending is disabled in your AI settings.");
   if (
     existingDraft.status !== "approved" ||
     existingDraft.automaticAction !== "auto_approve"
@@ -161,9 +164,10 @@ export async function sendAutomatically(
     : [];
 
   if (
-    existingDraft.supportNeedsHuman ||
+    existingDraft.supportNeedsHuman !== false ||
     existingDraft.supportDecision !== "reply" ||
-    supportPolicyIssues.length > 0
+    supportPolicyIssues.length > 0 ||
+    !existingDraft.reply?.trim()
   ) {
     throw new Error(
       "This draft requires human review and cannot be sent automatically.",

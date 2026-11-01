@@ -6,6 +6,7 @@ import {scoreReplyConfidence} from "./confidenceScoring.js";
 import type {ConfidenceScore} from "../ai/types.js";
 import {checkReplyPolicy,type PolicyCheckResult} from "./policyChecker.js";
 import {determineEscalation} from "./escalation.js";
+import {getSettings} from "./settings.js";
 
 export interface AutomationInput{
   userId:string;
@@ -47,6 +48,9 @@ export async function evaluateDraftAutomation(input:AutomationInput):Promise<Aut
   if(!draft)return null;
   if(draft.userId.toString()!==input.userId)throw new Error("Unauthorized.");
   if(draft.status==="sent")throw new Error("Sent drafts cannot be evaluated for automatic handling.");
+  if(draft.automaticSendInProgress||draft.automaticSendRecoveryRequired)throw new Error("Draft cannot be reevaluated while an automatic send is in progress or requires recovery.");
+  const settings=await getSettings(input.userId);
+  const autoSendEnabled=settings.autoSendEnabled===true;
 
   const customerEmail=input.customerEmail?.trim()||draft.customer.trim();
   if(!customerEmail)throw new Error("Customer email is required for automatic handling.");
@@ -63,11 +67,16 @@ export async function evaluateDraftAutomation(input:AutomationInput):Promise<Aut
     knowledgeBase:input.knowledgeBase,
   });
 
-  const automaticAction=determineAutomaticAction(customerEmail,confidence,policy);
+  const supportPolicyIssues=Array.isArray(draft.supportPolicyIssues)?draft.supportPolicyIssues:[];
+  const supportEligible=draft.supportDecision==="reply"&&draft.supportNeedsHuman===false&&supportPolicyIssues.length===0&&Boolean(draft.reply?.trim());
+  const automaticAction=determineAutomaticAction(customerEmail,confidence,policy,undefined,false);
   let action=automaticAction.action;
   let reasons=uniqueReasons(automaticAction.reasons);
 
-  if(action!=="blocked"){
+  if(action==="pending"&&confidence.level==="high"&&autoSendEnabled&&supportEligible){action="auto_approve";reasons=uniqueReasons([...reasons,"Support checks passed and automatic sending is enabled."]);}
+  else if(action==="pending"&&confidence.level==="high"&&autoSendEnabled&&!supportEligible){reasons=uniqueReasons([...reasons,"Stored support checks do not permit automatic sending."]);}
+
+  if(action!=="blocked"&&action!=="auto_approve"){
     const escalation=determineEscalation(customerEmail,confidence,policy);
     if(escalation.escalated){
       action="escalate";
@@ -99,7 +108,7 @@ export async function evaluateDraftAutomation(input:AutomationInput):Promise<Aut
       level:confidence.level,
       reasons:confidence.reasons,
     },
-    supportPolicyIssues:[...new Set([...policy.violations,...policy.warnings])].slice(0,10),
+    supportPolicyIssues:[...new Set([...supportPolicyIssues,...policy.violations,...policy.warnings])].slice(0,10),
     status:action==="auto_approve"?"approved":action==="escalate"?"escalated":"pending",
   };
 

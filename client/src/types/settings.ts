@@ -2,8 +2,7 @@ export type AIProvider =
   | "openai"
   | "groq"
   | "gemini"
-  | "claude"
-  | "mock";
+  | "claude";
 
 export type ReplyTone =
   | "friendly"
@@ -28,6 +27,7 @@ export interface AISettings {
   temperature: number;
   maxDailyReplies: number;
   autoDraft: boolean;
+  autoSendEnabled: boolean;
   signature: string;
   theme: Theme;
   language: string;

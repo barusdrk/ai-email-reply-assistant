@@ -5,6 +5,7 @@ import {connectedAccountRepository} from "../repositories/ConnectedAccountReposi
 import {listEmails as listGmailEmails,type InboxEmail as GmailInboxEmail,listSentEmails as listGmailSentEmails,type SentEmail as GmailSentEmail} from "./gmail.js";
 import {listEmails as listOutlookEmails,type InboxEmail as OutlookInboxEmail,listSentEmails as listOutlookSentEmails,type SentEmail as OutlookSentEmail} from "./outlook.js";
 import {createDraft} from "./drafts.js";
+import {getSettings} from "./settings.js";
 
 type EmailProvider="gmail"|"outlook";
 type EmailDirection="inbound"|"outbound";
@@ -471,7 +472,8 @@ async function syncProvider(
       },
     );
 
-    if(sourceEmails.length>0){
+    const settings=await getSettings(userId);
+    if(settings.autoDraft===true&&sourceEmails.length>0){
       const draftResult=await generateDraftsForNewEmails(
         userId,
         sourceEmails,
