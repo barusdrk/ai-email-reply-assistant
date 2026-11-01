@@ -27,6 +27,10 @@ vi.mock("../services/escalation.js",()=>({
   determineEscalation:vi.fn(),
 }));
 
+vi.mock("../services/settings.js",()=>({
+  getSettings:vi.fn().mockResolvedValue({autoSendEnabled:false}),
+}));
+
 import {draftRepository} from "../repositories/DraftRepository.js";
 import {approvalRepository} from "../repositories/ApprovalRepository.js";
 import {scoreReplyConfidence} from "../services/confidenceScoring.js";
