@@ -122,6 +122,30 @@ describe("automaticActions",()=>{
     expect(result.reasons).toEqual(violations);
   });
 
+  it("escalates unresolved password-reset attempts even when confidence is high",()=>{
+    const result=determineAutomaticAction(
+      "I already tried resetting my password, but I never received the reset email.",
+      confidence(99,"high"),
+      policy(),
+      supportResult(),
+      true,
+    );
+    expect(result.action).toBe("escalate");
+    expect(result.reasons.some(reason=>reason.includes("already attempted password recovery"))).toBe(true);
+  });
+
+  it("escalates locked accounts and suspected unauthorized access",()=>{
+    const result=determineAutomaticAction(
+      "My account is locked and someone may have accessed it.",
+      confidence(99,"high"),
+      policy(),
+      supportResult(),
+      true,
+    );
+    expect(result.action).toBe("escalate");
+    expect(result.reasons.some(reason=>reason.includes("account is locked"))).toBe(true);
+  });
+
   it("prioritizes sensitive topics over high confidence",()=>{
     const result=determineAutomaticAction(
       "My account was hacked and I need help.",
