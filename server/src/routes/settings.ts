@@ -1,6 +1,6 @@
 import {Router,type Request,type Response} from "express";
 import {auth} from "../middleware/auth.js";
-import {getSettings,updateSettings,resetSettings} from "../services/settings.js";
+import {getSettings,updateSettings,resetSettings,type SettingsUpdate} from "../services/settings.js";
 import {getPlan,isAIProviderAllowed} from "../services/billing.js";
 
 const router=Router();
@@ -22,7 +22,7 @@ function formatSettings(settings:any){
   };
 }
 
-function validateUpdates(body:unknown):{updates:Record<string,unknown>;error?:string}{
+function validateUpdates(body:unknown):{updates:SettingsUpdate;error?:string}{
   if(!body||typeof body!=="object"||Array.isArray(body))return {updates:{},error:"Settings must be an object."};
   const input=body as Record<string,unknown>;
   const updates:Record<string,unknown>={};
@@ -34,10 +34,10 @@ function validateUpdates(body:unknown):{updates:Record<string,unknown>;error?:st
   for(const key of ["autoDraft","autoSendEnabled","emailNotifications","desktopNotifications"]){
     if(updates[key]!==undefined&&typeof updates[key]!=="boolean")return {updates,error:key+" must be a boolean."};
   }
-  if(updates.maxDailyReplies!==undefined&&(!Number.isInteger(updates.maxDailyReplies)||Number(updates.maxDailyReplies)<1||Number(updates.maxDailyReplies)>10000))return {updates,error:"maxDailyReplies must be an integer between 1 and 10000."};
+  if(updates.maxDailyReplies!==undefined&&(typeof updates.maxDailyReplies!=="number"||!Number.isInteger(updates.maxDailyReplies)||updates.maxDailyReplies<1||updates.maxDailyReplies>10000))return {updates,error:"maxDailyReplies must be an integer between 1 and 10000."};
   if(updates.temperature!==undefined&&(typeof updates.temperature!=="number"||!Number.isFinite(updates.temperature)||updates.temperature<0||updates.temperature>2))return {updates,error:"temperature must be a number between 0 and 2."};
   if(updates.signature!==undefined&&(typeof updates.signature!=="string"||updates.signature.length>5000))return {updates,error:"signature must be a string of at most 5000 characters."};
-  return {updates};
+  return {updates:updates as SettingsUpdate};
 }
 
 router.get("/",async(req:Request,res:Response)=>{
