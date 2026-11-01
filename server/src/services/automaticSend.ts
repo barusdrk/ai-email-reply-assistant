@@ -166,8 +166,7 @@ export async function sendAutomatically(
   if (
     existingDraft.supportNeedsHuman !== false ||
     existingDraft.supportDecision !== "reply" ||
-    supportPolicyIssues.length > 0 ||
-    !existingDraft.reply?.trim()
+    supportPolicyIssues.length > 0
   ) {
     throw new Error(
       "This draft requires human review and cannot be sent automatically.",
