@@ -1,6 +1,7 @@
 import {useEffect,useState} from "react";
 import ProfileCard from "../components/settings/ProfileCard.js";
 import AppearanceCard from "../components/settings/AppearanceCard.js";
+import AISettingsCard from "../components/settings/AISettingsCard.js";
 import SignatureCard from "../components/settings/SignatureCard.js";
 import ConnectedAccountsCard from "../components/settings/ConnectedAccountsCard.js";
 import NotificationsCard from "../components/settings/NotificationsCard.js";
@@ -141,6 +142,12 @@ export default function Settings(){
 
       <ProfileCard name={user.name} email={user.email} avatar={user.avatar??""} onSave={saveProfile}/>
       <AppearanceCard/>
+      <AISettingsCard
+        autoDraft={settings.autoDraft}
+        onAutoDraftChange={(autoDraft)=>void save({autoDraft})}
+        autoSendEnabled={settings.autoSendEnabled}
+        onAutoSendEnabledChange={(autoSendEnabled)=>void save({autoSendEnabled})}
+      />
 
       <div className="grid gap-4 md:grid-cols-3">
         <ProviderSelector value={settings.provider} onChange={(provider)=>void save({provider})}/>
