@@ -201,6 +201,91 @@ describe("supportEngine logic", () => {
     expect(result.reply).not.toMatch(/refund is approved|will be paid today/i);
   });
 
+  it("escalates an unresolved password-reset attempt instead of repeating reset instructions", () => {
+    const knowledgeBase = [{
+      title: "Password Reset",
+      content: "Customers can reset a forgotten password from the login page using the password-reset option.",
+    }];
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.99,
+      category: "account",
+      sentiment: "neutral",
+      reason: "The password-reset instructions are supported by the Knowledge Base.",
+      reply: "To reset your password, use the password-reset option on the login page. Contact support if you still do not receive the email.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "I already tried resetting my password, but I never received the reset email.");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reason).toContain("already attempted password recovery");
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+  });
+
+  it("requires human review when password-change instructions are not documented", () => {
+    const knowledgeBase = [{
+      title: "Account Settings",
+      content: "Customers can update profile information from the Account Settings page.",
+    }];
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.99,
+      category: "account",
+      sentiment: "neutral",
+      reason: "The customer can change the password from account settings.",
+      reply: "Open Account Settings, select the password option, enter your current password and choose a new password.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "How can I change my password?");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reason).toContain("does not document a password-change procedure");
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+  });
+
+  it("escalates locked accounts and suspected unauthorized access", () => {
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.99,
+      category: "account",
+      sentiment: "negative",
+      reason: "The account issue can be handled with general instructions.",
+      reply: "Please contact support for help with your account.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, [], "My account is locked and someone may have accessed it.");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+  });
+
+  it("allows a password-change procedure when the Knowledge Base explicitly documents it", () => {
+    const knowledgeBase = [{
+      title: "Change Password",
+      content: "To change your password, sign in and open the Change Password page. Enter your current password and your new password, then save.",
+    }];
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.99,
+      category: "account",
+      sentiment: "neutral",
+      reason: "The password-change procedure is documented.",
+      reply: "To change your password, sign in and open the Change Password page. Enter your current password and your new password, then save.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, knowledgeBase, "How can I change my password?");
+
+    expect(result.decision).toBe("reply");
+    expect(result.needsHuman).toBe(false);
+  });
+
   it("normalizes an invalid category to general_support", () => {
     const knowledgeBase = [
       {
