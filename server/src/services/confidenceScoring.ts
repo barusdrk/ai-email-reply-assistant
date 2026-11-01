@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import {env} from "../config/env.js";
+import {getAccountAccessReviewReason} from "./supportEngineLogic.js";
 
 export type ConfidenceLevel="high"|"medium"|"low";
 export type ConfidencePurpose="automated_reply"|"human_review";
@@ -58,6 +59,19 @@ export async function scoreReplyConfidence(input:ConfidenceInput):Promise<Confid
 
   if(!email)throw new Error("Customer email is required for confidence scoring.");
   if(!reply)throw new Error("Reply is required for confidence scoring.");
+
+  const accountAccessReviewReason=getAccountAccessReviewReason(email,input.knowledgeBase??[]);
+  if(purpose==="automated_reply"&&accountAccessReviewReason){
+    return {
+      score:0,
+      level:"low",
+      reasons:[
+        accountAccessReviewReason,
+        "Automated sending is not permitted for unresolved or undocumented account-access procedures.",
+        "The request must be handled through human review.",
+      ],
+    };
+  }
 
   const knowledgeBase=(input.knowledgeBase??[])
     .map((article)=>[
