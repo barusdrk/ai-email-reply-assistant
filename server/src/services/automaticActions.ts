@@ -10,6 +10,19 @@ export interface AutomaticActionResult{
   reasons:string[];
 }
 
+function isSafeDocumentedPasswordReset(
+  email:string,
+  supportResult?:SupportEngineResult,
+):boolean{
+  if(!supportResult||supportResult.decision!=="reply"||supportResult.needsHuman||supportResult.policyIssues.length>0||!supportResult.reply.trim())return false;
+  const message=email.toLowerCase();
+  const reply=supportResult.reply.toLowerCase();
+  const isPasswordResetRequest=/\\b(?:forgot|reset|resetting)\\b.{0,50}\\bpassword\\b|\\bpassword\\s+reset\\b/.test(message);
+  const indicatesFailedAttempt=/\\b(?:already\\s+)?(?:tried|attempted|requested)\\b.{0,60}\\b(?:reset|password)\\b|\\b(?:reset|password)\\s+(?:email|link)\\b.{0,50}\\b(?:not\\s+(?:received|arrived)|never\\s+(?:received|arrived)|missing)\\b|\\b(?:locked\\s+out|unauthorized|unauthorised|hacked|compromised|someone\\s+accessed)\\b/.test(message);
+  const confirmsDocumentedInstructions=/\\bdocumented\\s+password[- ]reset\\s+instructions\\b/.test(reply);
+  return isPasswordResetRequest&&!indicatesFailedAttempt&&confirmsDocumentedInstructions;
+}
+
 export function determineAutomaticAction(
   email:string,
   confidence:ConfidenceScore,
@@ -62,11 +75,15 @@ export function determineAutomaticAction(
     confidence,
     policy,
   );
+  const safeDocumentedPasswordReset=isSafeDocumentedPasswordReset(email,supportResult);
+  const escalationReasons=safeDocumentedPasswordReset
+    ?escalation.reasons.filter((reason)=>reason!=="Account access issue detected.")
+    :escalation.reasons;
 
-  if(escalation.escalated){
+  if(escalationReasons.length>0){
     return {
       action:"escalate",
-      reasons:escalation.reasons,
+      reasons:escalationReasons,
     };
   }
 
