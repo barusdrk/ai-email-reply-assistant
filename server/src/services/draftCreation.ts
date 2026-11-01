@@ -196,7 +196,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     data.automaticDraftGenerationClaimToken,
   );
 
-  if(draftResult.created&&(status==="pending"||status==="escalated")){
+  if(draftResult.created&&(automaticAction.action==="pending"||automaticAction.action==="escalate")){
     await requestApproval(
       createdDraft._id.toString(),
       data.userId,
