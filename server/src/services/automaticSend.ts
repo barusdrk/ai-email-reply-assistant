@@ -146,11 +146,11 @@ export async function sendAutomatically(
   if(!existingDraft)return null;
   if(String(existingDraft.userId)!==userId)throw new Error("Unauthorized.");
   if(existingDraft.status==="sent")throw new Error("Draft has already been sent.");
-  const settings=await getSettings(userId);
-  if(settings.autoSendEnabled!==true)throw new Error("Automatic sending is disabled in your AI settings.");
   if(existingDraft.automaticSendRecoveryRequired) {
     throw new Error("This draft requires human verification before another automatic send attempt.");
   }
+  const settings=await getSettings(userId);
+  if(settings.autoSendEnabled!==true)throw new Error("Automatic sending is disabled in your AI settings.");
   if (
     existingDraft.status !== "approved" ||
     existingDraft.automaticAction !== "auto_approve"
