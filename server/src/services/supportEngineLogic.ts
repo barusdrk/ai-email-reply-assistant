@@ -280,7 +280,7 @@ export function getAccountAccessReviewReason(
     .join("\n")
     .toLowerCase();
   const passwordReset=/\bpassword\b.{0,40}\breset\b|\breset\b.{0,40}\bpassword\b/i.test(context);
-  const resetFailure=/\b(?:did not|didn't|never|have not|haven't|has not|hasn't) receive\b.{0,50}\b(?:reset )?email\b|\bno (?:password )?reset email\b|\b(?:reset )?email\b.{0,40}\b(?:did not|didn't|never|has not|hasn't) arrive\b/i.test(context);
+  const resetFailure=/\b(?:did not|didn't|never|have not|haven't|has not|hasn't) receiv(?:e|ed)\b.{0,50}\b(?:reset )?email\b|\bno (?:password )?reset email\b|\b(?:reset )?email\b.{0,40}\b(?:did not|didn't|never|has not|hasn't) arriv(?:e|ed)\b/i.test(context);
   const attemptedReset=/\b(?:already|tried|attempted|requested|followed|completed|used)\b/i.test(context);
   if(passwordReset&&resetFailure&&attemptedReset){
     return "The customer has already attempted password recovery but has not received the reset email.";
