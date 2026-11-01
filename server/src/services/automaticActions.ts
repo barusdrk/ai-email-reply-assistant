@@ -2,6 +2,7 @@ import type {ConfidenceScore} from "../ai/types.js";
 import type {PolicyCheckResult} from "./policyChecker.js";
 import type {SupportEngineResult} from "./supportEngineLogic.js";
 import {determineEscalation} from "./escalation.js";
+import {getAccountAccessReviewReason} from "./supportEngineLogic.js";
 
 export type AutomaticAction="auto_approve"|"pending"|"escalate"|"blocked";
 
@@ -33,6 +34,14 @@ export function determineAutomaticAction(
         supportResult.reason||"The support engine rejected the response.",
         ...supportResult.policyIssues,
       ].filter(Boolean),
+    };
+  }
+
+  const accountAccessReviewReason=getAccountAccessReviewReason(email);
+  if(accountAccessReviewReason){
+    return {
+      action:"escalate",
+      reasons:[accountAccessReviewReason,"Human review is required before responding to this account-access issue."],
     };
   }
 
