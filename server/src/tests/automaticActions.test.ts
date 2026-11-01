@@ -212,7 +212,7 @@ describe("automaticActions",()=>{
         decision:"reply",
         needsHuman:false,
         confidence:0.99,
-        reply:"Follow the documented password-reset instructions.",
+        reply:"To reset your account password, please follow these steps:\n1. Navigate to the application login page.\n2. Select the password-reset option.\n3. Follow the instructions provided to reset your password.",
       }),
       false,
     );
@@ -229,7 +229,7 @@ describe("automaticActions",()=>{
         decision:"reply",
         needsHuman:false,
         confidence:0.99,
-        reply:"Follow the documented password-reset instructions.",
+        reply:"To reset your account password, please follow these steps:\n1. Navigate to the application login page.\n2. Select the password-reset option.\n3. Follow the instructions provided to reset your password.",
       }),
       true,
     );
