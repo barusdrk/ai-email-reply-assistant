@@ -14,7 +14,6 @@ const SENSITIVE_PATTERNS = [
   {pattern: /\bsue\b|\blawsuit\b|\bcourt\b/i, reason: "Potential legal dispute detected."},
   {pattern: /\bcomplaint\b|\bcomplain\b/i, reason: "Customer complaint detected."},
   {pattern: /\bsecurity\b|\bhacked\b|\bcompromised\b/i, reason: "Account security issue detected."},
-  {pattern: /\bsecurity\b|\bhacked\b|\bcompromised\b/i, reason: "Account security issue detected."},
   {pattern: /\baccount\s+(?:(?:was|is)\s+)?(?:locked|locked\s+out)\b|\blocked\s+out\s+of\s+my\s+account\b|\b(?:unauthorized|unauthorised)\s+(?:account\s+)?(?:access|login|sign-in)\b|\bsomeone\s+(?:accessed|logged\s+into|signed\s+into)\s+my\s+account\b|\bsuspicious\s+(?:account\s+)?(?:activity|login|sign-in)\b|\baccount\s+takeover\b/i, reason: "Account access or security incident detected."},
   {pattern: /\bprivacy\b|\bpersonal data\b|\bdata request\b/i, reason: "Privacy or personal-data request detected."},
   {pattern: /\bpayment\b|\bbilling\b|\binvoice\b/i, reason: "Billing or payment issue detected."},
