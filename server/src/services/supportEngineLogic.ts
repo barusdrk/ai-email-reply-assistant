@@ -288,7 +288,7 @@ export function getAccountAccessReviewReason(
   if(/\b(?:account is locked|locked out of (?:my|the) account|account has been locked)\b/i.test(context)){
     return "The customer's account is locked and requires human assistance.";
   }
-  if(/\b(?:account|login|sign-in)\b.{0,50}\b(?:hacked|compromised|unauthorized access|someone accessed|suspicious access)\b|\b(?:hacked|compromised)\b.{0,40}\baccount\b/i.test(context)){
+  if(/\bunauthorized access\b|\b(?:account|login|sign-in)\b.{0,50}\b(?:hacked|compromised|unauthorized access|someone accessed|suspicious access)\b|\b(?:hacked|compromised)\b.{0,40}\baccount\b|\b(?:someone|a third party|another person)\b.{0,40}\b(?:may have|might have|has|had)\s+(?:gained access to|accessed)\b.{0,30}\b(?:my|the)?\s*account\b/i.test(context)){
     return "The customer reports a potential account-security incident requiring human intervention.";
   }
   const asksToChangePassword=/\b(?:change|update|modify)\b.{0,35}\bpassword\b|\bpassword\b.{0,35}\b(?:change|update|modify)\b/i.test(context);
