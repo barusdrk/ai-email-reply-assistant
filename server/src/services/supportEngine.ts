@@ -75,6 +75,7 @@ export async function analyzeSupportRequest(input:SupportEngineInput):Promise<Su
       JSON.parse(content),
       input.knowledgeBase??[],
       customerMessage,
+      input.conversationHistory??[],
     );
   }catch{
     const fenced=content.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
