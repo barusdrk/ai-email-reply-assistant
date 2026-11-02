@@ -51,8 +51,9 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
   );
 
   const supportResult=support.supportResult;
+  let supportResultForDecision=supportResult;
 
-  const reply=supportResult.reply.trim();
+  let reply=supportResult.reply.trim();
 
   if(!reply){
     const draftResult=await draftRepository.createIfNotExists({
@@ -119,7 +120,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     return options.returnCreationResult?{draft:createdDraft,created:true}:createdDraft;
   }
 
-  const confidence=await scoreDraftConfidence(
+  let confidence=await scoreDraftConfidence(
     data.userId,
     support.customerEmailBody,
     reply,
@@ -129,26 +130,73 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
       :"automated_reply",
   );
 
-  const policy=await evaluateDraftPolicy(
+  let policy=await evaluateDraftPolicy(
     data.userId,
     support.customerEmailBody,
     reply,
     support.knowledgeBase,
   );
+  let replacedPolicyUnsafeReplyReasons:string[]=[];
 
+  if(!policy.compliant||policy.violations.length>0){
+    const originalViolations=policy.violations.length>0
+      ?policy.violations
+      :["The generated reply did not pass policy validation."];
+    const safeReviewReply="Thanks for reaching out. We've received your support request, and our team will review it.";
+    const safeReviewPolicy=await evaluateDraftPolicy(
+      data.userId,
+      support.customerEmailBody,
+      safeReviewReply,
+      support.knowledgeBase,
+    );
 
+    if(safeReviewPolicy.compliant&&safeReviewPolicy.violations.length===0){
+      reply=safeReviewReply;
+      confidence=await scoreDraftConfidence(
+        data.userId,
+        support.customerEmailBody,
+        reply,
+        support.knowledgeBase,
+        "human_review",
+      );
+      policy=safeReviewPolicy;
+      supportResultForDecision={
+        ...supportResult,
+        decision:"human_review",
+        needsHuman:true,
+        reason:"The generated reply contained unsupported or policy-inconsistent claims. A safe acknowledgement was prepared for human review.",
+        reply,
+        policyIssues:[],
+      };
+      replacedPolicyUnsafeReplyReasons=originalViolations.map(
+        (reason)=>`Original generated reply was replaced after policy validation: ${reason}`,
+      );
+    }else{
+      reply="";
+      supportResultForDecision={
+        ...supportResult,
+        decision:"human_review",
+        needsHuman:true,
+        reason:"The generated reply failed policy checks, and a safe replacement could not be verified.",
+        reply:"",
+      };
+    }
+  }
 
   const evaluatedAction=applySupportDecision(
     determineAutomaticAction(
       support.customerEmailBody,
       confidence,
       policy,
-      supportResult,
+      supportResultForDecision,
       autoSendEnabled,
     ),
-    supportResult,
+    supportResultForDecision,
   );
-  const automaticAction=evaluatedAction;
+  const automaticAction={
+    ...evaluatedAction,
+    reasons:[...evaluatedAction.reasons,...replacedPolicyUnsafeReplyReasons],
+  };
   const status=automaticAction.action==="auto_approve"
     ?"approved" as const
     :automaticAction.action==="escalate"
@@ -175,12 +223,12 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     ),
     supportSentiment:supportResult.sentiment,
     supportConfidence:supportResult.confidence,
-    supportDecision:supportResult.decision,
-    supportNeedsHuman:supportResult.needsHuman||supportResult.decision!=="reply"||supportResult.policyIssues.length>0,
-    supportReason:supportResult.reason,
-    supportSuggestedActions:supportResult.suggestedActions,
-    supportMissingInformation:supportResult.missingInformation,
-    supportPolicyIssues:supportResult.policyIssues,
+    supportDecision:supportResultForDecision.decision,
+    supportNeedsHuman:supportResultForDecision.needsHuman||supportResultForDecision.decision!=="reply"||supportResultForDecision.policyIssues.length>0,
+    supportReason:supportResultForDecision.reason,
+    supportSuggestedActions:supportResultForDecision.suggestedActions,
+    supportMissingInformation:supportResultForDecision.missingInformation,
+    supportPolicyIssues:supportResultForDecision.policyIssues,
     escalatedAt:status==="escalated"?new Date():undefined,
     escalationReason:status==="escalated"?automaticAction.reasons[0]:undefined,
     escalationReasons:status==="escalated"?automaticAction.reasons:[],
