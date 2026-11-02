@@ -54,8 +54,8 @@ export function resolveCustomerName(
     // Avoid greeting a customer with a name that appears to have been copied
     // from the mailbox username (including common first-name prefixes).
     if(localPartCompact&&(
-      (name.split(/\\s+/).length===1&&normalized===localPartCompact)||
-      (name.split(/\\s+/).length===1&&localPartCompact.startsWith(normalized)&&localPartCompact.length-normalized.length>=2)
+      (name.split(/\s+/).length===1&&normalized===localPartCompact)||
+      (name.split(/\s+/).length===1&&localPartCompact.startsWith(normalized)&&localPartCompact.length-normalized.length>=2)
     ))continue;
     return name;
   }
