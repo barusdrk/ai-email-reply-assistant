@@ -17,6 +17,7 @@ const mocks=vi.hoisted(()=>({
   accountUpdate:vi.fn(),
   findDraftByEmailId:vi.fn(),
   createDraft:vi.fn(),
+  sendAutomatically:vi.fn(),
   getSettings:vi.fn(),
 }));
 
@@ -67,6 +68,10 @@ vi.mock("../services/drafts.js",()=>({
 
 vi.mock("../services/settings.js",()=>({
   getSettings:mocks.getSettings,
+}));
+
+vi.mock("../services/automaticSend.js",()=>({
+  sendAutomatically:mocks.sendAutomatically,
 }));
 
 import {syncGmail} from "../services/emailSync.js";
@@ -163,6 +168,7 @@ describe("email sync duplicate prevention",()=>{
       _id:new Types.ObjectId(),
       status:"pending",
     });
+    mocks.sendAutomatically.mockResolvedValue({sent:true});
   });
 
   it("does not create duplicate drafts when the same email is synced twice",async()=>{
@@ -191,4 +197,44 @@ describe("email sync duplicate prevention",()=>{
       {returnCreationResult:true},
     );
   });
+
+  it("automatically sends newly created auto-approved drafts",async()=>{
+    const draftId=new Types.ObjectId();
+    mocks.getSettings.mockResolvedValue({autoDraft:true,autoSendEnabled:true});
+    mocks.createDraft.mockResolvedValue({
+      draft:{_id:draftId,status:"approved",automaticAction:"auto_approve"},
+      created:true,
+    });
+    const result=await syncGmail(userId);
+    expect(result.synced).toBe(1);
+    expect(mocks.sendAutomatically).toHaveBeenCalledTimes(1);
+    expect(mocks.sendAutomatically).toHaveBeenCalledWith(userId,draftId.toString());
+    expect(mocks.releaseAutomaticDraftGeneration).not.toHaveBeenCalled();
+  });
+
+  it("does not automatically send drafts that are not auto-approved",async()=>{
+    mocks.getSettings.mockResolvedValue({autoDraft:true,autoSendEnabled:true});
+    mocks.createDraft.mockResolvedValue({
+      draft:{_id:new Types.ObjectId(),status:"pending",automaticAction:"pending"},
+      created:true,
+    });
+    await syncGmail(userId);
+    expect(mocks.sendAutomatically).not.toHaveBeenCalled();
+  });
+
+  it("keeps a created draft when automatic sending fails",async()=>{
+    const draftId=new Types.ObjectId();
+    mocks.getSettings.mockResolvedValue({autoDraft:true,autoSendEnabled:true});
+    mocks.createDraft.mockResolvedValue({
+      draft:{_id:draftId,status:"approved",automaticAction:"auto_approve"},
+      created:true,
+    });
+    mocks.sendAutomatically.mockRejectedValue(new Error("Provider unavailable"));
+    const result=await syncGmail(userId);
+    expect(result.synced).toBe(1);
+    expect(mocks.sendAutomatically).toHaveBeenCalledWith(userId,draftId.toString());
+    expect(mocks.releaseAutomaticDraftGeneration).not.toHaveBeenCalled();
+    expect(mocks.markAutomaticDraftGenerated).toHaveBeenCalledTimes(1);
+  });
+
 });
