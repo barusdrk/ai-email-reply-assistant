@@ -81,7 +81,7 @@ describe("policyChecker",()=>{
     expect(result.compliant).toBe(false);
     expect(result.score).toBe(20);
     expect(result.violations).toEqual(["The reply promises an unauthorized refund."]);
-    expect(result.warnings).toEqual([]);
+    expect(result.warnings).toContain("Refund request requires policy verification before automatic handling.");
     expect(result.suggestions).toEqual(["Do not promise a refund unless the policy authorizes it."]);
   });
 
