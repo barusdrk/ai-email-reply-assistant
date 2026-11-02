@@ -260,4 +260,21 @@ describe("automaticActions",()=>{
 
     expect(result.action).toBe("escalate");
   });
+  it("escalates an unauthorized refund guarantee even when automatic sending is enabled",()=>{
+    const result=determineAutomaticAction(
+      "Please guarantee that you will refund my purchase.",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"human_review",
+        needsHuman:true,
+        reason:"The customer requested an unauthorized refund guarantee.",
+      }),
+      true,
+    );
+    expect(result.action).toBe("escalate");
+    expect(result.reasons).toContain("The customer requested an unauthorized refund guarantee.");
+    expect(result.action).not.toBe("auto_approve");
+  });
+
 });
