@@ -24,7 +24,7 @@ const GENERIC_SENDER_NAMES=new Set([
   "helpdesk","info","mail delivery subsystem","no reply","noreply",
   "notifications","office","sales","service","support","support team",
   "team","webmaster",
-]);
+].map((name)=>name.replace(/[^a-z0-9]/g,"")));
 
 function normalizeEmail(value?:string|null):string{
   return value?.trim().toLowerCase()??"";
@@ -49,13 +49,13 @@ export function resolveCustomerName(
     const name=normalizeText(candidate);
     if(!name||name.length>100||/[<>@\r\n]/.test(name))continue;
     const normalized=name.toLowerCase().replace(/[^a-z0-9]/g,"");
-    if(!normalized||GENERIC_SENDER_NAMES.has(name.toLowerCase()))continue;
+    if(!normalized||GENERIC_SENDER_NAMES.has(name.toLowerCase().replace(/[^a-z0-9]/g,"")))continue;
     if(normalizedEmail&&name.toLowerCase()===normalizedEmail)continue;
     // Avoid greeting a customer with a name that appears to have been copied
     // from the mailbox username (including common first-name prefixes).
     if(localPartCompact&&(
-      normalized===localPartCompact||
-      (localPartCompact.startsWith(normalized)&&localPartCompact.length-normalized.length>=2)
+      (name.split(/\\s+/).length===1&&normalized===localPartCompact)||
+      (name.split(/\\s+/).length===1&&localPartCompact.startsWith(normalized)&&localPartCompact.length-normalized.length>=2)
     ))continue;
     return name;
   }
