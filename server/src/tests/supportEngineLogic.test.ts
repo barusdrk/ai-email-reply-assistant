@@ -640,4 +640,17 @@ describe("supportEngine logic", () => {
     expect(result.reply).not.toContain("processed within 30 days");
   });
 
+  it("requires verified customer names and neutral greetings when identity is unknown", () => {
+    const prompt = buildPrompt({
+      customerMessage: "How long does shipping take?",
+      customerContext: {
+        email: "derekuniy@gmail.com",
+      },
+    });
+
+    expect(prompt).toContain("use only the verified name in customer/account context");
+    expect(prompt).toContain("If customerContext.name is missing or empty, use a neutral greeting");
+    expect(prompt).toContain("Never infer a name from an email address");
+  });
+
 });
