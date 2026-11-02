@@ -7,7 +7,7 @@ import {
 } from "../services/supportEngineLogic.js";
 
 const HUMAN_REVIEW_REPLY =
-  "Thanks for reaching out. We've received your support request, and our team will review it.";
+  "Thank you for contacting us. We've received your message.";
 
 describe("supportEngine logic", () => {
   it("keeps a safe high-confidence reply", () => {
