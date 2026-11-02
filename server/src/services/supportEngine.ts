@@ -103,7 +103,7 @@ export async function generateSupportReply(input:SupportEngineInput):Promise<Sup
     decision:result.decision==="reject"?"reject":"human_review",
     needsHuman:true,
     reason:result.reason||"The AI did not generate a usable customer response.",
-    reply:"Thanks for reaching out. We've received your support request, and our team will review it.",
+    reply:"Thank you for contacting us. We've received your message.",
   };
 }
 
