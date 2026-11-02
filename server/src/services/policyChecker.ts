@@ -190,9 +190,10 @@ ${knowledgeBase || "No relevant Knowledge Base information was found."}`;
     ...deterministicResult.warnings,
     ...aiResult.warnings,
   ])].slice(0, 10);
-  const suggestions = violations.length > 0
-    ? [...new Set([...aiResult.suggestions])].slice(0, 10)
-    : [...new Set([...deterministicResult.suggestions, ...aiResult.suggestions])].slice(0, 10);
+  const suggestions = [...new Set([
+    ...deterministicResult.suggestions,
+    ...aiResult.suggestions,
+  ])].slice(0, 10);
 
   const score = aiResult.violations.length > 0
     ? aiResult.score
