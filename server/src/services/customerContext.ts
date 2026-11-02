@@ -19,22 +19,56 @@ export type CustomerContextInput={
   metadata?:Record<string,unknown>|null;
 };
 
+const GENERIC_SENDER_NAMES=new Set([
+  "admin","billing","contact","customerservice","customer support","help",
+  "helpdesk","info","mail delivery subsystem","no reply","noreply",
+  "notifications","office","sales","service","support","support team",
+  "team","webmaster",
+]);
+
 function normalizeEmail(value?:string|null):string{
   return value?.trim().toLowerCase()??"";
 }
 
 function normalizeText(value?:string|null):string{
-  return value?.trim()??"";
+  return value?.trim().replace(/\s+/g," ")??"";
 }
 
 function firstValue(...values:Array<string|undefined|null>):string{
   return values.find((value)=>value?.trim())?.trim()??"";
 }
 
+export function resolveCustomerName(
+  candidates:Array<string|undefined|null>,
+  email?:string|null,
+):string{
+  const normalizedEmail=normalizeEmail(email);
+  const localPart=normalizedEmail.split("@")[0]??"";
+  const localPartCompact=localPart.replace(/[^a-z0-9]/g,"");
+  for(const candidate of candidates){
+    const name=normalizeText(candidate);
+    if(!name||name.length>100||/[<>@\r\n]/.test(name))continue;
+    const normalized=name.toLowerCase().replace(/[^a-z0-9]/g,"");
+    if(!normalized||GENERIC_SENDER_NAMES.has(name.toLowerCase()))continue;
+    if(normalizedEmail&&name.toLowerCase()===normalizedEmail)continue;
+    // Avoid greeting a customer with a name that appears to have been copied
+    // from the mailbox username (including common first-name prefixes).
+    if(localPartCompact&&(
+      normalized===localPartCompact||
+      (localPartCompact.startsWith(normalized)&&localPartCompact.length-normalized.length>=2)
+    ))continue;
+    return name;
+  }
+  return "";
+}
+
 export function buildCustomerContext(input:CustomerContextInput):CustomerContext{
   const result:CustomerContext={};
   const email=normalizeEmail(firstValue(input.email,input.customerEmail,input.senderEmail,input.fromEmail));
-  const name=normalizeText(firstValue(input.name,input.customerName,input.senderName,input.fromName));
+  const name=resolveCustomerName(
+    [input.name,input.customerName,input.senderName,input.fromName],
+    email,
+  );
   const plan=normalizeText(input.plan);
   const status=normalizeText(input.status);
   const accountId=normalizeText(input.accountId);
@@ -147,7 +181,6 @@ export async function enrichCustomerContextWithCrm(
     const crmContext=await getCrmCustomerContext(userId,context.email);
     if(!crmContext.email&&!crmContext.name&&!crmContext.metadata)return context;
     const merged=mergeCustomerContext(context,crmContext);
-    if(context.name)merged.name=context.name;
     if(context.email)merged.email=context.email;
     return merged;
   }catch(error){
