@@ -52,7 +52,7 @@ export async function getDraftSupportContext(userId:string,emailId:string){
   }));
 
   const persistedCustomerContext=buildCustomerContextFromCustomer(persistedCustomer);
-  let customerContext=mergeCustomerContext(persistedCustomerContext,emailCustomerContext);
+  let customerContext=mergeCustomerContext(emailCustomerContext,persistedCustomerContext);
   customerContext=await enrichCustomerContextWithCrm(userId,customerContext);
 
   return {
