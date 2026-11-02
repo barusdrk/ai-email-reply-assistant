@@ -142,7 +142,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     const originalViolations=policy.violations.length>0
       ?policy.violations
       :["The generated reply did not pass policy validation."];
-    const safeReviewReply="Thanks for reaching out. We've received your support request, and our team will review it.";
+    const safeReviewReply="Thank you for contacting us. We've received your message.";
     const safeReviewPolicy=await evaluateDraftPolicy(
       data.userId,
       support.customerEmailBody,
