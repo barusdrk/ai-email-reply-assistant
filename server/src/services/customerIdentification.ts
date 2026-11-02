@@ -46,9 +46,7 @@ export async function identifyCustomer(
   const customer=await customerRepository.findOrCreate(
     userId,
     senderEmail,
-    {
-      name:email.senderName,
-    },
+    {},
   );
 
   if(!customer){
