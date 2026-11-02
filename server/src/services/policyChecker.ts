@@ -186,9 +186,10 @@ ${knowledgeBase || "No relevant Knowledge Base information was found."}`;
   }
 
   const violations = [...new Set([...deterministicResult.violations, ...aiResult.violations])].slice(0, 10);
-  const warnings = violations.length > 0
-    ? aiResult.warnings.filter((warning) => !warning.toLowerCase().includes("requires policy verification")).slice(0, 10)
-    : [...new Set([...deterministicResult.warnings, ...aiResult.warnings])].slice(0, 10);
+  const warnings = [...new Set([
+    ...deterministicResult.warnings,
+    ...aiResult.warnings,
+  ])].slice(0, 10);
   const suggestions = violations.length > 0
     ? [...new Set([...aiResult.suggestions])].slice(0, 10)
     : [...new Set([...deterministicResult.suggestions, ...aiResult.suggestions])].slice(0, 10);
