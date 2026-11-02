@@ -5,6 +5,7 @@ import {connectedAccountRepository} from "../repositories/ConnectedAccountReposi
 import {listEmails as listGmailEmails,type InboxEmail as GmailInboxEmail,listSentEmails as listGmailSentEmails,type SentEmail as GmailSentEmail} from "./gmail.js";
 import {listEmails as listOutlookEmails,type InboxEmail as OutlookInboxEmail,listSentEmails as listOutlookSentEmails,type SentEmail as OutlookSentEmail} from "./outlook.js";
 import {createDraft} from "./drafts.js";
+import {sendAutomatically} from "./automaticSend.js";
 import {getSettings} from "./settings.js";
 
 type EmailProvider="gmail"|"outlook";
@@ -363,6 +364,21 @@ async function generateDraftsForNewEmails(
 
         if (result && "created" in result && result.created) {
           created++;
+          if (
+            result.draft.status === "approved" &&
+            result.draft.automaticAction === "auto_approve"
+          ) {
+            try {
+              await sendAutomatically(userId, result.draft._id.toString());
+            } catch (sendError) {
+              console.error("Automatic reply sending failed after draft creation:", {
+                provider: email.provider,
+                messageId: email.messageId,
+                draftId: result.draft._id.toString(),
+                error: sendError instanceof Error ? sendError.message : sendError,
+              });
+            }
+          }
         } else {
           skipped++;
         }
