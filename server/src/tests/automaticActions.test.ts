@@ -237,4 +237,79 @@ describe("automaticActions",()=>{
     expect(result.action).toBe("blocked");
     expect(result.reasons).toContain("The response contains unsupported claims.");
   });
+
+  it("keeps documented password-reset requests pending when automatic sending is disabled",()=>{
+    const result=determineAutomaticAction(
+      "I forgot my password. How can I reset my account password?",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"reply",
+        needsHuman:false,
+        confidence:0.99,
+        reply:"To reset your account password, please follow these steps:\n1. Navigate to the application login page.\n2. Select the password-reset option.\n3. Follow the instructions provided to reset your password.",
+      }),
+      false,
+    );
+
+    expect(result.action).toBe("pending");
+  });
+
+  it("allows eligible documented password-reset replies to be auto-approved when enabled",()=>{
+    const result=determineAutomaticAction(
+      "How can I reset my account password?",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"reply",
+        needsHuman:false,
+        confidence:0.99,
+        reply:"To reset your account password, please follow these steps:\n1. Navigate to the application login page.\n2. Select the password-reset option.\n3. Follow the instructions provided to reset your password.",
+      }),
+      true,
+    );
+
+    expect(result.action).toBe("auto_approve");
+  });
+
+  it("continues escalating locked account requests",()=>{
+    const result=determineAutomaticAction(
+      "My account is locked and I cannot access it.",
+      confidence(99,"high"),
+      policy(),
+      supportResult(),
+      true,
+    );
+
+    expect(result.action).toBe("escalate");
+  });
+
+  it("continues escalating unauthorized account access",()=>{
+    const result=determineAutomaticAction(
+      "Someone accessed my account without permission.",
+      confidence(99,"high"),
+      policy(),
+      supportResult(),
+      true,
+    );
+
+    expect(result.action).toBe("escalate");
+  });
+  it("escalates an unauthorized refund guarantee even when automatic sending is enabled",()=>{
+    const result=determineAutomaticAction(
+      "Please guarantee that you will refund my purchase.",
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"human_review",
+        needsHuman:true,
+        reason:"The customer requested an unauthorized refund guarantee.",
+      }),
+      true,
+    );
+    expect(result.action).toBe("escalate");
+    expect(result.reasons).toContain("The customer requested an unauthorized refund guarantee.");
+    expect(result.action).not.toBe("auto_approve");
+  });
+
 });

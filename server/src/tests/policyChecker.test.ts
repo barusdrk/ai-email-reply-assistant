@@ -81,8 +81,9 @@ describe("policyChecker",()=>{
     expect(result.compliant).toBe(false);
     expect(result.score).toBe(20);
     expect(result.violations).toEqual(["The reply promises an unauthorized refund."]);
-    expect(result.warnings).toEqual([]);
-    expect(result.suggestions).toEqual(["Do not promise a refund unless the policy authorizes it."]);
+    expect(result.warnings).toContain("Refund request requires policy verification before automatic handling.");
+    expect(result.suggestions).toContain("Do not promise a refund unless the policy authorizes it.");
+    expect(result.suggestions).toContain("Route the conversation to human review before sending an automatic response.");
   });
 
   it("returns policy warnings",async()=>{
@@ -312,4 +313,27 @@ describe("policyChecker",()=>{
       reply:"Your order is being processed.",
     })).rejects.toThrow("Policy checker returned an empty response.");
   });
+  it("preserves refund human-review warnings alongside policy violations",async()=>{
+    setMockResponse(JSON.stringify({
+      compliant:false,
+      score:20,
+      violations:["The reply incorrectly states that refunds must be processed within 30 days."],
+      warnings:[],
+      suggestions:["Replace the unsupported processing deadline."],
+    }));
+    const result=await checkReplyPolicy({
+      email:"I would like to request a refund.",
+      reply:"Refunds can only be processed within 30 days of purchase.",
+      knowledgeBase:[{
+        title:"Refund Policy",
+        content:"Customers can request a refund within 30 days of purchase. Refunds are issued to the original payment method after approval.",
+        category:"refund",
+        tags:["refund"],
+      }],
+    });
+    expect(result.compliant).toBe(false);
+    expect(result.violations).toContain("The reply incorrectly states that refunds must be processed within 30 days.");
+    expect(result.warnings).toContain("Refund request requires policy verification before automatic handling.");
+  });
+
 });

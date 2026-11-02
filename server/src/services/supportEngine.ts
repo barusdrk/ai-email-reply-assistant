@@ -100,21 +100,15 @@ export async function analyzeSupportRequest(input:SupportEngineInput):Promise<Su
 export async function generateSupportReply(input:SupportEngineInput):Promise<SupportEngineResult>{
   const result=await analyzeSupportRequest(input);
 
-  if(result.decision!=="reply"||result.needsHuman){
-    return {...result,reply:""};
-  }
+  if(result.reply.trim())return result;
 
-  if(!result.reply){
-    return {
-      ...result,
-      decision:"human_review",
-      needsHuman:true,
-      reason:"The AI did not generate a usable customer response.",
-      reply:"",
-    };
-  }
-
-  return result;
+  return {
+    ...result,
+    decision:result.decision==="reject"?"reject":"human_review",
+    needsHuman:true,
+    reason:result.reason||"The AI did not generate a usable customer response.",
+    reply:"Thank you for contacting us. We've received your message.",
+  };
 }
 
 export async function shouldAutoReply(input:SupportEngineInput):Promise<boolean>{
