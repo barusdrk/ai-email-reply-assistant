@@ -695,6 +695,7 @@ Decision rules:
 38. Do not add an email signature unless the supplied context explicitly provides one.
 39. For escalated refund or billing disputes, prefer the shortest supported acknowledgement over an invented investigation workflow.
 40. Every generated reply must remain a draft until a human explicitly approves it through the application's approval workflow. Never interpret confidence, a decision of "reply", policy compliance, or a suggested action as permission to send an email automatically.
+41. When addressing the customer by name, use only the verified name in customer/account context. If customerContext.name is missing or empty, use a neutral greeting. Never infer a name from an email address, mailbox username, generic sender label, signature, quoted text, or guess.
 
 Return ONLY valid JSON with this exact structure:
 
