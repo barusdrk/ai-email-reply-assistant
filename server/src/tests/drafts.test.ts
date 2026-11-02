@@ -382,7 +382,7 @@ describe("createDraft automation safety",()=>{
     setupAction("escalate");
     const originalViolation="The reply incorrectly states that refunds must be processed within 30 days.";
     const unsafeReply="Refunds can only be processed within 30 days of purchase.";
-    const safeReviewReply="Thanks for reaching out. We've received your support request, and our team will review it.";
+    const safeReviewReply="Thank you for contacting us. We've received your message.";
     const supportResult=buildSupportResult({
       reply:unsafeReply,
       category:"refund",
