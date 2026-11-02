@@ -228,6 +228,18 @@ function hasUnsupportedActionClaim(reply:string):boolean{
   return UNSUPPORTED_ACTION_PATTERNS.some((pattern)=>pattern.test(reply));
 }
 
+function hasUnsupportedRefundProcessingDeadline(reply:string,knowledgeBase:KnowledgeBaseItem[]):boolean{
+  const pattern=/\\brefunds?\\b.{0,100}\\b(?:process(?:ed|ing)?|issue[ds]?|complete[ds]?)\\b.{0,80}\\bwithin\\s+30\\s+days\\b/i;
+  if(!pattern.test(reply))return false;
+  return !pattern.test(getKnowledgeSource(knowledgeBase));
+}
+
+function hasUnsupportedBroadFaqFeatureClaim(reply:string,knowledgeBase:KnowledgeBaseItem[]):boolean{
+  const pattern=/\\b(?:includes?|offers?|supports?|comes with)\\b.{0,100}\\bfeatures?\\b.{0,60}\\b(?:described|listed|mentioned)\\b.{0,40}\\b(?:in|on)\\b.{0,20}\\b(?:our )?faq\\b/i;
+  if(!pattern.test(reply))return false;
+  return !pattern.test(getKnowledgeSource(knowledgeBase));
+}
+
 function hasUnsupportedRefundClaims(
   reply:string,
   knowledgeBase:KnowledgeBaseItem[]=[],
@@ -307,6 +319,8 @@ function hasGroundingSupport(
   }
 
   if(hasUnsupportedRefundClaims(reply,knowledgeBase))return false;
+  if(hasUnsupportedRefundProcessingDeadline(reply,knowledgeBase))return false;
+  if(hasUnsupportedBroadFaqFeatureClaim(reply,knowledgeBase))return false;
   if(hasUnsupportedActionClaim(reply))return false;
   if(hasUnsupportedPlaceholders(reply))return false;
   if(UNSUPPORTED_TIMING_PATTERNS.some((pattern)=>pattern.test(reply)))return false;
