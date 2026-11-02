@@ -1,5 +1,5 @@
 import {describe, expect, it} from "vitest";
-import {buildCustomerContext, getCustomerContextFromEmail, mergeCustomerContext} from "../services/customerContext.js";
+import {buildCustomerContext, getCustomerContextFromEmail, mergeCustomerContext, resolveCustomerName} from "../services/customerContext.js";
 
 describe("customerContext", () => {
   it("builds a normalized customer context", () => {
@@ -119,4 +119,45 @@ describe("customerContext", () => {
     expect(getCustomerContextFromEmail(undefined)).toEqual({});
     expect(getCustomerContextFromEmail("invalid")).toEqual({});
   });
+  it("does not infer a greeting name from an email username", () => {
+    expect(buildCustomerContext({
+      email: "derekuniy@gmail.com",
+      senderName: "Derek",
+    })).toEqual({
+      email: "derekuniy@gmail.com",
+    });
+  });
+
+  it("uses a reliable display name when it is not derived from the email username", () => {
+    expect(buildCustomerContext({
+      email: "john.smith@example.com",
+      senderName: "John Smith",
+    })).toEqual({
+      email: "john.smith@example.com",
+      name: "John Smith",
+    });
+  });
+
+  it("rejects generic mailbox labels as customer names", () => {
+    for (const senderName of ["Support", "Sales", "Billing", "No Reply", "Support Team"]) {
+      expect(resolveCustomerName([senderName], "support@example.com")).toBe("");
+    }
+  });
+
+  it("prefers an explicit customer name over an unreliable sender name", () => {
+    expect(buildCustomerContext({
+      email: "john123@example.com",
+      name: "Jonathan Smith",
+      senderName: "john123",
+    })).toEqual({
+      email: "john123@example.com",
+      name: "Jonathan Smith",
+    });
+  });
+
+  it("returns no name when no reliable identity is available", () => {
+    expect(resolveCustomerName(["john.smith123"], "john.smith123@example.com")).toBe("");
+    expect(resolveCustomerName([""], "customer@example.com")).toBe("");
+  });
+
 });
