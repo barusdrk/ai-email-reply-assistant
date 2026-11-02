@@ -346,11 +346,11 @@ function buildGroundedHumanReviewReply(
     );
     if(approvedExample?.[1])return approvedExample[1].trim();
     if(/received.*support request.*review/i.test(confirmationArticle.content)){
-      return "Thanks for reaching out. We've received your support request, and our team will review it.";
+      return "Thank you for contacting us. We've received your message.";
     }
   }
 
-  return "Thanks for reaching out. We've received your support request, and our team will review it.";
+  return "Thank you for contacting us. We've received your message.";
 }
 
 function extractDeliveryTimeframes(value: string): string[] {
