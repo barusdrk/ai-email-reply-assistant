@@ -446,4 +446,50 @@ describe("createDraft automation safety",()=>{
     expect(sendAutomaticallyMock).not.toHaveBeenCalled();
   });
 
+  it("keeps a draft blocked when the safe human-review acknowledgement also fails policy checks",async()=>{
+    setupAction("escalate");
+    const supportResult=buildSupportResult({
+      reply:"Refunds can only be processed within 30 days of purchase.",
+      category:"refund",
+      decision:"human_review",
+      needsHuman:true,
+      reason:"Refund requests require human review.",
+    });
+    analyzeDraftSupportMock.mockResolvedValue(buildSupportAnalysis({
+      supportResult,
+      customerEmailBody:"I would like to request a refund.",
+    }));
+    evaluateDraftPolicyMock
+      .mockResolvedValueOnce({
+        ...buildPolicy(),
+        compliant:false,
+        score:10,
+        violations:["The original reply contains an unsupported refund deadline."],
+      })
+      .mockResolvedValueOnce({
+        ...buildPolicy(),
+        compliant:false,
+        score:10,
+        violations:["The replacement acknowledgement did not pass policy validation."],
+      });
+    determineAutomaticActionMock.mockReturnValue({
+      action:"blocked",
+      reasons:["The replacement acknowledgement did not pass policy validation."],
+    });
+
+    await createDraft(buildCreateDraftInput());
+
+    expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
+      expect.objectContaining({
+        reply:"",
+        status:"pending",
+        automaticAction:"blocked",
+        supportDecision:"human_review",
+        supportNeedsHuman:true,
+      }),
+    );
+    expect(requestApprovalMock).not.toHaveBeenCalled();
+    expect(sendAutomaticallyMock).not.toHaveBeenCalled();
+  });
+
 });
