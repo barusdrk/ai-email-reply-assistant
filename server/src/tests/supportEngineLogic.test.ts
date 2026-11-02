@@ -493,4 +493,48 @@ describe("supportEngine logic", () => {
     expect(result.needsHuman).toBe(true);
     expect(result.reply).not.toContain("5 business days");
   });
+  it("replaces a broad FAQ feature claim that the Knowledge Base does not verify",()=>{
+    const knowledgeBase=[{
+      title:"Product FAQ",
+      content:"The product supports saved searches and report exports.",
+    }];
+    const result=normalizeResult({
+      decision:"reply",
+      confidence:0.99,
+      category:"product",
+      sentiment:"neutral",
+      reason:"The product question can be answered.",
+      reply:"Yes, our product includes the features described in our FAQ.",
+      suggestedActions:[],
+      missingInformation:[],
+      policyIssues:[],
+    },knowledgeBase,"Does your product include the features described in your FAQ?");
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+    expect(result.reply).not.toContain("includes the features described");
+  });
+
+  it("does not confuse the refund request deadline with a refund processing deadline",()=>{
+    const knowledgeBase=[{
+      title:"Refund Policy",
+      content:"Customers can request a refund within 30 days of purchase. Refunds are issued to the original payment method after the refund request is approved.",
+    }];
+    const result=normalizeResult({
+      decision:"reply",
+      confidence:0.99,
+      category:"refund",
+      sentiment:"negative",
+      reason:"The refund policy is documented.",
+      reply:"Refunds can only be processed within 30 days of purchase.",
+      suggestedActions:[],
+      missingInformation:[],
+      policyIssues:[],
+    },knowledgeBase,"I would like to request a refund.");
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+    expect(result.reply).not.toContain("processed within 30 days");
+  });
+
 });
