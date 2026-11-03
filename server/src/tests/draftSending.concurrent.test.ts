@@ -195,9 +195,11 @@ describe("sendDraft manual sending",()=>{
       draftId.toString(),
       expect.any(Date),
     );
-    expect(result.status).toBe("sent");
-    expect(result.automaticSendPhase).toBe("completed");
-    expect(result.automaticSendAttempts).toBe(1);
+    expect(result).toMatchObject({
+      status:"sent",
+      automaticSendPhase:"completed",
+      automaticSendAttempts:1,
+    });
   });
 
   it("requires recovery when the provider call times out",async()=>{
