@@ -577,7 +577,8 @@ export function normalizeResult(
   }
 
   const normalizedReply =
-    accountAccessReviewReason
+    accountAccessReviewReason &&
+    !accountAccessReviewReason.includes("does not document a password-change procedure")
       ? buildAccountAccessHumanReviewReply(accountAccessReviewReason)
       : responseAdequacyFailed
         ? buildGroundedHumanReviewReply(knowledgeBase)
