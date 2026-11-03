@@ -69,7 +69,7 @@ async function resolveProvider(userId:string,provider:Provider):Promise<Provider
   return activeProvider;
 }
 
-export async function sendEmail(options:SendEmailOptions){
+export async function sendEmail(options:SendEmailOptions):Promise<ProviderSendResult>{
   if(!Types.ObjectId.isValid(options.userId))throw new Error("Invalid user ID.");
 
   const to=options.to.trim();
