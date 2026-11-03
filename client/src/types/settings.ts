@@ -1,8 +1,6 @@
 export type AIProvider =
   | "openai"
-  | "groq"
-  | "gemini"
-  | "claude";
+  | "groq";
 
 export type ReplyTone =
   | "friendly"

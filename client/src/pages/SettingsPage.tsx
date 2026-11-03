@@ -33,7 +33,7 @@ export default function SettingsPage() {
             className="mt-2 w-full rounded border border-(--input-border) bg-(--input-bg) p-2 text-(--text) focus:border-(--accent) focus:outline-none focus:ring-2 focus:ring-(--accent)"
           >
             <option value="openai">OpenAI</option>
-            <option value="gemini">Gemini</option>
+            {/* <option value="gemini">Gemini</option> */}
           </select>
         </label>
 

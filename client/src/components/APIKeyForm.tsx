@@ -2,7 +2,7 @@ import { useState } from "react";
 import API from "../services/api.js";
 
 interface Props {
-  provider: "openai" | "gemini";
+  provider: "openai";
   initialValue?: string;
 }
 
@@ -27,7 +27,7 @@ export default function APIKeyForm({ provider, initialValue = "" }: Props) {
   return (
     <div className="rounded-xl border border-(--border) bg-(--surface) p-6 shadow-sm">
       <h3 className="text-lg font-semibold text-(--text-h)">
-        {provider === "openai" ? "OpenAI API Key" : "Google Gemini API Key"}
+        "OpenAI API Key"
       </h3>
       <input
         type="password"

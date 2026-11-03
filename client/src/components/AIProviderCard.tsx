@@ -1,7 +1,7 @@
 interface Props {
-  provider: "openai" | "gemini";
-  selected: "openai" | "gemini";
-  onSelect: (provider: "openai" | "gemini") => void;
+  provider: "openai";
+  selected: "openai";
+  onSelect: (provider: "openai") => void;
 }
 
 export default function AIProviderCard({ provider, selected, onSelect }: Props) {
@@ -10,10 +10,10 @@ export default function AIProviderCard({ provider, selected, onSelect }: Props) 
   return (
     <button type="button" onClick={() => onSelect(provider)} className={`rounded-xl border p-6 text-left transition ${active ? "border-(--accent) bg-(--surface-hover)" : "border-(--border) bg-(--surface) hover:border-(--accent)"}`}>
       <h2 className="text-lg font-semibold text-(--text-h)">
-        {provider === "openai" ? "OpenAI" : "Google Gemini"}
+        "openai"
       </h2>
       <p className="mt-2 text-sm text-(--text-secondary)">
-        {provider === "openai" ? "Use your personal OpenAI API key." : "Use your personal Gemini API key."}
+        "Use your personal OpenAI API key."
       </p>
       {active && <div className="mt-4 text-sm font-medium text-(--accent)">Selected</div>}
     </button>
