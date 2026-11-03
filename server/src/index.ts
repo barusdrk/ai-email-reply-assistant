@@ -24,6 +24,7 @@ import supportRoutes from "./routes/support.js";
 import crmRoutes from "./routes/crm.js";
 import automaticActionRoutes from "./routes/automaticActions.js";
 import {recoverStaleAutomaticSends} from "./services/automaticSendRecovery.js";
+import {syncConnectedInboxes} from "./services/automaticInboxSync.js";
 import analyticsRoutes from "./routes/analytics.js";
 
 dotenv.config();
@@ -91,12 +92,18 @@ async function start(){
   try{
     await connectDatabase();
     await runAutomaticSendRecovery();
+    void runAutomaticInboxSync();
+    const inboxSyncInterval=setInterval(() => {
+      void runAutomaticInboxSync();
+    },AUTOMATIC_INBOX_SYNC_INTERVAL_MS);
+    inboxSyncInterval.unref?.();
     const recoveryInterval=setInterval(() => {
       void runAutomaticSendRecovery();
     },AUTOMATIC_SEND_RECOVERY_INTERVAL_MS);
     recoveryInterval.unref?.();
     server.listen(PORT,() => {
       console.log(`Server running on port ${PORT}`);
+      console.log("Automatic inbox sync scheduled every 5 minutes.");
       console.log("Automatic-send recovery scheduled every 5 minutes.");
     });
   }catch(error){
@@ -109,6 +116,15 @@ async function start(){
 void start();
 
 const AUTOMATIC_SEND_RECOVERY_INTERVAL_MS=5*60*1000;
+const AUTOMATIC_INBOX_SYNC_INTERVAL_MS=5*60*1000;
+
+async function runAutomaticInboxSync(){
+  try{
+    await syncConnectedInboxes();
+  }catch(error){
+    console.error("Automatic inbox sync failed:",error);
+  }
+}
 
 async function runAutomaticSendRecovery(){
   try{
