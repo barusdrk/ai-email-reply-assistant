@@ -18,7 +18,8 @@ function isSafeDocumentedPasswordReset(
   if(!supportResult||supportResult.decision!=="reply"||supportResult.needsHuman||supportResult.policyIssues.length>0||!supportResult.reply.trim())return false;
   const message=email.toLowerCase();
   const isPasswordResetRequest=/\b(?:forgot|reset|resetting)\b.{0,50}\bpassword\b|\bpassword\s+reset\b/.test(message);
-  const indicatesFailedAttempt=/\b(?:already\s+)?(?:tried|attempted|requested)\b.{0,60}\b(?:reset|password)\b|\b(?:reset|password)\s+(?:email|link)\b.{0,50}\b(?:not\s+(?:received|arrived)|never\s+(?:received|arrived)|didn['’]?t\s+(?:receive|arrive)|missing)\b|\b(?:account\s+(?:is\s+)?locked|locked\s+out|unauthorized|unauthorised|hacked|compromised|someone\s+(?:may\s+have\s+)?accessed)\b/.test(message);
+  const messageWithoutNegatedAttempts=message.replace(/\b(?:(?:have|has|had)\s+(?:not|never)|haven['’]t|hasn['’]t|hadn['’]t|did\s+not|didn['’]t|never)\s+(?:(?:yet|previously|ever)\s+)?(?:already\s+)?(?:tried|attempted|requested|followed|completed|used)\b/gi,"");
+  const indicatesFailedAttempt=/\b(?:already\s+)?(?:tried|attempted|requested)\b.{0,60}\b(?:reset|password)\b|\b(?:reset|password)\s+(?:email|link)\b.{0,50}\b(?:not\s+(?:received|arrived)|never\s+(?:received|arrived)|didn['’]?t\s+(?:receive|arrive)|missing)\b|\b(?:account\s+(?:is\s+)?locked|locked\s+out|unauthorized|unauthorised|hacked|compromised|someone\s+(?:may\s+have\s+)?accessed)\b/.test(messageWithoutNegatedAttempts);
   return isPasswordResetRequest&&!indicatesFailedAttempt;
 }
 
