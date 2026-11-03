@@ -247,6 +247,28 @@ describe("supportEngine logic", () => {
     expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
   });
 
+  it("uses a security-specific acknowledgement for suspected account compromise", () => {
+    const result = normalizeResult({
+      decision: "reply",
+      confidence: 0.99,
+      category: "account",
+      sentiment: "urgent",
+      reason: "The request can be handled with general instructions.",
+      reply: "Please contact support for help with your account.",
+      suggestedActions: [],
+      missingInformation: [],
+      policyIssues: [],
+    }, [], "Someone may have accessed my account without permission.");
+
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.reason).toContain("potential account-security incident");
+    expect(result.reply).toContain("potential unauthorized access");
+    expect(result.reply).toContain("security concern for human review");
+    expect(result.reply).toContain("do not share your password or verification codes");
+    expect(result.reply).not.toBe(HUMAN_REVIEW_REPLY);
+  });
+
   it("escalates locked accounts and suspected unauthorized access", () => {
     const result = normalizeResult({
       decision: "reply",
@@ -262,7 +284,8 @@ describe("supportEngine logic", () => {
 
     expect(result.decision).toBe("human_review");
     expect(result.needsHuman).toBe(true);
-    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+    expect(result.reply).toContain("account-access issue for human review");
+    expect(result.reply).not.toBe(HUMAN_REVIEW_REPLY);
   });
 
   it("escalates suspected unauthorized account access even without an account-lock report", () => {
@@ -280,7 +303,8 @@ describe("supportEngine logic", () => {
 
     expect(result.decision).toBe("human_review");
     expect(result.needsHuman).toBe(true);
-    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+    expect(result.reply).toContain("potential unauthorized access");
+    expect(result.reply).toContain("security concern for human review");
   });
 
   it("allows a password-change procedure when the Knowledge Base explicitly documents it", () => {
