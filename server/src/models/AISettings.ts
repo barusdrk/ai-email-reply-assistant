@@ -11,9 +11,7 @@ const aiSettingsSchema = new Schema({
     type: String,
     enum: [
       "openai",
-      "gemini",
       "groq",
-      "claude",
     ],
     default: "groq",
   },
