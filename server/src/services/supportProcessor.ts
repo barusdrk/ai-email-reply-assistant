@@ -1,6 +1,7 @@
 import {Types} from "mongoose";
 import EmailModel from "../models/Email.js";
 import {createDraftFromSupportResult} from "./drafts.js";
+import {sendAutomatically} from "./automaticSend.js";
 
 export interface SupportConversationMessage{
   id:string;
@@ -237,7 +238,7 @@ export async function processNewInboundEmail(
   }
 
   try{
-    const draftResult = await createDraftFromSupportResult({
+    const creationResult=await createDraftFromSupportResult({
       userId,
       emailId,
       provider:request.provider,
@@ -245,21 +246,46 @@ export async function processNewInboundEmail(
       customer:request.customer.email,
       tone:"professional",
       length:"medium",
-    });
+    },{returnCreationResult:true});
 
-    const draft = "draft" in draftResult
-      ? draftResult.draft
-      : draftResult;
+    const draft=creationResult.draft;
 
     console.log({
-      draftId: String(draft._id),
-      automaticAction: draft.automaticAction,
-      status: draft.status,
-      confidence: draft.confidence,
-      supportDecision: draft.supportDecision,
-      supportCategory: draft.supportCategory,
-      supportNeedsHuman: draft.supportNeedsHuman,
+      draftId:String(draft._id),
+      automaticAction:draft.automaticAction,
+      status:draft.status,
+      confidence:draft.confidence,
+      supportDecision:draft.supportDecision,
+      supportCategory:draft.supportCategory,
+      supportNeedsHuman:draft.supportNeedsHuman,
     });
+
+    if(
+      creationResult.created&&
+      draft.automaticAction==="auto_approve"&&
+      draft.status==="approved"
+    ){
+      try{
+        const sendResult=await sendAutomatically(
+          userId,
+          String(draft._id),
+        );
+        console.log("AUTOMATIC SUPPORT REPLY SEND RESULT:",{
+          provider:request.provider,
+          emailId,
+          draftId:String(draft._id),
+          sent:sendResult?.sent===true,
+          message:sendResult?"Automatic reply sent.":"Automatic send returned no result.",
+        });
+      }catch(sendError){
+        console.error("AUTOMATIC SUPPORT REPLY SEND FAILED:",{
+          provider:request.provider,
+          emailId,
+          draftId:String(draft._id),
+          error:getErrorMessage(sendError),
+        });
+      }
+    }
 
     return {
       request,
