@@ -888,7 +888,7 @@ export async function sendEmail(
     const from=getHeader(sentHeaders,"From");
     const senderEmail=extractEmailAddress(from);
     const senderName=extractDisplayName(from,senderEmail);
-    const references=[...new Set(getHeader(sentHeaders,"References").split(/\\s+/).filter(Boolean))];
+    const references=[...new Set(getHeader(sentHeaders,"References").split(/\s+/).filter(Boolean))];
     return {
       id:sentMessageId,
       threadId:result.data.threadId??threadId??"",
@@ -927,7 +927,7 @@ export async function sendEmail(
       const from=getHeader(sentHeaders,"From");
       const senderEmail=extractEmailAddress(from);
       const senderName=extractDisplayName(from,senderEmail);
-      const references=[...new Set(getHeader(sentHeaders,"References").split(/\\s+/).filter(Boolean))];
+      const references=[...new Set(getHeader(sentHeaders,"References").split(/\s+/).filter(Boolean))];
       return {
         id:sentMessageId,
         threadId:result.data.threadId??threadId??"",
