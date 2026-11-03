@@ -238,7 +238,7 @@ export async function processNewInboundEmail(
   }
 
   try{
-    const creationResult=await createDraftFromSupportResult({
+    const draftResult=await createDraftFromSupportResult({
       userId,
       emailId,
       provider:request.provider,
@@ -247,8 +247,8 @@ export async function processNewInboundEmail(
       tone:"professional",
       length:"medium",
     },{returnCreationResult:true});
-
-    const draft=creationResult.draft;
+    const draft="draft" in draftResult?draftResult.draft:draftResult;
+    const created="draft" in draftResult?draftResult.created:true;
 
     console.log({
       draftId:String(draft._id),
@@ -260,16 +260,9 @@ export async function processNewInboundEmail(
       supportNeedsHuman:draft.supportNeedsHuman,
     });
 
-    if(
-      creationResult.created&&
-      draft.automaticAction==="auto_approve"&&
-      draft.status==="approved"
-    ){
+    if(created&&draft.automaticAction==="auto_approve"&&draft.status==="approved"){
       try{
-        const sendResult=await sendAutomatically(
-          userId,
-          String(draft._id),
-        );
+        const sendResult=await sendAutomatically(userId,String(draft._id));
         console.log("AUTOMATIC SUPPORT REPLY SEND RESULT:",{
           provider:request.provider,
           emailId,
