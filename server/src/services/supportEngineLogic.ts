@@ -368,6 +368,19 @@ function hasGroundingSupport(
   return true;
 }
 
+function buildAccountAccessHumanReviewReply(reason:string):string{
+  if(reason.includes("potential account-security incident")){
+    return "Thank you for reporting the potential unauthorized access to your account. We've flagged this as a security concern for human review. For your protection, please do not share your password or verification codes by email. Our team must review the issue before providing account-specific guidance.";
+  }
+  if(reason.includes("account is locked")){
+    return "Thank you for letting us know that you're locked out of your account. We've flagged this account-access issue for human review. Our team must review the issue before providing account-specific guidance.";
+  }
+  if(reason.includes("password recovery")){
+    return "Thank you for letting us know that you haven't received the password-reset email. We've flagged this account-access issue for human review. Our team must review the issue before providing account-specific guidance.";
+  }
+  return "Thank you for contacting us about your account. We've flagged this account-access issue for human review. Our team must review the issue before providing account-specific guidance.";
+}
+
 function buildGroundedHumanReviewReply(
   knowledgeBase:KnowledgeBaseItem[],
 ):string{
@@ -564,10 +577,12 @@ export function normalizeResult(
   }
 
   const normalizedReply =
-    responseAdequacyFailed || accountAccessReviewReason
-      ? buildGroundedHumanReviewReply(knowledgeBase)
-      : groundedReply ||
-        (needsHuman ? buildGroundedHumanReviewReply(knowledgeBase) : "");
+    accountAccessReviewReason
+      ? buildAccountAccessHumanReviewReply(accountAccessReviewReason)
+      : responseAdequacyFailed
+        ? buildGroundedHumanReviewReply(knowledgeBase)
+        : groundedReply ||
+          (needsHuman ? buildGroundedHumanReviewReply(knowledgeBase) : "");
 
   const reason=
     accountAccessReviewReason ||
