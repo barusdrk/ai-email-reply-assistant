@@ -291,7 +291,7 @@ export function getAccountAccessReviewReason(
     .map((message)=>message.content)]
     .join("\n")
     .toLowerCase();
-  if(/\bsecurity (?:incident|breach)\b|\bunauthori[sz]ed access\b|\b(?:account|login|sign-in)\b.{0,50}\b(?:hacked|compromised|breached)\b|\b(?:hacked|compromised|breached)\b.{0,40}\baccount\b|\bsuspicious (?:account )?(?:activity|login|sign-in)\b|\baccount takeover\b/i.test(context)){
+  if(/\bsecurity (?:incident|breach)\b|\bunauthori[sz]ed access\b|\b(?:account|login|sign-in)\b.{0,50}\b(?:hacked|compromised|breached)\b|\b(?:hacked|compromised|breached)\b.{0,40}\baccount\b|\bsuspicious (?:account )?(?:activity|login|sign-in)\b|\baccount takeover\b|\b(?:someone|a third party|another person)\b.{0,80}\b(?:may have|might have|has|had)\s+(?:gained access to|accessed)\b.{0,30}\b(?:my|the)?\s*account\b/i.test(context)){
     return "The customer reports a potential account-security incident requiring human intervention.";
   }
   const passwordReset=/\bpassword\b.{0,40}\breset\b|\breset\b.{0,40}\bpassword\b/i.test(context);
