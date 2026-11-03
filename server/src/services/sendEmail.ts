@@ -6,6 +6,18 @@ import {replyToEmail as replyToOutlookEmail,sendEmail as sendOutlookEmail} from 
 
 export type Provider="gmail"|"outlook";
 
+export interface ProviderSendResult{
+  id:string;
+  threadId:string;
+  provider:Provider;
+  sent:boolean;
+  messageIdHeader?:string;
+  from?:string;
+  senderName?:string;
+  senderEmail?:string;
+  references?:string[];
+}
+
 export interface SendEmailOptions{
   userId:string;
   provider:Provider;
@@ -22,7 +34,17 @@ export interface SendEmailOptions{
 async function sendOutlook(options:SendEmailOptions){
   if(options.originalMessageId){
     const result=await replyToOutlookEmail(options.userId,options.originalMessageId,options.reply);
-    return{id:result.id,threadId:options.threadId??"",provider:"outlook" as const,sent:result.sent};
+    return{
+      id:result.id,
+      threadId:result.threadId||options.threadId??"",
+      provider:"outlook" as const,
+      sent:result.sent,
+      messageIdHeader:result.messageIdHeader,
+      from:result.from,
+      senderName:result.senderName,
+      senderEmail:result.senderEmail,
+      references:result.references,
+    };
   }
   const result=await sendOutlookEmail(options.userId,{
     to:options.to,
@@ -71,25 +93,44 @@ export async function sendEmail(options:SendEmailOptions){
     originalMessageIdHeader:options.originalMessageIdHeader?.trim()||undefined,
   };
 
-  if(provider==="gmail"){
-    const result=await sendGmailEmail(options.userId,{
+  const replyReferences=[...new Set([
+    ...(resolvedOptions.references??[]),
+    resolvedOptions.originalMessageIdHeader??"",
+  ].map(value=>value.trim()).filter(Boolean))];
+  const connectedAccount=await ConnectedAccountModel.findOne({
+    userId:new Types.ObjectId(options.userId),
+    provider,
+    connected:true,
+  }).select("email").lean();
+  const connectedSenderEmail=String(connectedAccount?.email??"").trim().toLowerCase();
+
+  const result=provider==="gmail"
+    ?await sendGmailEmail(options.userId,{
       to:resolvedOptions.to,
       subject:resolvedOptions.subject,
       reply:resolvedOptions.reply,
       threadId:resolvedOptions.threadId,
       inReplyTo:resolvedOptions.inReplyTo,
-      references:resolvedOptions.references,
+      references:replyReferences,
       originalMessageId:resolvedOptions.originalMessageId,
       originalMessageIdHeader:resolvedOptions.originalMessageIdHeader,
-    });
+    })
+    :await sendOutlook(resolvedOptions);
 
-    return{
-      id:result.id,
-      threadId:result.threadId,
-      provider:"gmail" as const,
-      sent:true,
-    };
-  }
+  const senderEmail=result.senderEmail?.trim().toLowerCase()||connectedSenderEmail;
+  const senderName=result.senderName?.trim()??"";
+  const from=result.from?.trim()||(senderEmail
+    ?senderName?`${senderName} <${senderEmail}>`:senderEmail
+    :"");
+  const references=result.references?.length
+    ?[...new Set(result.references.map(value=>value.trim()).filter(Boolean))]
+    :replyReferences;
 
-  return sendOutlook(resolvedOptions);
+  return{
+    ...result,
+    from,
+    senderName,
+    senderEmail,
+    references,
+  };
 }
