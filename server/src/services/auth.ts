@@ -22,7 +22,7 @@ export async function register(name: string, email: string, password: string) {
 
   await aiSettingsRepository.create({
     userId: user._id,
-    provider: "gemini",
+    provider: "groq",
     maxDailyReplies: 20,
     temperature: 0.7,
     defaultReplyTone: "formal",
