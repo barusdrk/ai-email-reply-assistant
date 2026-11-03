@@ -116,7 +116,7 @@ export async function sendDraft(id:string){
     }
 
     const sentAt=new Date();
-    const outboundEmail=await emailRepository.create({
+    await emailRepository.create({
       userId:email.userId,
       customerId:email.customerId??null,
       draftId:claimedDraft._id,
