@@ -31,12 +31,12 @@ export interface SendEmailOptions{
   originalMessageIdHeader?:string;
 }
 
-async function sendOutlook(options:SendEmailOptions){
+async function sendOutlook(options:SendEmailOptions):Promise<ProviderSendResult>{
   if(options.originalMessageId){
     const result=await replyToOutlookEmail(options.userId,options.originalMessageId,options.reply);
     return{
       id:result.id,
-      threadId:result.threadId||options.threadId??"",
+      threadId:result.threadId||options.threadId||"",
       provider:"outlook" as const,
       sent:result.sent,
       messageIdHeader:result.messageIdHeader,
@@ -52,7 +52,7 @@ async function sendOutlook(options:SendEmailOptions){
     reply:options.reply,
     threadId:options.threadId,
   });
-  return{id:"",threadId:options.threadId??"",provider:"outlook" as const,sent:result.sent};
+  return{id:"",threadId:options.threadId??"",provider:"outlook" as const,sent:result.sent,messageIdHeader:"",from:"",senderName:"",senderEmail:"",references:[]};
 }
 
 async function resolveProvider(userId:string,provider:Provider):Promise<Provider>{
