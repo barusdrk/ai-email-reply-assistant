@@ -18,7 +18,7 @@ class DraftRepository {
 
   async claimForManualSend(id:string):Promise<Draft|null>{
     if(!Types.ObjectId.isValid(id))return null;
-    const startedAt=new Date();
+    const claimedAt=new Date();
     return DraftModel.findOneAndUpdate(
       {
         _id:new Types.ObjectId(id),
@@ -29,8 +29,12 @@ class DraftRepository {
       {
         $set:{
           automaticSendInProgress:true,
-          automaticSendStartedAt:startedAt,
+          automaticSendPhase:"claimed",
+          automaticSendClaimedAt:claimedAt,
+          automaticSendLastAttemptAt:claimedAt,
+          automaticSendLastError:"",
         },
+        $inc:{automaticSendAttempts:1},
       },
       {new:true,runValidators:true},
     ).lean<Draft|null>();
@@ -97,9 +101,18 @@ class DraftRepository {
 
   async update(id:string,data:Partial<Draft>):Promise<Draft|null>{
     if(!Types.ObjectId.isValid(id))return null;
+    const set:Record<string,unknown>={};
+    const unset:Record<string,1>={};
+    for(const [key,value] of Object.entries(data)){
+      if(value===undefined)unset[key]=1;
+      else set[key]=value;
+    }
+    const update:Record<string,Record<string,unknown>>={};
+    if(Object.keys(set).length)update.$set=set;
+    if(Object.keys(unset).length)update.$unset=unset;
     return DraftModel.findByIdAndUpdate(
       id,
-      {$set:data},
+      update,
       {new:true,runValidators:true},
     ).lean<Draft|null>();
   }
