@@ -9,7 +9,12 @@ const aiSettingsSchema = new Schema({
   },
   provider: {
     type: String,
-    enum: ["openai", "gemini", "groq", "claude"],
+    enum: [
+      "openai",
+      // "gemini",
+      "groq",
+      // "claude",
+    ],
     default: "groq",
   },
   defaultReplyTone: {

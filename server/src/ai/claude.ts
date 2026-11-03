@@ -1,3 +1,4 @@
+/*
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../config/env.js";
 import type { AIProvider, ClassifyInput, GenerateReplyInput, SummarizeInput } from "./types.js";
@@ -46,3 +47,4 @@ export class ClaudeProvider implements AIProvider {
     return block?.type === "text" ? block.text.trim() : "";
   }
 }
+*/

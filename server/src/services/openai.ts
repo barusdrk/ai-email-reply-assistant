@@ -11,7 +11,7 @@ function getProviderName(plan: Plan): AIProviderName {
     case "starter":
     case "free":
     default:
-      return "gemini";
+      return "groq";
   }
 }
 

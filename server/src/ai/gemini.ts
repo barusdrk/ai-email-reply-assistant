@@ -1,3 +1,4 @@
+/*
 import OpenAI from "openai";
 import { env } from "../config/env.js";
 import { resolveGeminiModel } from "./geminiModel.js";
@@ -43,3 +44,4 @@ export class GeminiProvider implements AIProvider {
     return (response.choices[0]?.message?.content ?? "").trim();
   }
 }
+*/

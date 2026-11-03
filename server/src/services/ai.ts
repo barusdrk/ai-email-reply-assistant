@@ -7,7 +7,19 @@ import type { ConfidenceScore, GenerateReplyInput } from "../ai/types.js";
 
 async function getUserAIProvider(userId: string) {
   const settings = await aiSettingsRepository.findByUser(userId);
-  const providerName = (settings?.provider ?? "openai") as AIProviderName;
+  const savedProvider = settings?.provider;
+
+  const providerName: AIProviderName =
+    savedProvider === "openai" || savedProvider === "groq"
+      ? savedProvider
+      : "groq";
+
+  if (savedProvider !== providerName) {
+    await aiSettingsRepository.update(userId, {
+      provider: providerName,
+    });
+  }
+
   console.log("AI settings:", { provider: settings?.provider, resolved: providerName });
   return createAIProvider(providerName);
 }

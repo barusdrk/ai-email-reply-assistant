@@ -152,14 +152,13 @@ export async function getAIProvider(userId:string):Promise<AIProvider>{
 
   if(
     provider==="openai"||
-    provider==="gemini"||
-    provider==="groq"||
-    provider==="claude"
+    provider==="groq"
   ){
     return provider;
   }
 
-  return "openai";
+  await aiSettingsRepository.update(userId,{provider:"groq"});
+  return "groq";
 }
 
 export function getPlanLimits(plan:Plan):PlanLimits{

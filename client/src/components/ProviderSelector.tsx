@@ -8,9 +8,9 @@ interface ProviderSelectorProps {
 
 const providers: { value: AIProvider; label: string }[] = [
   { value: "openai", label: "OpenAI" },
-  { value: "gemini", label: "Google Gemini" },
+  // { value: "gemini", label: "Google Gemini" },
   { value: "groq", label: "Groq" },
-  { value: "claude", label: "Claude" },
+  // { value: "claude", label: "Claude" },
 ];
 
 export default function ProviderSelector({ value, onChange, label = "AI Provider" }: ProviderSelectorProps) {

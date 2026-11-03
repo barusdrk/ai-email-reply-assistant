@@ -37,7 +37,7 @@ const plans:{
     perks:[
       "1,000 AI replies per month",
       "100 AI replies per day",
-      "OpenAI, Gemini, Groq, or Claude AI providers",
+      "OpenAI or Groq providers",
       "Auto drafts",
       "Gmail and Outlook integrations",
       "Conversation memory",
@@ -51,7 +51,7 @@ const plans:{
     perks:[
       "10,000 AI replies per month",
       "1,000 AI replies per day",
-      "OpenAI, Gemini, Groq, or Claude AI providers",
+      "OpenAI or Groq providers",
       "Automatic support handling",
       "Priority processing",
       "Advanced escalation workflows",
