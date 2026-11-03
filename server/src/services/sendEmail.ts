@@ -104,7 +104,7 @@ export async function sendEmail(options:SendEmailOptions){
   }).select("email").lean();
   const connectedSenderEmail=String(connectedAccount?.email??"").trim().toLowerCase();
 
-  const result=provider==="gmail"
+  const result:ProviderSendResult=provider==="gmail"
     ?await sendGmailEmail(options.userId,{
       to:resolvedOptions.to,
       subject:resolvedOptions.subject,
@@ -114,7 +114,7 @@ export async function sendEmail(options:SendEmailOptions){
       references:replyReferences,
       originalMessageId:resolvedOptions.originalMessageId,
       originalMessageIdHeader:resolvedOptions.originalMessageIdHeader,
-    })
+    }).then(result=>({...result,provider:"gmail" as const,sent:true}))
     :await sendOutlook(resolvedOptions);
 
   const senderEmail=result.senderEmail?.trim().toLowerCase()||connectedSenderEmail;
