@@ -90,6 +90,11 @@ const providerResult={
   threadId:"thread-123",
   provider:"gmail" as const,
   sent:true,
+  messageIdHeader:"<sent-message@example.com>",
+  from:"Support Team <support@example.com>",
+  senderName:"Support Team",
+  senderEmail:"support@example.com",
+  references:["<message-123@example.com>"],
 };
 
 describe("sendDraft manual sending",()=>{
@@ -183,6 +188,11 @@ describe("sendDraft manual sending",()=>{
       provider:"gmail",
       direction:"outbound",
       messageId:providerResult.id,
+      messageIdHeader:providerResult.messageIdHeader,
+      from:providerResult.from,
+      senderName:providerResult.senderName,
+      senderEmail:providerResult.senderEmail,
+      references:providerResult.references,
       threadId:email.threadId,
       subject:draft.subject,
       recipientEmail:email.senderEmail,
