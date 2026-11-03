@@ -291,17 +291,17 @@ export function getAccountAccessReviewReason(
     .map((message)=>message.content)]
     .join("\n")
     .toLowerCase();
-  const passwordReset=/\bpassword\b.{0,40}\breset\b|\breset\b.{0,40}\bpassword\b/i.test(context);
-  const resetFailure=/\b(?:did not|didn't|never|have not|haven't|has not|hasn't) receiv(?:e|ed)\b.{0,50}\b(?:reset )?email\b|\bno (?:password )?reset email\b|\b(?:reset )?email\b.{0,40}\b(?:did not|didn't|never|has not|hasn't) arriv(?:e|ed)\b/i.test(context);
-  const attemptedReset=/\b(?:already|tried|attempted|requested|followed|completed|used)\b/i.test(context);
+  if(/\\bsecurity (?:incident|breach)\\b|\\bunauthori[sz]ed access\\b|\\b(?:account|login|sign-in)\\b.{0,50}\\b(?:hacked|compromised|breached)\\b|\\b(?:hacked|compromised|breached)\\b.{0,40}\\baccount\\b|\\bsuspicious (?:account )?(?:activity|login|sign-in)\\b|\\baccount takeover\\b/i.test(context)){
+    return "The customer reports a potential account-security incident requiring human intervention.";
+  }
+  const passwordReset=/\\bpassword\\b.{0,40}\\breset\\b|\\breset\\b.{0,40}\\bpassword\\b/i.test(context);
+  const resetFailure=/\\b(?:did not|didn't|never|have not|haven't|has not|hasn't) receiv(?:e|ed)\\b.{0,50}\\b(?:reset )?email\\b|\\bno (?:password )?reset email\\b|\\b(?:reset )?email\\b.{0,40}\\b(?:did not|didn't|never|has not|hasn't) arriv(?:e|ed)\\b/i.test(context);
+  const attemptedReset=/\\b(?:already|tried|attempted|requested|followed|completed|used)\\b/i.test(context);
   if(passwordReset&&resetFailure&&attemptedReset){
     return "The customer has already attempted password recovery but has not received the reset email.";
   }
-  if(/\b(?:account is locked|locked out of (?:my|the) account|account has been locked)\b/i.test(context)){
+  if(/\\b(?:account is locked|locked out of (?:my|the) account|account has been locked)\\b/i.test(context)){
     return "The customer's account is locked and requires human assistance.";
-  }
-  if(/\bunauthorized access\b|\b(?:account|login|sign-in)\b.{0,50}\b(?:hacked|compromised|unauthorized access|someone accessed|suspicious access)\b|\b(?:hacked|compromised)\b.{0,40}\baccount\b|\b(?:someone|a third party|another person)\b.{0,40}\b(?:may have|might have|has|had)\s+(?:gained access to|accessed)\b.{0,30}\b(?:my|the)?\s*account\b/i.test(context)){
-    return "The customer reports a potential account-security incident requiring human intervention.";
   }
   const asksToChangePassword=/\b(?:change|update|modify)\b.{0,35}\bpassword\b|\bpassword\b.{0,35}\b(?:change|update|modify)\b/i.test(context);
   if(asksToChangePassword&&knowledgeBase){
