@@ -233,4 +233,71 @@ it("allows only one concurrent automatic-send claim", async () => {
     expect(storedSending?.automaticSendAttempts).toBe(1);
     expect(storedRecovery?.automaticSendAttempts).toBe(1);
   });
+
+  it("tracks manual sends through the shared claimed, sending, and completed lifecycle",async()=>{
+    const draft=await DraftModel.create({
+      userId,
+      emailId:new Types.ObjectId(),
+      provider:"gmail",
+      subject:"Re: Manual send lifecycle",
+      customer:"customer@example.com",
+      reply:"Approved reply.",
+      status:"approved",
+      automaticAction:"pending",
+      automaticSendInProgress:false,
+      automaticSendPhase:"idle",
+      automaticSendAttempts:0,
+      automaticSendRecoveryRequired:false,
+    });
+
+    const claimed=await draftRepository.claimForManualSend(draft._id.toString());
+    expect(claimed?.automaticSendInProgress).toBe(true);
+    expect(claimed?.automaticSendPhase).toBe("claimed");
+    expect(claimed?.automaticSendAttempts).toBe(1);
+    expect(claimed?.automaticSendClaimedAt).toBeInstanceOf(Date);
+
+    const started=await draftRepository.markAutomaticSendStarted(draft._id.toString());
+    expect(started?.automaticSendPhase).toBe("sending");
+    expect(started?.automaticSendStartedAt).toBeInstanceOf(Date);
+
+    const completed=await draftRepository.markAutomaticSendCompleted(
+      draft._id.toString(),
+      new Date(),
+    );
+    expect(completed?.status).toBe("sent");
+    expect(completed?.automaticSendInProgress).toBe(false);
+    expect(completed?.automaticSendPhase).toBe("completed");
+    expect(completed?.automaticSendAttempts).toBe(1);
+    expect(completed?.automaticSendStartedAt).toBeUndefined();
+    expect(completed?.automaticSendClaimedAt).toBeUndefined();
+  });
+
+  it("unsets explicitly undefined fields during draft updates",async()=>{
+    const draft=await DraftModel.create({
+      userId,
+      emailId:new Types.ObjectId(),
+      provider:"gmail",
+      subject:"Re: Escalation cleanup",
+      customer:"customer@example.com",
+      reply:"Approved reply.",
+      status:"escalated",
+      automaticAction:"escalate",
+      escalatedAt:new Date(),
+      escalationReason:"Refund request requires review.",
+    });
+
+    const updated=await draftRepository.update(draft._id.toString(),{
+      status:"approved",
+      escalatedAt:undefined,
+      escalationReason:undefined,
+    });
+
+    expect(updated?.status).toBe("approved");
+    expect(updated?.escalatedAt).toBeUndefined();
+    expect(updated?.escalationReason).toBeUndefined();
+
+    const stored=await DraftModel.findById(draft._id).lean();
+    expect(stored).not.toHaveProperty("escalatedAt");
+    expect(stored).not.toHaveProperty("escalationReason");
+  });
 });
