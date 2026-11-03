@@ -238,6 +238,39 @@ describe("automaticActions",()=>{
     expect(result.reasons).toContain("The response contains unsupported claims.");
   });
 
+  it.each([
+    "I need help resetting my password. I haven't attempted a reset yet.",
+    "I have not tried resetting my password.",
+    "I never requested a password reset before.",
+  ])("does not treat a negated password-reset attempt as a failed recovery attempt: %s",(email)=>{
+    const result=determineAutomaticAction(
+      email,
+      confidence(99,"high"),
+      policy(),
+      supportResult({
+        decision:"reply",
+        needsHuman:false,
+        confidence:0.99,
+        reply:"To reset your account password, please follow the documented password-reset instructions.",
+      }),
+      true,
+    );
+
+    expect(result.action).toBe("auto_approve");
+  });
+
+  it("continues escalating requests to change an existing password",()=>{
+    const result=determineAutomaticAction(
+      "I want to change my existing password.",
+      confidence(99,"high"),
+      policy(),
+      supportResult(),
+      true,
+    );
+
+    expect(result.action).toBe("escalate");
+  });
+
   it("keeps documented password-reset requests pending when automatic sending is disabled",()=>{
     const result=determineAutomaticAction(
       "I forgot my password. How can I reset my account password?",
