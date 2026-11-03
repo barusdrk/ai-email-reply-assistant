@@ -706,7 +706,7 @@ export async function sendEmail(
     originalMessageId?:string;
     originalMessageIdHeader?:string;
   },
-):Promise<{id:string;threadId:string}>{
+):Promise<{id:string;threadId:string;messageIdHeader:string;from:string;senderName:string;senderEmail:string;references:string[]}>{
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
   const to=options.to.trim();
   const subjectText=options.subject.trim();
@@ -860,9 +860,43 @@ export async function sendEmail(
       },
     });
 
+    const sentMessageId=result.data.id??"";
+    let sentHeaders:any[]=[];
+    if(sentMessageId){
+      try{
+        let sentMessage;
+        try{
+          sentMessage=await gmail.users.messages.get({
+            userId:"me",
+            id:sentMessageId,
+            format:"full",
+          });
+        }catch(error:any){
+          if(error?.code!==401&&error?.response?.status!==401)throw error;
+          gmail=await getGmailClient(userId,true);
+          sentMessage=await gmail.users.messages.get({
+            userId:"me",
+            id:sentMessageId,
+            format:"full",
+          });
+        }
+        sentHeaders=sentMessage.data.payload?.headers??[];
+      }catch(error){
+        console.warn("Gmail sent-message metadata could not be retrieved:",error);
+      }
+    }
+    const from=getHeader(sentHeaders,"From");
+    const senderEmail=extractEmailAddress(from);
+    const senderName=extractDisplayName(from,senderEmail);
+    const references=[...new Set(getHeader(sentHeaders,"References").split(/\\s+/).filter(Boolean))];
     return {
-      id:result.data.id??"",
+      id:sentMessageId,
       threadId:result.data.threadId??threadId??"",
+      messageIdHeader:getHeader(sentHeaders,"Message-ID"),
+      from,
+      senderName,
+      senderEmail,
+      references,
     };
   }catch(error:any){
     if(error?.code===401||error?.response?.status===401){
@@ -876,9 +910,32 @@ export async function sendEmail(
         },
       });
 
+      const sentMessageId=result.data.id??"";
+      let sentHeaders:any[]=[];
+      if(sentMessageId){
+        try{
+          const sentMessage=await gmail.users.messages.get({
+            userId:"me",
+            id:sentMessageId,
+            format:"full",
+          });
+          sentHeaders=sentMessage.data.payload?.headers??[];
+        }catch(error){
+          console.warn("Gmail sent-message metadata could not be retrieved after token refresh:",error);
+        }
+      }
+      const from=getHeader(sentHeaders,"From");
+      const senderEmail=extractEmailAddress(from);
+      const senderName=extractDisplayName(from,senderEmail);
+      const references=[...new Set(getHeader(sentHeaders,"References").split(/\\s+/).filter(Boolean))];
       return {
-        id:result.data.id??"",
+        id:sentMessageId,
         threadId:result.data.threadId??threadId??"",
+        messageIdHeader:getHeader(sentHeaders,"Message-ID"),
+        from,
+        senderName,
+        senderEmail,
+        references,
       };
     }
 
