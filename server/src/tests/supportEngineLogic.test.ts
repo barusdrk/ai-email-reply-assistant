@@ -221,7 +221,8 @@ describe("supportEngine logic", () => {
     expect(result.decision).toBe("human_review");
     expect(result.needsHuman).toBe(true);
     expect(result.reason).toContain("already attempted password recovery");
-    expect(result.reply).toBe(HUMAN_REVIEW_REPLY);
+    expect(result.reply).toContain("haven't received the password-reset email");
+    expect(result.reply).toContain("account-access issue for human review");
   });
 
   it("requires human review when password-change instructions are not documented", () => {
