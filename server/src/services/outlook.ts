@@ -448,7 +448,7 @@ export async function replyToEmail(userId:string,messageId:string,reply:string){
   const referencesHeader=sentMessage.internetMessageHeaders?.find(
     header=>header.name?.toLowerCase()==="references",
   )?.value??"";
-  const references=[...new Set(referencesHeader.split(/\\s+/).filter(Boolean))];
+  const references=[...new Set(referencesHeader.split(/\s+/).filter(Boolean))];
 
   return {
     sent:true,
