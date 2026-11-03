@@ -225,9 +225,14 @@ describe("email sync duplicate prevention",()=>{
   it("keeps a created draft when automatic sending fails",async()=>{
     const draftId=new Types.ObjectId();
     mocks.getSettings.mockResolvedValue({autoDraft:true,autoSendEnabled:true});
-    mocks.createDraft.mockResolvedValue({
-      draft:{_id:draftId,status:"approved",automaticAction:"auto_approve"},
-      created:true,
+    mocks.createDraft.mockImplementation(async(data:any)=>{
+      const draft={_id:draftId,status:"approved",automaticAction:"auto_approve"};
+      await mocks.markAutomaticDraftGenerated(
+        data.emailId,
+        draftId,
+        data.automaticDraftGenerationClaimToken,
+      );
+      return {draft,created:true};
     });
     mocks.sendAutomatically.mockRejectedValue(new Error("Provider unavailable"));
     const result=await syncGmail(userId);
