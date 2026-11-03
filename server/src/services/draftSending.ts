@@ -92,7 +92,7 @@ export async function sendDraft(id:string){
     if(!recipient)throw new Error("Customer email address is required.");
 
     const startedDraft=await draftRepository.markAutomaticSendStarted(id);
-    startedAt=startedDraft?.automaticSendStartedAt;
+    startedAt=startedDraft?.automaticSendStartedAt??undefined;
     if(!startedDraft||!(startedAt instanceof Date)||Number.isNaN(startedAt.getTime())){
       throw new Error("Manual send could not be started because the send claim was lost.");
     }
