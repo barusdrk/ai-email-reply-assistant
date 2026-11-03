@@ -1,3 +1,4 @@
+/*
 import { env } from "../config/env.js";
 
 export async function resolveGeminiModel(): Promise<string> {
@@ -9,3 +10,4 @@ export async function resolveGeminiModel(): Promise<string> {
 
   return model;
 }
+*/

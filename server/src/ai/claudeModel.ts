@@ -1,3 +1,4 @@
+/*
 import Anthropic from "@anthropic-ai/sdk";
 import { env } from "../config/env.js";
 
@@ -99,3 +100,4 @@ export async function resolveClaudeModel(): Promise<string> {
 
   return model;
 }
+*/

@@ -2,9 +2,9 @@ import type {AIProviderName} from "../ai/types.js";
 
 export const BILLING_AI_PROVIDERS=[
   "openai",
-  "gemini",
+  // "gemini",
   "groq",
-  "claude",
+  // "claude",
 ] as const satisfies readonly AIProviderName[];
 
 export const FREE_BILLING_AI_PROVIDERS=[

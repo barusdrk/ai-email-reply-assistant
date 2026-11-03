@@ -1,3 +1,4 @@
+/*
 import {
   GoogleGenerativeAI,
 } from "@google/generative-ai";
@@ -91,3 +92,4 @@ ${email}
 
   return result.response.text();
 }
+*/
