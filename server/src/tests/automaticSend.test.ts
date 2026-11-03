@@ -266,6 +266,15 @@ describe("sendAutomatically",()=>{
 
     expect(result?.sent).toBe(true);
     expect(result?.provider).toBe("outlook");
+    expect(emailRepositoryMock.create).toHaveBeenCalledWith(expect.objectContaining({
+      provider:"outlook",
+      direction:"outbound",
+      messageIdHeader:"<outlook-sent@example.com>",
+      from:"Support Team <support@example.com>",
+      senderName:"Support Team",
+      senderEmail:"support@example.com",
+      references:["<previous-message@example.com>","<original-message@example.com>"],
+    }));
 
     expect(sendEmailMock).toHaveBeenCalledWith({
       userId:userId.toString(),
