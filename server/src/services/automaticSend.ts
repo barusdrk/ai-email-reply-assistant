@@ -1,7 +1,7 @@
 import {Types} from "mongoose";
 import {draftRepository} from "../repositories/DraftRepository.js";
 import {emailRepository} from "../repositories/EmailRepository.js";
-import {sendEmail} from "./sendEmail.js";
+import {sendEmail,type ProviderSendResult} from "./sendEmail.js";
 import {notify} from "./notification.js";
 import {audit} from "./audit.js";
 import {recordDraftAnalytics} from "./supportAnalytics.js";
@@ -292,7 +292,7 @@ export async function sendAutomatically(
     throw new Error("Automatic sending was aborted before the provider call because the start audit failed.");
   }
 
-  let providerResult:{id:string;threadId:string;provider:EmailProvider;sent:boolean};
+  let providerResult:ProviderSendResult;
 
   try {
     providerResult=await sendEmail({
@@ -372,13 +372,15 @@ export async function sendAutomatically(
       provider,
       direction:"outbound",
       messageId:outboundMessageId,
-      messageIdHeader:"",
-      references:email.references??[],
+      messageIdHeader:providerResult.messageIdHeader??"",
+      references:providerResult.references?.length
+        ?providerResult.references
+        :[...new Set([...(email.references??[]),email.messageIdHeader??""].filter(Boolean))],
       threadId:outboundThreadId,
       subject:claimedDraft.subject.trim(),
-      from:"",
-      senderName:"",
-      senderEmail:"",
+      from:providerResult.from??"",
+      senderName:providerResult.senderName??"",
+      senderEmail:providerResult.senderEmail??"",
       recipientName:email.senderName??"",
       recipientEmail:recipient,
       preview:claimedDraft.reply.trim().slice(0,240),
