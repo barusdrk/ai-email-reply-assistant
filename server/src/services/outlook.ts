@@ -59,6 +59,8 @@ export interface SentEmail{
 interface MicrosoftGraphMessage{
   id?:string;
   conversationId?:string;
+  internetMessageId?:string;
+  internetMessageHeaders?:Array<{name?:string;value?:string}>;
   subject?:string;
   isDraft?:boolean;
   bodyPreview?:string;
@@ -372,7 +374,7 @@ export async function replyToEmail(userId:string,messageId:string,reply:string){
 
     try{
       getResponse=await fetch(
-        `${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(draftId)}?$select=id,isDraft,conversationId`,
+        `${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(draftId)}?$select=id,isDraft,conversationId,internetMessageId,internetMessageHeaders,from`,
         {
           headers:{
             Authorization:`Bearer ${accessToken}`,
@@ -394,7 +396,7 @@ export async function replyToEmail(userId:string,messageId:string,reply:string){
 
       try{
         getResponse=await fetch(
-          `${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(draftId)}?$select=id,isDraft,conversationId`,
+          `${MICROSOFT_GRAPH_URL}/me/messages/${encodeURIComponent(draftId)}?$select=id,isDraft,conversationId,internetMessageId,internetMessageHeaders,from`,
           {
             headers:{
               Authorization:`Bearer ${accessToken}`,
@@ -435,10 +437,28 @@ export async function replyToEmail(userId:string,messageId:string,reply:string){
     );
   }
 
+  const senderEmail=sentMessage.from?.emailAddress?.address?.trim().toLowerCase()??"";
+  const senderName=sentMessage.from?.emailAddress?.name?.trim()??"";
+  const from=senderEmail
+    ?senderName
+      ?`${senderName} <${senderEmail}>`
+      :senderEmail
+    :senderName;
+  const messageIdHeader=sentMessage.internetMessageId?.trim()??"";
+  const referencesHeader=sentMessage.internetMessageHeaders?.find(
+    header=>header.name?.toLowerCase()==="references",
+  )?.value??"";
+  const references=[...new Set(referencesHeader.split(/\\s+/).filter(Boolean))];
+
   return {
     sent:true,
     id:sentMessage.id.trim(),
     threadId:sentMessage.conversationId??"",
+    messageIdHeader,
+    from,
+    senderName,
+    senderEmail,
+    references,
   };
 }
 
