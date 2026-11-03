@@ -210,9 +210,9 @@ Supported provider architecture:
 ```text
 AI Provider Factory
         ↓
-┌────────┬────────┬────────┬────────┐
-│ OpenAI │ Gemini │  Groq  │ Claude │
-└────────┴────────┴────────┴────────┘
+┌────────┬────────┐
+│ OpenAI │  Groq  │
+└────────┴────────┘
 ```
 
 ### Integrations
@@ -664,7 +664,6 @@ POST /api/billing/upgrade
 ## Free
 
 * Bring your own OpenAI key
-* Bring your own Gemini key
 * Unlimited AI usage using your own keys
 
 ---
