@@ -4,9 +4,13 @@ import {Types} from "mongoose";
 const mocks=vi.hoisted(()=>({
   findById:vi.fn(),
   claimForManualSend:vi.fn(),
+  markAutomaticSendStarted:vi.fn(),
+  markAutomaticSendCompleted:vi.fn(),
+  releaseAutomaticClaim:vi.fn(),
   markAutomaticRecoveryRequired:vi.fn(),
   update:vi.fn(),
   emailFindById:vi.fn(),
+  emailCreate:vi.fn(),
   sendEmail:vi.fn(),
   recordDraftAnalytics:vi.fn(),
 }));
@@ -15,13 +19,19 @@ vi.mock("../repositories/DraftRepository.js",()=>({
   draftRepository:{
     findById:mocks.findById,
     claimForManualSend:mocks.claimForManualSend,
+    markAutomaticSendStarted:mocks.markAutomaticSendStarted,
+    markAutomaticSendCompleted:mocks.markAutomaticSendCompleted,
+    releaseAutomaticClaim:mocks.releaseAutomaticClaim,
     markAutomaticRecoveryRequired:mocks.markAutomaticRecoveryRequired,
     update:mocks.update,
   },
 }));
 
 vi.mock("../repositories/EmailRepository.js",()=>({
-  emailRepository:{findById:mocks.emailFindById},
+  emailRepository:{
+    findById:mocks.emailFindById,
+    create:mocks.emailCreate,
+  },
 }));
 
 vi.mock("../services/sendEmail.js",()=>({
@@ -42,6 +52,7 @@ const userId=new Types.ObjectId();
 const draftId=new Types.ObjectId();
 const emailId=new Types.ObjectId();
 
+const claimedAt=new Date("2026-10-30T09:59:00.000Z");
 const startedAt=new Date("2026-10-30T10:00:00.000Z");
 
 const draft={
@@ -55,6 +66,8 @@ const draft={
   status:"approved" as const,
   automaticAction:"pending" as const,
   automaticSendInProgress:false,
+  automaticSendPhase:"idle" as const,
+  automaticSendAttempts:0,
   automaticSendRecoveryRequired:false,
   supportPolicyIssues:[],
 };
@@ -62,26 +75,58 @@ const draft={
 const email={
   _id:emailId,
   userId,
+  customerId:null,
   provider:"gmail" as const,
   senderEmail:"customer@example.com",
+  senderName:"Customer",
   threadId:"thread-123",
   messageId:"message-123",
   messageIdHeader:"<message-123@example.com>",
   references:[],
 };
 
-describe("sendDraft failure recovery",()=>{
+const providerResult={
+  id:"provider-message-123",
+  threadId:"thread-123",
+  provider:"gmail" as const,
+  sent:true,
+};
+
+describe("sendDraft manual sending",()=>{
   beforeEach(()=>{
     vi.clearAllMocks();
     mocks.findById.mockResolvedValue(draft);
     mocks.emailFindById.mockResolvedValue(email);
     mocks.update.mockImplementation(async(_id,data)=>({...draft,...data}));
+    mocks.emailCreate.mockImplementation(async data=>({_id:new Types.ObjectId(),...data}));
     mocks.recordDraftAnalytics.mockResolvedValue(undefined);
+    mocks.markAutomaticSendStarted.mockResolvedValue({
+      ...draft,
+      automaticSendInProgress:true,
+      automaticSendPhase:"sending",
+      automaticSendAttempts:1,
+      automaticSendStartedAt:startedAt,
+    });
+    mocks.markAutomaticSendCompleted.mockResolvedValue({
+      ...draft,
+      status:"sent",
+      automaticSendInProgress:false,
+      automaticSendPhase:"completed",
+      automaticSendAttempts:1,
+      automaticSendRecoveryRequired:false,
+      sentAt:startedAt,
+    });
     mocks.markAutomaticRecoveryRequired.mockResolvedValue({
       ...draft,
       status:"pending",
       automaticSendInProgress:false,
+      automaticSendPhase:"recovery_required",
       automaticSendRecoveryRequired:true,
+    });
+    mocks.releaseAutomaticClaim.mockResolvedValue({
+      ...draft,
+      automaticSendInProgress:false,
+      automaticSendPhase:"failed",
     });
 
     // Simulate an atomic database claim: only the first request wins.
@@ -92,25 +137,19 @@ describe("sendDraft failure recovery",()=>{
       return {
         ...draft,
         automaticSendInProgress:true,
-        automaticSendStartedAt:startedAt,
+        automaticSendPhase:"claimed",
+        automaticSendClaimedAt:claimedAt,
+        automaticSendAttempts:1,
       };
     });
   });
 
-  it("calls the email provider exactly once for two concurrent sends",async()=>{
+  it("calls the provider exactly once for two concurrent sends",async()=>{
     let releaseProvider!:()=>void;
-    const providerGate=new Promise<void>(resolve=>{
-      releaseProvider=resolve;
-    });
-
+    const providerGate=new Promise<void>(resolve=>{releaseProvider=resolve;});
     mocks.sendEmail.mockImplementation(async()=>{
       await providerGate;
-      return {
-        id:"provider-message-123",
-        threadId:"thread-123",
-        provider:"gmail",
-        sent:true,
-      };
+      return providerResult;
     });
 
     const first=sendDraft(draftId.toString());
@@ -123,11 +162,42 @@ describe("sendDraft failure recovery",()=>{
     }
 
     const results=await Promise.allSettled([first,second]);
-
     expect(mocks.claimForManualSend).toHaveBeenCalledTimes(2);
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
     expect(results.filter(result=>result.status==="fulfilled")).toHaveLength(1);
     expect(results.filter(result=>result.status==="rejected")).toHaveLength(1);
+  });
+
+  it("records a single outbound email and completes the shared send lifecycle",async()=>{
+    mocks.sendEmail.mockResolvedValue(providerResult);
+
+    const result=await sendDraft(draftId.toString());
+
+    expect(mocks.claimForManualSend).toHaveBeenCalledTimes(1);
+    expect(mocks.markAutomaticSendStarted).toHaveBeenCalledWith(draftId.toString());
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
+    expect(mocks.emailCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.emailCreate).toHaveBeenCalledWith(expect.objectContaining({
+      userId,
+      draftId,
+      provider:"gmail",
+      direction:"outbound",
+      messageId:providerResult.id,
+      threadId:email.threadId,
+      subject:draft.subject,
+      recipientEmail:email.senderEmail,
+      body:draft.reply,
+      preview:draft.reply,
+      unread:false,
+      archived:false,
+    }));
+    expect(mocks.markAutomaticSendCompleted).toHaveBeenCalledWith(
+      draftId.toString(),
+      expect.any(Date),
+    );
+    expect(result.status).toBe("sent");
+    expect(result.automaticSendPhase).toBe("completed");
+    expect(result.automaticSendAttempts).toBe(1);
   });
 
   it("requires recovery when the provider call times out",async()=>{
@@ -136,7 +206,6 @@ describe("sendDraft failure recovery",()=>{
     await expect(sendDraft(draftId.toString())).rejects.toThrow("Provider request timed out");
 
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
-    expect(mocks.markAutomaticRecoveryRequired).toHaveBeenCalledTimes(1);
     expect(mocks.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
       draftId.toString(),
       expect.stringContaining("requires verification"),
@@ -144,25 +213,35 @@ describe("sendDraft failure recovery",()=>{
     );
   });
 
-  it("requires recovery when the provider accepts the email but the database update fails",async()=>{
-    mocks.sendEmail.mockResolvedValue({
-      id:"provider-message-123",
-      threadId:"thread-123",
-      provider:"gmail",
-      sent:true,
-    });
-
-    mocks.update.mockRejectedValue(new Error("Database connection lost"));
+  it("requires recovery when the outbound record cannot be saved after provider acceptance",async()=>{
+    mocks.sendEmail.mockResolvedValue(providerResult);
+    mocks.emailCreate.mockRejectedValue(new Error("Database connection lost"));
 
     await expect(sendDraft(draftId.toString())).rejects.toThrow("Database connection lost");
 
     expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
-    expect(mocks.markAutomaticRecoveryRequired).toHaveBeenCalledTimes(1);
+    expect(mocks.emailCreate).toHaveBeenCalledTimes(1);
     expect(mocks.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
       draftId.toString(),
       expect.stringContaining("requires verification"),
       startedAt,
     );
+    expect(mocks.markAutomaticSendCompleted).not.toHaveBeenCalled();
+  });
+
+  it("requires recovery when the outbound record is saved but draft completion fails",async()=>{
+    mocks.sendEmail.mockResolvedValue(providerResult);
+    mocks.markAutomaticSendCompleted.mockResolvedValue(null);
+
+    await expect(sendDraft(draftId.toString())).rejects.toThrow("draft could not be marked as sent");
+
+    expect(mocks.emailCreate).toHaveBeenCalledTimes(1);
+    expect(mocks.markAutomaticRecoveryRequired).toHaveBeenCalledWith(
+      draftId.toString(),
+      expect.stringContaining("draft could not be marked as sent"),
+      startedAt,
+    );
+    expect(mocks.sendEmail).toHaveBeenCalledTimes(1);
   });
 
   it("does not call the provider when the source email is missing",async()=>{
@@ -172,20 +251,18 @@ describe("sendDraft failure recovery",()=>{
 
     expect(mocks.sendEmail).not.toHaveBeenCalled();
     expect(mocks.markAutomaticRecoveryRequired).not.toHaveBeenCalled();
-    expect(mocks.update).toHaveBeenCalledWith(
+    expect(mocks.releaseAutomaticClaim).toHaveBeenCalledWith(
       draftId.toString(),
-      {automaticSendInProgress:false},
+      "Source email not found.",
+      "claimed",
+      claimedAt,
     );
   });
 
   it("does not send again when recovery is already required",async()=>{
-    mocks.findById.mockResolvedValue({
-      ...draft,
-      automaticSendRecoveryRequired:true,
-    });
+    mocks.findById.mockResolvedValue({...draft,automaticSendRecoveryRequired:true});
 
     await expect(sendDraft(draftId.toString())).rejects.toThrow();
-
     expect(mocks.claimForManualSend).not.toHaveBeenCalled();
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
@@ -194,7 +271,6 @@ describe("sendDraft failure recovery",()=>{
     mocks.claimForManualSend.mockResolvedValue(null);
 
     await expect(sendDraft(draftId.toString())).rejects.toThrow();
-
     expect(mocks.claimForManualSend).toHaveBeenCalledTimes(1);
     expect(mocks.sendEmail).not.toHaveBeenCalled();
   });
