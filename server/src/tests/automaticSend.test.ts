@@ -157,10 +157,15 @@ function setupSuccessfulSend() {
   draftRepositoryMock.markAutomaticSendCompleted.mockResolvedValue(completedDraft as never);
   emailRepositoryMock.update.mockResolvedValue(undefined as never);
   sendEmailMock.mockResolvedValue({
-    id: "provider-message-id",
-    threadId: "thread-123",
-    provider: "gmail",
-    sent: true,
+    id:"provider-message-id",
+    threadId:"thread-123",
+    provider:"gmail",
+    sent:true,
+    messageIdHeader:"<sent-message@example.com>",
+    from:"Support Team <support@example.com>",
+    senderName:"Support Team",
+    senderEmail:"support@example.com",
+    references:["<previous-message@example.com>","<original-message@example.com>"],
   } as never);
   return {draft, email, startedDraft, completedDraft};
 }
@@ -250,6 +255,11 @@ describe("sendAutomatically",()=>{
       threadId:"thread-123",
       provider:"outlook",
       sent:true,
+      messageIdHeader:"<outlook-sent@example.com>",
+      from:"Support Team <support@example.com>",
+      senderName:"Support Team",
+      senderEmail:"support@example.com",
+      references:["<previous-message@example.com>","<original-message@example.com>"],
     } as never);
 
     const result=await sendAutomatically(userId.toString(),draftId.toString());
@@ -553,6 +563,11 @@ it("creates an outbound email record after successful sending",async()=>{
       provider:"gmail",
       direction:"outbound",
       messageId:"provider-message-id",
+      messageIdHeader:"<sent-message@example.com>",
+      from:"Support Team <support@example.com>",
+      senderName:"Support Team",
+      senderEmail:"support@example.com",
+      references:["<previous-message@example.com>","<original-message@example.com>"],
       threadId:email.threadId,
       subject:draft.subject,
       recipientEmail:draft.customer,
