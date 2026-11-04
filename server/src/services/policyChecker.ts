@@ -89,7 +89,10 @@ function detectDeterministicPolicyIssues(email:string,reply:string,knowledgeBase
     }
   }
 
-  if(/\b(refund|money back|reimburse)\b/i.test(customerText)){
+  const refundKnowledge=(knowledgeBase??[]).some((article)=>/\brefund\b/i.test(`${article.title} ${article.category??""} ${(article.tags??[]).join(" ")} ${article.content}`));
+  const isRefundRequest=/\b(refund|money back|reimburse)\b/i.test(customerText)||
+    (refundKnowledge&&/\b(purchas(?:e|ed|ing)|order|item)\b/i.test(customerText)&&/\b(exception|outside|after \d+ days?|opened|used|worn|consumed)\b/i.test(customerText));
+  if(isRefundRequest){
     warnings.push("Refund request requires policy verification before automatic handling.");
     const documentsRefundExceptions=/\bexceptions?\b.{0,80}\b(?:may|can)\s+be\s+(?:considered|requested|granted|approved)\b|\b(?:may|can)\s+be\s+(?:considered|requested|granted|approved)\b.{0,50}\bexceptions?\b|\bcase[- ]by[- ]case\b.{0,50}\b(?:refund|review|approval)\b/i.test(knowledgeText);
     if(/\b(exception|outside (?:the )?(?:standard )?(?:refund )?(?:window|period|policy)|after (?:the )?(?:standard )?refund (?:window|period)|\d+ days? after (?:the )?purchase)\b/i.test(customerText)&&!documentsRefundExceptions){
