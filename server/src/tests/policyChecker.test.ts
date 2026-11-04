@@ -336,4 +336,25 @@ describe("policyChecker",()=>{
     expect(result.warnings).toContain("Refund request requires policy verification before automatic handling.");
   });
 
+  it("flags undocumented refund exceptions and used-item eligibility as review warnings",async()=>{
+    const result=await checkReplyPolicy({
+      email:"I purchased an item 45 days ago and have already opened and used it. Could an exception be made?",
+      reply:"Your request requires human review.",
+      knowledgeBase:[{title:"Refund Policy",content:"Customers can request a refund within 30 days of purchase.",category:"refund",tags:["refund"]}],
+    });
+    expect(result.compliant).toBe(true);
+    expect(result.warnings).toContain("Refund request requires policy verification before automatic handling.");
+    expect(result.warnings).toContain("Refund exception eligibility is not documented in the Knowledge Base.");
+    expect(result.warnings).toContain("Refund eligibility for opened or used items is not documented in the Knowledge Base.");
+  });
+
+  it("does not flag documented refund exception and item-condition rules",async()=>{
+    const result=await checkReplyPolicy({
+      email:"I purchased an item 45 days ago and opened it. Could an exception be made?",
+      reply:"Your request requires human review.",
+      knowledgeBase:[{title:"Refund Policy",content:"Refund exceptions may be considered after 30 days. Opened items are not eligible for refunds.",category:"refund",tags:["refund","exceptions"]}],
+    });
+    expect(result.warnings).not.toContain("Refund exception eligibility is not documented in the Knowledge Base.");
+    expect(result.warnings).not.toContain("Refund eligibility for opened or used items is not documented in the Knowledge Base.");
+  });
 });
