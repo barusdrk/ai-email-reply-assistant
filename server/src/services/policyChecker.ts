@@ -91,7 +91,8 @@ function detectDeterministicPolicyIssues(email:string,reply:string,knowledgeBase
 
   if(/\b(refund|money back|reimburse)\b/i.test(customerText)){
     warnings.push("Refund request requires policy verification before automatic handling.");
-    if(/\b(exception|outside (?:the )?(?:standard )?(?:refund )?(?:window|period|policy)|after (?:the )?(?:standard )?refund (?:window|period)|\d+ days? after (?:the )?purchase)\b/i.test(customerText)&&!/\b(exception|exceptional|case[- ]by[- ]case)\b/i.test(knowledgeText)){
+    const documentsRefundExceptions=/\bexceptions?\b.{0,80}\b(?:may|can)\s+be\s+(?:considered|requested|granted|approved)\b|\b(?:may|can)\s+be\s+(?:considered|requested|granted|approved)\b.{0,50}\bexceptions?\b|\bcase[- ]by[- ]case\b.{0,50}\b(?:refund|review|approval)\b/i.test(knowledgeText);
+    if(/\b(exception|outside (?:the )?(?:standard )?(?:refund )?(?:window|period|policy)|after (?:the )?(?:standard )?refund (?:window|period)|\d+ days? after (?:the )?purchase)\b/i.test(customerText)&&!documentsRefundExceptions){
       warnings.push("Refund exception eligibility is not documented in the Knowledge Base.");
     }
     if(/\b(opened|used|worn|consumed)\b/i.test(customerText)&&!/\b(opened|used|worn|consumed|item condition|product condition)\b/i.test(knowledgeText)){
