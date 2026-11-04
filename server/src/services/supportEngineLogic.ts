@@ -197,6 +197,29 @@ function normalizeRefundLanguage(reply:string):string{
   return normalizeWhitespace(reply);
 }
 
+function getRefundPolicyIssues(customerMessage:string,knowledgeBase:KnowledgeBaseItem[]):string[]{
+  const message=customerMessage.toLowerCase();
+  if(!/\b(refund|money back|reimburse)\b/i.test(message))return [];
+  const source=getKnowledgeSource(knowledgeBase);
+  const issues:string[]=[];
+  const requestsException=/\b(exception|outside (?:the )?(?:standard )?(?:refund )?(?:window|period|policy)|after (?:the )?(?:standard )?refund (?:window|period)|\d+ days? after (?:the )?purchase)\b/i.test(message);
+  if(requestsException&&!/\b(exception|exceptional|case[- ]by[- ]case)\b/i.test(source)){
+    issues.push("The Knowledge Base does not document whether exceptions are available outside the standard refund eligibility window.");
+  }
+  if(/\b(opened|used|worn|consumed)\b/i.test(message)&&!/\b(opened|used|worn|consumed|item condition|product condition)\b/i.test(source)){
+    issues.push("The Knowledge Base does not specify whether opened or used items are eligible for refunds.");
+  }
+  return issues;
+}
+
+function removeUnsupportedRefundExceptionSentences(reply:string,knowledgeBase:KnowledgeBaseItem[]):string{
+  const source=getKnowledgeSource(knowledgeBase);
+  if(/\b(exception|exceptional|case[- ]by[- ]case|outside the standard refund)\b/i.test(source))return reply;
+  return normalizeWhitespace((reply.match(/[^.!?]+[.!?]?/g)??[reply])
+    .filter((sentence)=>!/\b(exception|may only be granted|may be considered|case[- ]by[- ]case)\b/i.test(sentence))
+    .join(" "));
+}
+
 function getKnowledgeSource(knowledgeBase:KnowledgeBaseItem[]):string{
   return knowledgeBase
     .map((item)=>`${item.title}\n${item.content}\n${(item.tags??[]).join(" ")}`)
@@ -479,6 +502,7 @@ export function groundSupportReply(
   grounded=sanitizeResolutionLanguage(grounded);
   grounded=sanitizePlaceholders(grounded);
   grounded=normalizeRefundLanguage(grounded);
+  grounded=removeUnsupportedRefundExceptionSentences(grounded,knowledgeBase);
   grounded=normalizeWhitespace(grounded);
 
   if(!grounded)return requiresHumanReview?buildGroundedHumanReviewReply(knowledgeBase):"";
@@ -504,7 +528,7 @@ export function normalizeResult(
       knowledgeBase,
     );
   const requestedDecision=result.decision;
-  const policyIssues=cleanStringArray(result.policyIssues);
+  const policyIssues=[...new Set([...cleanStringArray(result.policyIssues),...getRefundPolicyIssues(customerMessage,knowledgeBase)])];
   const missingInformation=cleanStringArray(result.missingInformation);
   const suggestedActions=cleanStringArray(result.suggestedActions);
 
@@ -536,8 +560,10 @@ export function normalizeResult(
     decision = "reply";
   }
 
-  const category=
-    typeof result.category==="string"&&[
+  const isRefundRequest=/\b(refund|money back|reimburse)\b/i.test(customerMessage);
+  const category=isRefundRequest
+    ?"refund"
+    :typeof result.category==="string"&&[
       "account",
       "billing",
       "cancellation",
