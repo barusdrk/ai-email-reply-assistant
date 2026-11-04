@@ -345,4 +345,30 @@ describe("automaticActions",()=>{
     expect(result.action).not.toBe("auto_approve");
   });
 
+  it.each([
+    {
+      email:"I want my money back for this order.",
+      warning:"Refund request requires policy verification before automatic handling.",
+    },
+    {
+      email:"Please reimburse me for the purchase.",
+      warning:"Refund request requires policy verification before automatic handling.",
+    },
+    {
+      email:"I want to terminate my subscription.",
+      warning:"Cancellation request requires policy verification before automatic handling.",
+    },
+  ])("escalates indirect sensitive requests based on policy warnings: $email",({email,warning})=>{
+    const result=determineAutomaticAction(
+      email,
+      confidence(99,"high"),
+      policy(true,[warning]),
+      supportResult(),
+      true,
+    );
+
+    expect(result.action).toBe("escalate");
+    expect(result.reasons).toContain("Policy review warning requires human review.");
+  });
+
 });
