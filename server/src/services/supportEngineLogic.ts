@@ -197,9 +197,16 @@ function normalizeRefundLanguage(reply:string):string{
   return normalizeWhitespace(reply);
 }
 
+function isRefundRequest(customerMessage:string,knowledgeBase:KnowledgeBaseItem[]):boolean{
+  const message=customerMessage.toLowerCase();
+  if(/\b(refund|money back|reimburse)\b/i.test(message))return true;
+  const refundKnowledge=knowledgeBase.some((item)=>/\brefund\b/i.test(`${item.title} ${item.category??""} ${(item.tags??[]).join(" ")} ${item.content}`));
+  return refundKnowledge&&/\b(purchas(?:e|ed|ing)|order|item)\b/i.test(message)&&/\b(exception|outside|after \d+ days?|opened|used|worn|consumed)\b/i.test(message);
+}
+
 function getRefundPolicyIssues(customerMessage:string,knowledgeBase:KnowledgeBaseItem[]):string[]{
   const message=customerMessage.toLowerCase();
-  if(!/\b(refund|money back|reimburse)\b/i.test(message))return [];
+  if(!isRefundRequest(customerMessage,knowledgeBase))return [];
   const source=getKnowledgeSource(knowledgeBase);
   const issues:string[]=[];
   const requestsException=/\b(exception|outside (?:the )?(?:standard )?(?:refund )?(?:window|period|policy)|after (?:the )?(?:standard )?refund (?:window|period)|\d+ days? after (?:the )?purchase)\b/i.test(message);
@@ -564,8 +571,8 @@ export function normalizeResult(
     decision = "reply";
   }
 
-  const isRefundRequest=/\b(refund|money back|reimburse)\b/i.test(customerMessage);
-  const category=isRefundRequest
+  const refundRequest=isRefundRequest(customerMessage,knowledgeBase);
+  const category=refundRequest
     ?"refund"
     :typeof result.category==="string"&&[
       "account",
