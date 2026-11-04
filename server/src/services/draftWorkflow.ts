@@ -13,6 +13,26 @@ export async function submitDraft(id:string,userId:string){
     throw new Error("You are not authorized to submit this draft.");
   }
 
+  if(draft.status==="sent"){
+    throw new Error("Sent drafts cannot be submitted.");
+  }
+
+  if(draft.automaticSendInProgress){
+    throw new Error("This draft is currently being sent and cannot be submitted.");
+  }
+
+  if(draft.automaticSendRecoveryRequired){
+    throw new Error("This draft requires send recovery verification before it can be submitted.");
+  }
+
+  if(
+    draft.automaticAction==="blocked"||
+    draft.supportDecision==="reject"||
+    (Array.isArray(draft.supportPolicyIssues)&&draft.supportPolicyIssues.length>0)
+  ){
+    throw new Error("Blocked drafts must be edited and re-evaluated before they can be submitted.");
+  }
+
   const updated=await draftRepository.update(id,{
     status:"pending",
     automaticAction:"pending",
