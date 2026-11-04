@@ -678,4 +678,38 @@ describe("supportEngine logic", () => {
     expect(prompt).toContain("Never infer a name from an email address");
   });
 
+  it("normalizes refund category and records undocumented exception and used-item policy gaps",()=>{
+    const result=normalizeResult({
+      decision:"human_review",confidence:0.97,category:"general_support",sentiment:"neutral",
+      reason:"The refund request is outside the standard policy window.",
+      reply:"Customers can request a refund within 30 days of purchase. Since your request is for a refund 45 days after purchase, it falls outside our standard policy. However, an exception may be considered by a human reviewer.",
+      suggestedActions:[],missingInformation:[],policyIssues:[],
+    },[{
+      title:"Refund Policy",
+      content:"Customers can request a refund within 30 days of purchase. Refunds are issued to the original payment method after approval.",
+      category:"refund",tags:["refund"],
+    }],"I purchased an item 45 days ago and have already opened and used it. Could an exception be made?");
+    expect(result.category).toBe("refund");
+    expect(result.decision).toBe("human_review");
+    expect(result.needsHuman).toBe(true);
+    expect(result.policyIssues).toContain("The Knowledge Base does not document whether exceptions are available outside the standard refund eligibility window.");
+    expect(result.policyIssues).toContain("The Knowledge Base does not specify whether opened or used items are eligible for refunds.");
+    expect(result.reply).toContain("within 30 days of purchase");
+    expect(result.reply).not.toMatch(/exception may be considered/i);
+  });
+
+  it("does not add refund-policy gaps when exception and item-condition rules are documented",()=>{
+    const knowledgeBase=[{
+      title:"Refund Policy",
+      content:"Refund requests may be considered as exceptions after 30 days. Opened items are not eligible, while unused items may be returned.",
+      category:"refund",tags:["refund","exceptions"],
+    }];
+    const result=normalizeResult({
+      decision:"human_review",confidence:0.9,category:"general_support",sentiment:"neutral",
+      reason:"Human review is required.",reply:"Your request requires human review.",
+      suggestedActions:[],missingInformation:[],policyIssues:[],
+    },knowledgeBase,"I purchased an item 45 days ago and opened it. Can an exception be made?");
+    expect(result.category).toBe("refund");
+    expect(result.policyIssues).toEqual([]);
+  });
 });
