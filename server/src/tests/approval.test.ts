@@ -11,6 +11,10 @@ vi.mock("../services/audit.js", () => ({
   audit: vi.fn(),
 }));
 
+vi.mock("../services/draftUpdate.js", () => ({
+  updateDraft: vi.fn(),
+}));
+
 vi.mock("../services/draftSupport.js", () => ({
   analyzeDraftSupport: vi.fn(),
   evaluateDraftPolicy: vi.fn(),
@@ -18,6 +22,7 @@ vi.mock("../services/draftSupport.js", () => ({
 
 import {draftRepository} from "../repositories/DraftRepository.js";
 import {submitDraft} from "../services/draftApproval.js";
+import {updateDraft as updateDraftService} from "../services/draftUpdate.js";
 
 const userId = "507f1f77bcf86cd799439011";
 const otherUserId = "507f1f77bcf86cd799439099";
@@ -37,6 +42,7 @@ const draft = {
 describe("draft approval service", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(updateDraftService).mockResolvedValue({...draft,status:"pending"} as never);
   });
 
   describe("submitDraft", () => {
@@ -54,19 +60,8 @@ describe("draft approval service", () => {
       const result = await submitDraft(draftId, userId);
 
       expect(draftRepository.findById).toHaveBeenCalledWith(draftId);
-      expect(draftRepository.update).toHaveBeenCalledWith(
-        draftId,
-        expect.objectContaining({
-          status: "pending",
-          rejectionReason: undefined,
-          escalatedAt: undefined,
-          escalationReason: undefined,
-          escalationReasons: [],
-        }),
-      );
-      expect(result).toEqual(expect.objectContaining({
-        status: "pending",
-      }));
+      expect(updateDraftService).toHaveBeenCalledWith(draftId,{reply:draft.reply});
+      expect(result).toEqual(expect.objectContaining({status:"pending"}));
     });
 
     it("resubmits a rejected draft for approval", async () => {
@@ -82,25 +77,14 @@ describe("draft approval service", () => {
 
       const result = await submitDraft(draftId, userId);
 
-      expect(draftRepository.update).toHaveBeenCalledWith(
-        draftId,
-        expect.objectContaining({
-          status: "pending",
-          rejectionReason: undefined,
-          escalatedAt: undefined,
-          escalationReason: undefined,
-          escalationReasons: [],
-        }),
-      );
-      expect(result).toEqual(expect.objectContaining({
-        status: "pending",
-      }));
+      expect(updateDraftService).toHaveBeenCalledWith(draftId,{reply:draft.reply});
+      expect(result).toEqual(expect.objectContaining({status:"pending"}));
     });
 
     it("returns null when the draft does not exist", async () => {
       vi.mocked(draftRepository.findById).mockResolvedValue(null);
 
-      expect(draftRepository.update).not.toHaveBeenCalled();
+      expect(updateDraftService).not.toHaveBeenCalled();
     });
 
     it("rejects submission by another user", async () => {
@@ -112,7 +96,7 @@ describe("draft approval service", () => {
       "You are not authorized to submit this draft.",
     );
 
-      expect(draftRepository.update).not.toHaveBeenCalled();
+      expect(updateDraftService).not.toHaveBeenCalled();
     });
 
     it("rejects submission of a sent draft", async () => {

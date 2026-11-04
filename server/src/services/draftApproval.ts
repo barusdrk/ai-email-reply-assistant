@@ -3,6 +3,7 @@ import {draftRepository} from "../repositories/DraftRepository.js";
 import {approvalRepository} from "../repositories/ApprovalRepository.js";
 import {audit} from "./audit.js";
 import {recordDraftAnalytics} from "./supportAnalytics.js";
+import {updateDraft as updateDraftService} from "./draftUpdate.js";
 
 async function recordApprovalAnalytics(data:{
   userId:string;
@@ -42,6 +43,9 @@ export async function requestApproval(id:string,userId:string){
   if(draft.userId.toString()!==userId)throw new Error("You are not authorized to request approval for this draft.");
   if(draft.status!=="pending"&&draft.status!=="escalated"){
     throw new Error("Only pending or escalated drafts can request approval.");
+  }
+  if(draft.automaticAction!=="pending"&&draft.automaticAction!=="escalate"){
+    throw new Error("Blocked or rejected drafts cannot enter the approval queue.");
   }
 
   const existing=await approvalRepository.findPendingByDraft(
@@ -209,39 +213,40 @@ export async function submitDraft(id:string,userId:string){
   if(!Types.ObjectId.isValid(userId))throw new Error("Invalid user ID.");
 
   const draft=await draftRepository.findById(id);
-    if(!draft)throw new Error("Draft not found.");
-    if(draft.userId.toString()!==userId){
-      throw new Error("You are not authorized to submit this draft.");
+  if(!draft)throw new Error("Draft not found.");
+  if(draft.userId.toString()!==userId){
+    throw new Error("You are not authorized to submit this draft.");
+  }
+  if(draft.status==="sent"){
+    throw new Error("Sent drafts cannot be submitted.");
+  }
+  if(draft.status!=="rejected"&&draft.status!=="escalated"){
+    throw new Error("Only rejected or escalated drafts can be resubmitted.");
+  }
+  if(draft.automaticSendInProgress){
+    throw new Error("This draft is currently being sent and cannot be submitted.");
+  }
+  if(draft.automaticSendRecoveryRequired){
+    throw new Error("This draft requires send recovery verification before it can be submitted.");
+  }
+
+  const updated=await updateDraftService(id,{reply:draft.reply});
+  if(updated.status==="rejected"){
+    const pendingApproval=await approvalRepository.findPendingByDraft(id,userId);
+    if(pendingApproval){
+      await approvalRepository.update(pendingApproval._id.toString(),{
+        status:"rejected",
+        reviewedAt:new Date(),
+        reviewedBy:new Types.ObjectId(userId),
+        comment:"The draft remained blocked after support and policy re-evaluation.",
+      });
     }
-    if(draft.status==="sent"){
-      throw new Error("Sent drafts cannot be submitted.");
-    }
+    const reasons=updated.automaticActionReasons?.filter(Boolean).join(" ");
+    throw new Error(reasons
+      ?"This draft remains blocked after re-evaluation: "+reasons
+      :"This draft remains blocked after re-evaluation. Resolve the support or policy issues before resubmitting.");
+  }
 
-  const updated=await draftRepository.update(id,{
-    status:"pending",
-    automaticAction:"pending",
-    automaticActionReasons:[],
-    rejectionReason:undefined,
-    escalatedAt:undefined,
-    escalationReason:undefined,
-    escalationReasons:[],
-    approvedAt:undefined,
-  });
-
-  if(!updated)throw new Error("Failed to resubmit draft.");
-
-  await audit(
-    "draft_submitted",
-    "draft",
-    id,
-    userId,
-  );
-
-  await recordApprovalAnalytics({
-    userId,
-    draftId:id,
-    outcome:"pending_approval",
-  });
-
+  await audit("draft_submitted","draft",id,userId);
   return updated;
 }

@@ -50,6 +50,15 @@ describe("updateDraft rejected-draft safety",()=>{
     expect(mocks.requestApproval).toHaveBeenCalledWith(draftId.toString(),userId.toString());
     expect(mocks.sendAutomatically).not.toHaveBeenCalled();
   });
+  it("keeps an escalated draft in human review even if it becomes auto-eligible",async()=>{
+    repository.findById.mockResolvedValue({...rejectedDraft,status:"escalated"} as never);
+    await updateDraft(draftId.toString(),{reply:"Safe reply"});
+    expect(mocks.updateAutomationState).toHaveBeenCalledWith(draftId.toString(),expect.objectContaining({
+      status:"pending",automaticAction:"pending",supportNeedsHuman:true,
+    }));
+    expect(mocks.requestApproval).toHaveBeenCalledWith(draftId.toString(),userId.toString());
+    expect(mocks.sendAutomatically).not.toHaveBeenCalled();
+  });
   it("keeps an ineligible rejected draft blocked",async()=>{
     mocks.determineAutomaticAction.mockReturnValue({action:"blocked",reasons:["Unsupported claim."]});
     mocks.applySupportDecision.mockImplementation(action=>action);
@@ -59,5 +68,8 @@ describe("updateDraft rejected-draft safety",()=>{
     }));
     expect(mocks.requestApproval).not.toHaveBeenCalled();
     expect(mocks.sendAutomatically).not.toHaveBeenCalled();
+    expect(mocks.updateAutomationState).toHaveBeenCalledWith(draftId.toString(),expect.objectContaining({
+      supportNeedsHuman:false,
+    }));
   });
 });

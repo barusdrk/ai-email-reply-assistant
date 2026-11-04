@@ -202,7 +202,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     :automaticAction.action==="escalate"
       ?"escalated" as const
       :automaticAction.action==="blocked"
-        ?"pending" as const
+        ?"rejected" as const
         :"pending" as const;
 
   const draftResult=await draftRepository.createIfNotExists({
@@ -224,7 +224,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     supportSentiment:supportResult.sentiment,
     supportConfidence:supportResult.confidence,
     supportDecision:supportResultForDecision.decision,
-    supportNeedsHuman:supportResultForDecision.needsHuman||supportResultForDecision.decision!=="reply"||supportResultForDecision.policyIssues.length>0,
+    supportNeedsHuman:automaticAction.action==="pending"||automaticAction.action==="escalate",
     supportReason:supportResultForDecision.reason,
     supportSuggestedActions:supportResultForDecision.suggestedActions,
     supportMissingInformation:supportResultForDecision.missingInformation,
@@ -233,7 +233,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     escalationReason:status==="escalated"?automaticAction.reasons[0]:undefined,
     escalationReasons:status==="escalated"?automaticAction.reasons:[],
     approvedAt:status==="approved"?new Date():undefined,
-    rejectionReason:undefined,
+    rejectionReason:status==="rejected"?automaticAction.reasons.join(" "):undefined,
   });
 
   const createdDraft=draftResult.draft;

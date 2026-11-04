@@ -28,7 +28,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
   if(existingDraft.status==="sent")throw new Error("Sent drafts cannot be modified.");
   if(existingDraft.automaticSendInProgress)throw new Error("This draft is currently being sent and cannot be modified.");
   if(existingDraft.automaticSendRecoveryRequired)throw new Error("This draft requires send recovery verification before it can be modified.");
-  const wasRejected=existingDraft.status==="rejected";
+  const requiresHumanRevalidation=existingDraft.status==="rejected"||existingDraft.status==="escalated";
   const userId=existingDraft.userId.toString();
   const emailId=existingDraft.emailId.toString();
   const tone=data.tone??existingDraft.tone;
@@ -40,8 +40,8 @@ export async function updateDraft(id:string,data:UpdateDraftData){
   const confidence=await scoreDraftConfidence(userId,support.customerEmailBody,reply,support.knowledgeBase);
   const policy=await evaluateDraftPolicy(userId,support.customerEmailBody,reply,support.knowledgeBase);
   const evaluatedAction=applySupportDecision(determineAutomaticAction(support.customerEmailBody,confidence,policy),support.supportResult);
-  // A rejected draft must never become an unattended send merely because re-evaluation now passes.
-  const automaticAction=wasRejected&&evaluatedAction.action==="auto_approve"
+  // Previously rejected or escalated drafts must return to human review, never unattended sending.
+  const automaticAction=requiresHumanRevalidation&&evaluatedAction.action==="auto_approve"
     ?{...evaluatedAction,action:"pending" as const,reasons:[]}
     :evaluatedAction;
   const supportCategory=normalizeSupportCategory(support.supportResult.category);
@@ -53,7 +53,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     supportSentiment:support.supportResult.sentiment,
     supportConfidence:support.supportResult.confidence,
     supportDecision:support.supportResult.decision,
-    supportNeedsHuman:support.supportResult.needsHuman,
+    supportNeedsHuman:automaticAction.action==="pending"||automaticAction.action==="escalate",
     supportReason:support.supportResult.reason,
     supportSuggestedActions:support.supportResult.suggestedActions,
     supportMissingInformation:support.supportResult.missingInformation,
@@ -74,7 +74,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     category:supportCategory,confidenceScore:confidence.score,confidenceLevel:confidence.level,
     policyCompliant:policy.compliant,policyViolationCount:policy.violations.length,
     automaticAction:automaticAction.action,supportDecision:support.supportResult.decision,
-    supportNeedsHuman:support.supportResult.needsHuman,
+    supportNeedsHuman:automaticAction.action==="pending"||automaticAction.action==="escalate",
     outcome:automaticAction.action==="auto_approve"?"approved":automaticAction.action==="pending"?"pending_approval":automaticAction.action==="escalate"?"escalated":"blocked",
   });
   console.log("DRAFT UPDATED:",{

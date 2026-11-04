@@ -1,9 +1,10 @@
 import {beforeEach,describe,expect,it,vi} from "vitest";
 import {Types} from "mongoose";
 
-const mocks=vi.hoisted(()=>({findById:vi.fn(),updateDraft:vi.fn()}));
+const mocks=vi.hoisted(()=>({findById:vi.fn(),updateDraft:vi.fn(),findPendingByDraft:vi.fn(),approvalUpdate:vi.fn()}));
 vi.mock("../repositories/DraftRepository.js",()=>({draftRepository:{findById:mocks.findById}}));
 vi.mock("../services/draftUpdate.js",()=>({updateDraft:mocks.updateDraft}));
+vi.mock("../repositories/ApprovalRepository.js",()=>({approvalRepository:{findPendingByDraft:mocks.findPendingByDraft,update:mocks.approvalUpdate}}));
 import {draftRepository} from "../repositories/DraftRepository.js";
 import {updateDraft as updateDraftService} from "../services/draftUpdate.js";
 import {submitDraft} from "../services/draftWorkflow.js";
@@ -18,8 +19,15 @@ describe("submitDraft re-evaluation workflow",()=>{
     vi.clearAllMocks();
     repository.findById.mockResolvedValue(rejectedDraft as never);
     reEvaluate.mockResolvedValue({...rejectedDraft,status:"pending"} as never);
+    mocks.findPendingByDraft.mockResolvedValue(null);
   });
   it("re-evaluates the current reply instead of clearing blocked metadata",async()=>{
+    await submitDraft(draftId.toString(),userId.toString());
+    expect(reEvaluate).toHaveBeenCalledWith(draftId.toString(),{reply:"Updated reply"});
+  });
+  it("re-evaluates escalated drafts and preserves human review",async()=>{
+    repository.findById.mockResolvedValue({...rejectedDraft,status:"escalated"} as never);
+    reEvaluate.mockResolvedValue({...rejectedDraft,status:"pending"} as never);
     await submitDraft(draftId.toString(),userId.toString());
     expect(reEvaluate).toHaveBeenCalledWith(draftId.toString(),{reply:"Updated reply"});
   });
@@ -30,7 +38,7 @@ describe("submitDraft re-evaluation workflow",()=>{
   });
   it("does not submit drafts outside the rejected state",async()=>{
     repository.findById.mockResolvedValue({...rejectedDraft,status:"pending"} as never);
-    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow("Only rejected drafts can be resubmitted.");
+    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow("Only rejected or escalated drafts can be resubmitted.");
     expect(reEvaluate).not.toHaveBeenCalled();
   });
   it("preserves ownership and send-recovery safeguards",async()=>{
