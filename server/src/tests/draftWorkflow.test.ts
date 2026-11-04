@@ -1,118 +1,43 @@
 import {beforeEach,describe,expect,it,vi} from "vitest";
 import {Types} from "mongoose";
 
-const mocks=vi.hoisted(()=>({
-  findById:vi.fn(),
-  update:vi.fn(),
-  requestApproval:vi.fn(),
-}));
-
-vi.mock("../repositories/DraftRepository.js",()=>({
-  draftRepository:{
-    findById:mocks.findById,
-    update:mocks.update,
-  },
-}));
-
-vi.mock("../services/draftApproval.js",()=>({
-  requestApproval:mocks.requestApproval,
-}));
-
+const mocks=vi.hoisted(()=>({findById:vi.fn(),updateDraft:vi.fn()}));
+vi.mock("../repositories/DraftRepository.js",()=>({draftRepository:{findById:mocks.findById}}));
+vi.mock("../services/draftUpdate.js",()=>({updateDraft:mocks.updateDraft}));
 import {draftRepository} from "../repositories/DraftRepository.js";
-import {requestApproval} from "../services/draftApproval.js";
+import {updateDraft as updateDraftService} from "../services/draftUpdate.js";
 import {submitDraft} from "../services/draftWorkflow.js";
-
-const draftRepositoryMock=vi.mocked(draftRepository);
-const requestApprovalMock=vi.mocked(requestApproval);
+const repository=vi.mocked(draftRepository);
+const reEvaluate=vi.mocked(updateDraftService);
 const userId=new Types.ObjectId();
 const draftId=new Types.ObjectId();
+const rejectedDraft={_id:draftId,userId,status:"rejected",reply:"Updated reply",automaticSendInProgress:false,automaticSendRecoveryRequired:false};
 
-function createDraft(overrides:Record<string,unknown>={}){
-  return{
-    _id:draftId,
-    userId,
-    status:"pending",
-    automaticAction:"pending",
-    automaticSendInProgress:false,
-    automaticSendRecoveryRequired:false,
-    supportDecision:"reply",
-    supportPolicyIssues:[],
-    ...overrides,
-  };
-}
-
-describe("submitDraft automation safety",()=>{
+describe("submitDraft re-evaluation workflow",()=>{
   beforeEach(()=>{
     vi.clearAllMocks();
-    draftRepositoryMock.findById.mockResolvedValue(createDraft() as never);
-    draftRepositoryMock.update.mockResolvedValue({
-      ...createDraft(),
-      _id:{toString:()=>draftId.toString()},
-    } as never);
-    requestApprovalMock.mockResolvedValue({} as never);
+    repository.findById.mockResolvedValue(rejectedDraft as never);
+    reEvaluate.mockResolvedValue({...rejectedDraft,status:"pending"} as never);
   });
-
-  it("does not allow blocked drafts to bypass policy checks through resubmission",async()=>{
-    draftRepositoryMock.findById.mockResolvedValue(createDraft({
-      status:"rejected",
-      automaticAction:"blocked",
-    }) as never);
-
-    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow(
-      "Blocked drafts must be edited and re-evaluated before they can be submitted.",
-    );
-
-    expect(draftRepositoryMock.update).not.toHaveBeenCalled();
-    expect(requestApprovalMock).not.toHaveBeenCalled();
-  });
-
-  it("does not resubmit drafts with rejected support decisions",async()=>{
-    draftRepositoryMock.findById.mockResolvedValue(createDraft({
-      supportDecision:"reject",
-    }) as never);
-
-    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow(
-      "Blocked drafts must be edited and re-evaluated before they can be submitted.",
-    );
-
-    expect(draftRepositoryMock.update).not.toHaveBeenCalled();
-    expect(requestApprovalMock).not.toHaveBeenCalled();
-  });
-
-  it("does not resubmit drafts with unresolved policy issues",async()=>{
-    draftRepositoryMock.findById.mockResolvedValue(createDraft({
-      supportPolicyIssues:["The reply contains an unsupported policy claim."],
-    }) as never);
-
-    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow(
-      "Blocked drafts must be edited and re-evaluated before they can be submitted.",
-    );
-
-    expect(draftRepositoryMock.update).not.toHaveBeenCalled();
-    expect(requestApprovalMock).not.toHaveBeenCalled();
-  });
-
-  it("does not resubmit drafts while a send is in progress or recovery is required",async()=>{
-    for(const overrides of [
-      {automaticSendInProgress:true},
-      {automaticSendRecoveryRequired:true},
-    ]){
-      draftRepositoryMock.findById.mockResolvedValue(createDraft(overrides) as never);
-
-      await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow();
-
-      expect(draftRepositoryMock.update).not.toHaveBeenCalled();
-      expect(requestApprovalMock).not.toHaveBeenCalled();
-    }
-  });
-
-  it("allows eligible drafts to enter the human approval workflow",async()=>{
+  it("re-evaluates the current reply instead of clearing blocked metadata",async()=>{
     await submitDraft(draftId.toString(),userId.toString());
-
-    expect(draftRepositoryMock.update).toHaveBeenCalledWith(draftId.toString(),expect.objectContaining({
-      status:"pending",
-      automaticAction:"pending",
-    }));
-    expect(requestApprovalMock).toHaveBeenCalledWith(draftId.toString(),userId.toString());
+    expect(reEvaluate).toHaveBeenCalledWith(draftId.toString(),{reply:"Updated reply"});
+  });
+  it("keeps a draft blocked when re-evaluation still rejects it",async()=>{
+    reEvaluate.mockResolvedValue({...rejectedDraft,status:"rejected",automaticActionReasons:["Unsupported claim."]} as never);
+    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow("This draft remains blocked after re-evaluation: Unsupported claim.");
+    expect(reEvaluate).toHaveBeenCalledOnce();
+  });
+  it("does not submit drafts outside the rejected state",async()=>{
+    repository.findById.mockResolvedValue({...rejectedDraft,status:"pending"} as never);
+    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow("Only rejected drafts can be resubmitted.");
+    expect(reEvaluate).not.toHaveBeenCalled();
+  });
+  it("preserves ownership and send-recovery safeguards",async()=>{
+    repository.findById.mockResolvedValue({...rejectedDraft,userId:new Types.ObjectId()} as never);
+    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow("not authorized");
+    repository.findById.mockResolvedValue({...rejectedDraft,automaticSendRecoveryRequired:true} as never);
+    await expect(submitDraft(draftId.toString(),userId.toString())).rejects.toThrow("recovery verification");
+    expect(reEvaluate).not.toHaveBeenCalled();
   });
 });
