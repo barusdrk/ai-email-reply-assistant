@@ -66,8 +66,11 @@ export function useDrafts() {
   }
 
   async function submit(draftId: string) {
-    await submitForApproval(draftId);
-    await loadDrafts();
+    try {
+      await submitForApproval(draftId);
+    } finally {
+      await loadDrafts();
+    }
   }
 
   async function send(draftId: string) {
