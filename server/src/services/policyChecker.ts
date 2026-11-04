@@ -56,9 +56,10 @@ function extractJson(text:string):PolicyCheckResult{
   };
 }
 
-function detectDeterministicPolicyIssues(email:string,reply:string):PolicyCheckResult{
+function detectDeterministicPolicyIssues(email:string,reply:string,knowledgeBase:PolicyCheckInput["knowledgeBase"]=[]):PolicyCheckResult{
   const customerText=email.toLowerCase();
   const replyText=reply.toLowerCase();
+  const knowledgeText=(knowledgeBase??[]).map((article)=>`${article.title}\n${article.content}\n${(article.tags??[]).join(" ")}`).join("\n").toLowerCase();
   const violations:string[]=[];
   const warnings:string[]=[];
   const suggestions:string[]=[];
@@ -90,6 +91,12 @@ function detectDeterministicPolicyIssues(email:string,reply:string):PolicyCheckR
 
   if(/\b(refund|money back|reimburse)\b/i.test(customerText)){
     warnings.push("Refund request requires policy verification before automatic handling.");
+    if(/\b(exception|outside (?:the )?(?:standard )?(?:refund )?(?:window|period|policy)|after (?:the )?(?:standard )?refund (?:window|period)|\d+ days? after (?:the )?purchase)\b/i.test(customerText)&&!/\b(exception|exceptional|case[- ]by[- ]case)\b/i.test(knowledgeText)){
+      warnings.push("Refund exception eligibility is not documented in the Knowledge Base.");
+    }
+    if(/\b(opened|used|worn|consumed)\b/i.test(customerText)&&!/\b(opened|used|worn|consumed|item condition|product condition)\b/i.test(knowledgeText)){
+      warnings.push("Refund eligibility for opened or used items is not documented in the Knowledge Base.");
+    }
   }
 
   if(/\b(cancel|cancellation|terminate subscription)\b/i.test(customerText)){
@@ -127,7 +134,7 @@ export async function checkReplyPolicy(input: PolicyCheckInput): Promise<PolicyC
     `Content: ${article.content}`,
   ].join("\n")).join("\n\n");
 
-  const deterministicResult = detectDeterministicPolicyIssues(email, reply);
+  const deterministicResult = detectDeterministicPolicyIssues(email, reply, input.knowledgeBase);
 
   const prompt = `You are a policy compliance checker for an AI customer email assistant.
 
