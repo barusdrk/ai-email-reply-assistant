@@ -54,7 +54,7 @@ describe("updateDraft rejected-draft safety",()=>{
     repository.findById.mockResolvedValue({...rejectedDraft,status:"escalated"} as never);
     await updateDraft(draftId.toString(),{reply:"Safe reply"});
     expect(mocks.updateAutomationState).toHaveBeenCalledWith(draftId.toString(),expect.objectContaining({
-      status:"pending",automaticAction:"pending",supportNeedsHuman:true,
+      status:"pending",automaticAction:"pending",supportNeedsHuman:false,
     }));
     expect(mocks.requestApproval).toHaveBeenCalledWith(draftId.toString(),userId.toString());
     expect(mocks.sendAutomatically).not.toHaveBeenCalled();

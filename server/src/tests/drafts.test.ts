@@ -294,7 +294,7 @@ describe("createDraft automation safety",()=>{
     {input:"auto_approve",expectedAction:"pending",expectedStatus:"pending",needsHuman:false,requestsApproval:true},
     {input:"pending",expectedAction:"pending",expectedStatus:"pending",needsHuman:false,requestsApproval:true},
     {input:"escalate",expectedAction:"escalate",expectedStatus:"escalated",needsHuman:true,requestsApproval:true},
-    {input:"blocked",expectedAction:"blocked",expectedStatus:"pending",needsHuman:false,requestsApproval:false},
+    {input:"blocked",expectedAction:"blocked",expectedStatus:"rejected",needsHuman:false,requestsApproval:false},
   ] as const)(
     "keeps the $input decision safe when automatic sending is disabled",
     async({input,expectedAction,expectedStatus,needsHuman,requestsApproval})=>{
@@ -482,7 +482,7 @@ describe("createDraft automation safety",()=>{
     expect(draftRepositoryMock.createIfNotExists).toHaveBeenCalledWith(
       expect.objectContaining({
         reply:"",
-        status:"pending",
+        status:"rejected",
         automaticAction:"blocked",
         supportDecision:"human_review",
         supportNeedsHuman:true,

@@ -224,7 +224,7 @@ export async function createDraft(data:CreateDraftData, options:{returnCreationR
     supportSentiment:supportResult.sentiment,
     supportConfidence:supportResult.confidence,
     supportDecision:supportResultForDecision.decision,
-    supportNeedsHuman:automaticAction.action==="pending"||automaticAction.action==="escalate",
+    supportNeedsHuman:supportResultForDecision.needsHuman||supportResultForDecision.decision!=="reply"||supportResultForDecision.policyIssues.length>0,
     supportReason:supportResultForDecision.reason,
     supportSuggestedActions:supportResultForDecision.suggestedActions,
     supportMissingInformation:supportResultForDecision.missingInformation,

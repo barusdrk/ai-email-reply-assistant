@@ -53,7 +53,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     supportSentiment:support.supportResult.sentiment,
     supportConfidence:support.supportResult.confidence,
     supportDecision:support.supportResult.decision,
-    supportNeedsHuman:automaticAction.action==="pending"||automaticAction.action==="escalate",
+    supportNeedsHuman:support.supportResult.needsHuman||support.supportResult.decision!=="reply"||policyIssues.length>0,
     supportReason:support.supportResult.reason,
     supportSuggestedActions:support.supportResult.suggestedActions,
     supportMissingInformation:support.supportResult.missingInformation,
@@ -74,7 +74,7 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     category:supportCategory,confidenceScore:confidence.score,confidenceLevel:confidence.level,
     policyCompliant:policy.compliant,policyViolationCount:policy.violations.length,
     automaticAction:automaticAction.action,supportDecision:support.supportResult.decision,
-    supportNeedsHuman:automaticAction.action==="pending"||automaticAction.action==="escalate",
+    supportNeedsHuman:support.supportResult.needsHuman||support.supportResult.decision!=="reply"||policyIssues.length>0,
     outcome:automaticAction.action==="auto_approve"?"approved":automaticAction.action==="pending"?"pending_approval":automaticAction.action==="escalate"?"escalated":"blocked",
   });
   console.log("DRAFT UPDATED:",{
