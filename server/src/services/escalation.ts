@@ -36,6 +36,8 @@ const HUMAN_REVIEW_WARNING_PATTERNS = [
   /\bchargeback\b/i,
   /\bunauthorized\b/i,
   /\baccount\s+takeover\b/i,
+  /\brefund\b/i,
+  /\bcancellation\b/i,
 ];
 
 function getHumanReviewWarnings(policy?: PolicyCheckResult): string[] {
