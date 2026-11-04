@@ -203,7 +203,7 @@ function getRefundPolicyIssues(customerMessage:string,knowledgeBase:KnowledgeBas
   const source=getKnowledgeSource(knowledgeBase);
   const issues:string[]=[];
   const requestsException=/\b(exception|outside (?:the )?(?:standard )?(?:refund )?(?:window|period|policy)|after (?:the )?(?:standard )?refund (?:window|period)|\d+ days? after (?:the )?purchase)\b/i.test(message);
-  if(requestsException&&!/\b(exception|exceptional|case[- ]by[- ]case)\b/i.test(source)){
+  if(requestsException&&!hasDocumentedRefundExceptionPolicy(source)){
     issues.push("The Knowledge Base does not document whether exceptions are available outside the standard refund eligibility window.");
   }
   if(/\b(opened|used|worn|consumed)\b/i.test(message)&&!/\b(opened|used|worn|consumed|item condition|product condition)\b/i.test(source)){
@@ -212,9 +212,13 @@ function getRefundPolicyIssues(customerMessage:string,knowledgeBase:KnowledgeBas
   return issues;
 }
 
+function hasDocumentedRefundExceptionPolicy(source:string):boolean{
+  return /\bexceptions?\b.{0,80}\b(?:may|can)\s+be\s+(?:considered|requested|granted|approved)\b|\b(?:may|can)\s+be\s+(?:considered|requested|granted|approved)\b.{0,50}\bexceptions?\b|\bcase[- ]by[- ]case\b.{0,50}\b(?:refund|review|approval)\b/i.test(source);
+}
+
 function removeUnsupportedRefundExceptionSentences(reply:string,knowledgeBase:KnowledgeBaseItem[]):string{
   const source=getKnowledgeSource(knowledgeBase);
-  if(/\b(exception|exceptional|case[- ]by[- ]case|outside the standard refund)\b/i.test(source))return reply;
+  if(hasDocumentedRefundExceptionPolicy(source))return reply;
   return normalizeWhitespace((reply.match(/[^.!?]+[.!?]?/g)??[reply])
     .filter((sentence)=>!/\b(exception|may only be granted|may be considered|case[- ]by[- ]case)\b/i.test(sentence))
     .join(" "));
