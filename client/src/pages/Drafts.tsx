@@ -13,6 +13,7 @@ export default function Drafts() {
   const [sendingDraftId,setSendingDraftId]=useState<string|null>(null);
   const [submittingDraftId,setSubmittingDraftId]=useState<string|null>(null);
   const [submitError,setSubmitError]=useState("");
+  const [sendError,setSendError]=useState("");
   function openEdit(draft:Draft){setEditingDraft(draft);setEditedReply(draft.reply);}
   function closeEdit(){if(saving)return;setEditingDraft(null);setEditedReply("");}
   async function saveEdit(){
@@ -23,8 +24,8 @@ export default function Drafts() {
   }
   async function handleSend(draft:Draft){
     if(!draft.id||draft.status!=="approved")return;
-    try{setSendingDraftId(draft.id);await send(draft.id);}
-    catch(error){console.error("Failed to send draft:",error);}
+    try{setSendError("");setSendingDraftId(draft.id);await send(draft.id);}
+    catch(error){setSendError(error instanceof Error?error.message:"Unable to send this draft.");}
     finally{setSendingDraftId(null);}
   }
   async function handleSubmit(draft:Draft){
@@ -50,6 +51,7 @@ export default function Drafts() {
   return (
     <div className="min-w-0 max-w-full space-y-6">
       <div><h1 className="text-3xl font-bold text-(--text-h)">Draft Replies</h1><p className="mt-2 text-(--text-secondary)">AI-generated replies, human-reviewed responses, and approved messages.</p></div>
+      {sendError&&<div role="alert" className="rounded-lg border border-(--danger-text) bg-(--danger-bg) p-4 text-sm text-(--danger-text)">{sendError}</div>}
       {submitError&&<div role="alert" className="rounded-lg border border-(--danger-text) bg-(--danger-bg) p-4 text-sm text-(--danger-text)">{submitError}</div>}
       {drafts.length===0?<div className="rounded-xl border border-(--border) bg-(--surface) p-8 text-center text-(--text-secondary)">No drafts available.</div>:(
         <div className="grid min-w-0 max-w-full gap-6">
