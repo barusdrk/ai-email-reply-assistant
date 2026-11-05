@@ -45,15 +45,25 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     :evaluatedAction;
   const supportCategory=normalizeSupportCategory(support.supportResult.category);
   const policyIssues=[...support.supportResult.policyIssues,...policy.violations].filter(Boolean);
+  // A confidence-based escalation is a human-review decision even when the support
+  // engine independently considers the customer's request answerable.
+  const supportDecision=automaticAction.action==="escalate"&&support.supportResult.decision==="reply"
+    ?"human_review"
+    :support.supportResult.decision;
+  const supportNeedsHuman=support.supportResult.needsHuman||
+    supportDecision!=="reply"||policyIssues.length>0||automaticAction.action==="escalate";
+  const supportReason=supportDecision!==support.supportResult.decision&&automaticAction.reasons.length>0
+    ?automaticAction.reasons.join(" ")
+    :support.supportResult.reason;
   const status=getDraftStatus(automaticAction.action);
   const now=new Date();
   const updateData={
     ...data,reply,tone,length,confidence,supportCategory,
     supportSentiment:support.supportResult.sentiment,
     supportConfidence:support.supportResult.confidence,
-    supportDecision:support.supportResult.decision,
-    supportNeedsHuman:support.supportResult.needsHuman||support.supportResult.decision!=="reply"||policyIssues.length>0,
-    supportReason:support.supportResult.reason,
+    supportDecision,
+    supportNeedsHuman,
+    supportReason,
     supportSuggestedActions:support.supportResult.suggestedActions,
     supportMissingInformation:support.supportResult.missingInformation,
     supportPolicyIssues:policyIssues,
@@ -72,13 +82,13 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     userId,emailId,draftId:updatedDraft._id.toString(),provider:updatedDraft.provider,
     category:supportCategory,confidenceScore:confidence.score,confidenceLevel:confidence.level,
     policyCompliant:policy.compliant,policyViolationCount:policy.violations.length,
-    automaticAction:automaticAction.action,supportDecision:support.supportResult.decision,
-    supportNeedsHuman:support.supportResult.needsHuman||support.supportResult.decision!=="reply"||policyIssues.length>0,
+    automaticAction:automaticAction.action,supportDecision,
+    supportNeedsHuman,
     outcome:automaticAction.action==="auto_approve"?"approved":automaticAction.action==="pending"?"pending_approval":automaticAction.action==="escalate"?"escalated":"blocked",
   });
   console.log("DRAFT UPDATED:",{
     draftId:updatedDraft._id.toString(),emailId,provider:updatedDraft.provider,
-    supportDecision:support.supportResult.decision,supportCategory,
+    supportDecision,supportNeedsHuman,supportReason,supportCategory,
     supportConfidence:support.supportResult.confidence,confidence:confidence.score,
     confidenceLevel:confidence.level,policyCompliant:policy.compliant,
     automaticAction:automaticAction.action,
