@@ -59,6 +59,24 @@ describe("updateDraft rejected-draft safety",()=>{
     expect(mocks.requestApproval).toHaveBeenCalledWith(draftId.toString(),userId.toString());
     expect(mocks.sendAutomatically).not.toHaveBeenCalled();
   });
+  it("returns an edited approved draft to human approval instead of auto-sending",async()=>{
+    repository.findById.mockResolvedValue({...rejectedDraft,status:"approved",approvedAt:new Date()} as never);
+    await updateDraft(draftId.toString(),{reply:"Edited approved reply"});
+    expect(mocks.updateAutomationState).toHaveBeenCalledWith(draftId.toString(),expect.objectContaining({
+      status:"pending",automaticAction:"pending",approvedAt:undefined,
+    }));
+    expect(mocks.requestApproval).toHaveBeenCalledWith(draftId.toString(),userId.toString());
+    expect(mocks.sendAutomatically).not.toHaveBeenCalled();
+  });
+  it("keeps an edited pending draft in the approval queue when it is auto-eligible",async()=>{
+    repository.findById.mockResolvedValue({...rejectedDraft,status:"pending"} as never);
+    await updateDraft(draftId.toString(),{reply:"Edited pending reply"});
+    expect(mocks.updateAutomationState).toHaveBeenCalledWith(draftId.toString(),expect.objectContaining({
+      status:"pending",automaticAction:"pending",
+    }));
+    expect(mocks.requestApproval).toHaveBeenCalledWith(draftId.toString(),userId.toString());
+    expect(mocks.sendAutomatically).not.toHaveBeenCalled();
+  });
   it("keeps an ineligible rejected draft blocked",async()=>{
     mocks.determineAutomaticAction.mockReturnValue({action:"blocked",reasons:["Unsupported claim."]});
     mocks.applySupportDecision.mockImplementation(action=>action);
