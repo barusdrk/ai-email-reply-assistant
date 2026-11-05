@@ -14,22 +14,26 @@ export function useDrafts() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const loadDrafts = useCallback(async () => {
+  const loadDrafts = useCallback(async (silent = false) => {
     try {
-      setLoading(true);
-      setError("");
+      if (!silent) {
+        setLoading(true);
+        setError("");
+      }
       const loadedDrafts = await getDrafts();
       console.log("[useDrafts] Loaded drafts:", loadedDrafts.length);
       console.log("[useDrafts] Escalated drafts:", loadedDrafts.filter((draft) => draft.status === "escalated"));
       setDrafts(loadedDrafts);
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : "Unable to load drafts."
-      );
+      if (!silent) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : "Unable to load drafts."
+        );
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, []);
 
@@ -56,8 +60,9 @@ export function useDrafts() {
     draftId: string,
     reply: string
   ) {
-    await updateDraft(draftId, reply);
-    await loadDrafts();
+    const updatedDraft = await updateDraft(draftId, reply);
+    setDrafts((current) => current.map((draft) => draft.id === draftId ? updatedDraft : draft));
+    void loadDrafts(true);
   }
 
   async function removeDraft(draftId: string) {
