@@ -90,4 +90,47 @@ describe("updateDraft rejected-draft safety",()=>{
       supportNeedsHuman:false,
     }));
   });
+  it("converts confidence-based escalation into consistent human-review metadata and invalidates prior approval",async()=>{
+    const previousApproval=new Date("2026-11-03T09:55:18.608Z");
+    repository.findById.mockResolvedValue({
+      ...rejectedDraft,
+      status:"approved",
+      approvedAt:previousApproval,
+      escalatedAt:new Date("2026-11-04T10:00:00.000Z"),
+      escalationReason:"Previous escalation",
+      escalationReasons:["Previous escalation"],
+    } as never);
+    mocks.scoreDraftConfidence.mockResolvedValue({
+      score:0,
+      level:"low",
+      reasons:["The edited reply does not answer the customer's question."],
+    });
+    mocks.determineAutomaticAction.mockReturnValue({
+      action:"escalate",
+      reasons:["Low AI confidence: 0/100.","Human specialist escalation is required."],
+    });
+
+    await updateDraft(draftId.toString(),{reply:"H"});
+
+    expect(mocks.updateAutomationState).toHaveBeenCalledWith(draftId.toString(),expect.objectContaining({
+      status:"escalated",
+      automaticAction:"escalate",
+      supportDecision:"human_review",
+      supportNeedsHuman:true,
+      supportReason:"Low AI confidence: 0/100. Human specialist escalation is required.",
+      approvedAt:undefined,
+      escalatedAt:expect.any(Date),
+      escalationReason:"Low AI confidence: 0/100.",
+      escalationReasons:["Low AI confidence: 0/100.","Human specialist escalation is required."],
+    }));
+    expect(mocks.recordDraftAnalytics).toHaveBeenCalledWith(expect.objectContaining({
+      automaticAction:"escalate",
+      supportDecision:"human_review",
+      supportNeedsHuman:true,
+      outcome:"escalated",
+    }));
+    expect(mocks.requestApproval).toHaveBeenCalledWith(draftId.toString(),userId.toString());
+    expect(mocks.sendAutomatically).not.toHaveBeenCalled();
+  });
+
 });
