@@ -1,7 +1,6 @@
 import {draftRepository} from "../repositories/DraftRepository.js";
 import {emailRepository} from "../repositories/EmailRepository.js";
 import {sendEmail} from "./sendEmail.js";
-import {sendAutomatically} from "./automaticSend.js";
 import {recordDraftAnalytics} from "./supportAnalytics.js";
 
 async function recordSendingAnalytics(data:{
