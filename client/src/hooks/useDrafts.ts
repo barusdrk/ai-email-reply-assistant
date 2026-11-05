@@ -75,6 +75,7 @@ export function useDrafts() {
 
   async function send(draftId: string) {
     await sendDraft(draftId);
+    await loadDrafts();
   }
 
   return {
