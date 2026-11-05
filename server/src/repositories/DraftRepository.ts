@@ -292,9 +292,18 @@ async releaseAutomaticClaim(
 
   async updateAutomationState(id:string,data:Partial<Draft>):Promise<Draft|null>{
     if(!Types.ObjectId.isValid(id))return null;
+    const set:Record<string,unknown>={};
+    const unset:Record<string,1>={};
+    for(const [key,value] of Object.entries(data)){
+      if(value===undefined)unset[key]=1;
+      else set[key]=value;
+    }
+    const update:Record<string,Record<string,unknown>>={};
+    if(Object.keys(set).length)update.$set=set;
+    if(Object.keys(unset).length)update.$unset=unset;
     return DraftModel.findByIdAndUpdate(
       id,
-      {$set:data},
+      update,
       {new:true,runValidators:true},
     ).lean<Draft|null>();
   }
