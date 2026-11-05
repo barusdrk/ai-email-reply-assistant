@@ -59,17 +59,13 @@ export async function sendDraft(id:string){
 
   const userId=draft.userId.toString();
 
-  if(draft.automaticAction==="auto_approve"){
-    try{
-      return await sendAutomatically(userId,id);
-    }catch(error){
-      console.error("Automatic draft sending failed:",error);
-      throw error;
-    }
-  }
-
-  // Manual and automatic sends share one atomic lifecycle to keep attempts,
-  // phase, stale-claim recovery, and completion metadata consistent.
+  // A request through the authenticated /send endpoint is always an explicit
+  // human action. Automatic sends are initiated separately by the support
+  // pipeline through sendAutomatically(), which enforces autoSendEnabled and
+  // the stricter support/policy eligibility checks.
+  //
+  // Keep manual and automatic sends on the same atomic lifecycle so attempts,
+  // phase, stale-claim recovery, and completion metadata remain consistent.
   const claimedDraft=await draftRepository.claimForManualSend(id);
   if(!claimedDraft)throw new Error("Draft is already being sent or is no longer eligible to send.");
 
