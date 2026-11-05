@@ -300,4 +300,39 @@ it("allows only one concurrent automatic-send claim", async () => {
     expect(stored).not.toHaveProperty("escalatedAt");
     expect(stored).not.toHaveProperty("escalationReason");
   });
+  it("unsets stale approval and escalation timestamps during automation-state updates",async()=>{
+    const previousApproval=new Date("2026-11-03T09:55:18.608Z");
+    const draft=await DraftModel.create({
+      userId,
+      emailId:new Types.ObjectId(),
+      provider:"gmail",
+      subject:"Re: Edited draft state",
+      customer:"customer@example.com",
+      reply:"An earlier approved reply.",
+      status:"approved",
+      automaticAction:"pending",
+      approvedAt:previousApproval,
+      escalatedAt:new Date("2026-11-04T10:00:00.000Z"),
+      escalationReason:"Previous escalation",
+      escalationReasons:["Previous escalation"],
+    });
+
+    const updated=await draftRepository.updateAutomationState(draft._id.toString(),{
+      status:"escalated",
+      automaticAction:"escalate",
+      approvedAt:undefined,
+      escalatedAt:new Date(),
+      escalationReason:"Low AI confidence: 0/100.",
+      escalationReasons:["Low AI confidence: 0/100."],
+    });
+
+    expect(updated?.status).toBe("escalated");
+    expect(updated?.approvedAt).toBeUndefined();
+    expect(updated?.escalationReason).toBe("Low AI confidence: 0/100.");
+
+    const stored=await DraftModel.findById(draft._id).lean();
+    expect(stored).not.toHaveProperty("approvedAt");
+    expect(stored?.escalationReason).toBe("Low AI confidence: 0/100.");
+  });
+
 });
