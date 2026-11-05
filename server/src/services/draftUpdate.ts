@@ -1,5 +1,4 @@
 import {draftRepository} from "../repositories/DraftRepository.js";
-import {sendAutomatically} from "./automaticSend.js";
 import {requestApproval} from "./draftApproval.js";
 import {analyzeDraftSupport,applySupportDecision,evaluateDraftPolicy,scoreDraftConfidence} from "./draftSupport.js";
 import {determineAutomaticAction} from "./automaticActions.js";
@@ -28,7 +27,6 @@ export async function updateDraft(id:string,data:UpdateDraftData){
   if(existingDraft.status==="sent")throw new Error("Sent drafts cannot be modified.");
   if(existingDraft.automaticSendInProgress)throw new Error("This draft is currently being sent and cannot be modified.");
   if(existingDraft.automaticSendRecoveryRequired)throw new Error("This draft requires send recovery verification before it can be modified.");
-  const requiresHumanRevalidation=existingDraft.status==="rejected"||existingDraft.status==="escalated";
   const userId=existingDraft.userId.toString();
   const emailId=existingDraft.emailId.toString();
   const tone=data.tone??existingDraft.tone;
@@ -40,8 +38,9 @@ export async function updateDraft(id:string,data:UpdateDraftData){
   const confidence=await scoreDraftConfidence(userId,support.customerEmailBody,reply,support.knowledgeBase);
   const policy=await evaluateDraftPolicy(userId,support.customerEmailBody,reply,support.knowledgeBase);
   const evaluatedAction=applySupportDecision(determineAutomaticAction(support.customerEmailBody,confidence,policy),support.supportResult);
-  // Previously rejected or escalated drafts must return to human review, never unattended sending.
-  const automaticAction=requiresHumanRevalidation&&evaluatedAction.action==="auto_approve"
+  // Editing changes the content after its previous approval. Never auto-send an edited draft:
+  // even if it passes automated checks, send it back through explicit human approval.
+  const automaticAction=evaluatedAction.action==="auto_approve"
     ?{...evaluatedAction,action:"pending" as const,reasons:[]}
     :evaluatedAction;
   const supportCategory=normalizeSupportCategory(support.supportResult.category);
@@ -85,11 +84,6 @@ export async function updateDraft(id:string,data:UpdateDraftData){
     automaticAction:automaticAction.action,
     customerContext:{email:support.customerContext.email??null,name:support.customerContext.name??null,metadata:support.customerContext.metadata??null},
   });
-  if(automaticAction.action==="auto_approve"){
-    try{await sendAutomatically(userId,updatedDraft._id.toString());}
-    catch(error){console.error("Automatic draft sending failed:",error);}
-    return (await draftRepository.findById(updatedDraft._id.toString()))??updatedDraft;
-  }
   if(automaticAction.action==="pending"||automaticAction.action==="escalate")await requestApproval(updatedDraft._id.toString(),userId);
   return updatedDraft;
 }
