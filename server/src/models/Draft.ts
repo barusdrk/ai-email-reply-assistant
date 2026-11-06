@@ -42,6 +42,18 @@ const draftSchema=new Schema({
   status:{type:String,enum:DRAFT_STATUSES,default:"pending",index:true},
   automaticAction:{type:String,enum:AUTOMATIC_ACTIONS,default:"pending",index:true},
   automaticActionReasons:{type:[String],default:[]},
+  // Shared send-attempt lifecycle. The historical "automaticSend" prefix is
+  // retained for compatibility, but these fields track BOTH human-triggered
+  // sends (POST /drafts/:id/send) and support-engine automatic sends.
+  // They describe execution state, not who authorized the send:
+  // - InProgress / Phase: atomic claim and provider-send lifecycle.
+  // - Attempts / ClaimedAt / StartedAt / LastAttemptAt: attempt bookkeeping.
+  // - LastError / RecoveryRequired: failure and uncertain-outcome safeguards.
+  // A completed phase means the provider send was confirmed and the outbound
+  // email record plus sent draft transition were persisted.
+  // Do not infer automatic approval from these fields. automaticAction is the
+  // separate support-engine decision and may remain "pending" after a human
+  // approves and manually sends a draft.
   automaticSendInProgress:{type:Boolean,default:false,index:true},
   automaticSendPhase:{type:String,enum:AUTOMATIC_SEND_PHASES,default:"idle",index:true},
   automaticSendAttempts:{type:Number,default:0,min:0},
