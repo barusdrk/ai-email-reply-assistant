@@ -271,6 +271,25 @@ describe("sendDraft manual sending",()=>{
     );
   });
 
+  it("does not call the provider again when the draft is already sent",async()=>{
+    mocks.findById.mockResolvedValue({
+      ...draft,
+      status:"sent",
+      sentAt:new Date("2026-11-05T21:38:09.114Z"),
+      automaticSendInProgress:false,
+      automaticSendPhase:"completed",
+      automaticSendAttempts:1,
+      automaticSendRecoveryRequired:false,
+    });
+
+    await expect(sendDraft(draftId.toString())).rejects.toThrow("Draft has already been sent.");
+
+    expect(mocks.claimForManualSend).not.toHaveBeenCalled();
+    expect(mocks.markAutomaticSendStarted).not.toHaveBeenCalled();
+    expect(mocks.sendEmail).not.toHaveBeenCalled();
+    expect(mocks.emailCreate).not.toHaveBeenCalled();
+  });
+
   it("does not send again when recovery is already required",async()=>{
     mocks.findById.mockResolvedValue({...draft,automaticSendRecoveryRequired:true});
 
