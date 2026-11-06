@@ -16,6 +16,9 @@ class DraftRepository {
     return DraftModel.findById(id).lean<Draft|null>();
   }
 
+  // Manual and automatic sends intentionally share the persisted
+  // automaticSend* lifecycle fields. The prefix is historical; it does not
+  // mean this claim was initiated by automation.
   async claimForManualSend(id:string):Promise<Draft|null>{
     if(!Types.ObjectId.isValid(id))return null;
     const claimedAt=new Date();
@@ -125,6 +128,8 @@ class DraftRepository {
     }).lean<Draft|null>();
   }
 
+  // This claim uses the same lifecycle fields as claimForManualSend, but adds
+  // the stricter support-engine eligibility predicates for unattended sends.
   async claimForAutomaticSend(id:string,userId:string):Promise<Draft|null>{
     if(!Types.ObjectId.isValid(id)||!Types.ObjectId.isValid(userId))return null;
     return DraftModel.findOneAndUpdate(
@@ -154,6 +159,8 @@ class DraftRepository {
   }
 
 
+// Despite the legacy method name, this advances either a manual or automatic
+// send after its claim has been acquired.
 async markAutomaticSendStarted(id:string,startedAt:Date=new Date()):Promise<Draft|null> {
   if(!Types.ObjectId.isValid(id)||!(startedAt instanceof Date)||Number.isNaN(startedAt.getTime()))return null;
   return DraftModel.findOneAndUpdate(
@@ -168,6 +175,7 @@ async markAutomaticSendStarted(id:string,startedAt:Date=new Date()):Promise<Draf
 }
 
 
+  // Shared terminal transition for both manual and automatic sends.
   async markAutomaticSendCompleted(id:string,sentAt:Date):Promise<Draft|null>{
     if(!Types.ObjectId.isValid(id))return null;
     return DraftModel.findOneAndUpdate(
