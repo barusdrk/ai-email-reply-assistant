@@ -36,6 +36,7 @@ export default function Sidebar({
       inert={!isExpanded}
       className={`
         border-r border-(--border) bg-(--surface) fixed flex flex-col inset-y-0 left-0 w-64 z-40
+        pt-16 md:pt-0
         transform shadow-lg transition-transform duration-300
         ${isExpanded ? "translate-x-0" : "-translate-x-full"}
         md:static md:z-auto md:translate-x-0 md:shadow-none

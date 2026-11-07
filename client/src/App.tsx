@@ -72,7 +72,7 @@ function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
       <SidebarLayout />
-      <main className="min-w-0 flex-1 p-6">
+      <main className="min-w-0 flex-1 p-6 pt-16 md:pt-6">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
     </div>
