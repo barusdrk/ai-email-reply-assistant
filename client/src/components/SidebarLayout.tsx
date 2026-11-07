@@ -25,7 +25,8 @@ export default function SidebarLayout() {
   };
 
   const closeSidebar = () => {
-    setIsExpanded(false);
+    const isDesktop = window.matchMedia("(min-width: 768px)").matches;
+    setIsExpanded(isDesktop);
   };
 
   return (
