@@ -1,7 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import type { ReactNode } from "react";
-import Sidebar from "./components/Sidebar.js";
+import SidebarLayout from "./components/SidebarLayout";
 import { useAuth } from "./context/AuthContext.js";
 
 const Login = lazy(() => import("./pages/Login.js"));
@@ -71,7 +71,7 @@ interface AppLayoutProps {
 function AppLayout({ children }: AppLayoutProps) {
   return (
     <div className="flex min-h-screen bg-gray-100 dark:bg-gray-900">
-      <Sidebar />
+      <SidebarLayout />
       <main className="min-w-0 flex-1 p-6">
         <div className="mx-auto max-w-7xl">{children}</div>
       </main>
