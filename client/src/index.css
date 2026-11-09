@@ -96,6 +96,15 @@ button:disabled {
   cursor: not-allowed;
 }
 
+button:focus-visible,
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: var(--accent-light);
+  box-shadow: 0 0 0 2px var(--accent-light);
+  outline-offset: 2px;
+}
+
 input,
 textarea,
 select {
