@@ -12,7 +12,15 @@ const links = [
   { label: "Settings", path: "/settings", icon: "⚙" },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  isExpanded: boolean;
+  onNavigate: () => void;
+}
+
+export default function Sidebar({
+  isExpanded,
+  onNavigate,
+}: SidebarProps) {
   const navigate = useNavigate();
   const { logout } = useAuth();
 
@@ -22,7 +30,18 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="flex w-64 flex-col border-r border-(--border) bg-(--surface)">
+    <aside
+      id="app-sidebar"
+      aria-hidden={!isExpanded}
+      inert={!isExpanded}
+      className={`
+        border-r border-(--border) bg-(--surface) fixed flex flex-col inset-y-0 left-0 w-64 z-40
+        pt-16 md:pt-0
+        transform shadow-lg transition-transform duration-300
+        ${isExpanded ? "translate-x-0" : "-translate-x-full"}
+        md:static md:z-auto md:translate-x-0 md:shadow-none
+      `}
+    >
       <div className="border-b border-(--border) p-6">
         <h2 className="text-xl font-bold text-(--accent)">AI Assistant</h2>
         <p className="mt-1 text-sm text-(--text-secondary)">Email Workspace</p>
@@ -32,7 +51,6 @@ export default function Sidebar() {
           {links.map((link) => (
             <li key={link.path}>
               <NavLink
-                to={link.path}
                 className={({ isActive }) =>
                   `flex items-center gap-3 rounded-lg px-4 py-3 transition ${
                     isActive
@@ -40,6 +58,8 @@ export default function Sidebar() {
                       : "text-(--text) hover:bg-(--surface-hover)"
                   }`
                 }
+                onClick={onNavigate}
+                to={link.path}
               >
                 <span className="flex w-6 shrink-0 justify-center text-lg">
                   {link.icon}
