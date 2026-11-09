@@ -30,7 +30,7 @@ export default function SettingsPage() {
           <select
             value={provider}
             onChange={(e) => setProvider(e.target.value)}
-            className="mt-2 w-full rounded border border-(--input-border) bg-(--input-bg) p-2 text-(--text) focus:border-(--accent) focus:outline-none focus:ring-2 focus:ring-(--accent)"
+            className="mt-2 w-full rounded border border-(--input-border) bg-(--input-bg) p-2 text-(--text)"
           >
             <option value="openai">OpenAI</option>
             {/* <option value="gemini">Gemini</option> */}
@@ -42,7 +42,7 @@ export default function SettingsPage() {
           <select
             value={tone}
             onChange={(e) => setTone(e.target.value)}
-            className="mt-2 w-full rounded border border-(--input-border) bg-(--input-bg) p-2 text-(--text) focus:border-(--accent) focus:outline-none focus:ring-2 focus:ring-(--accent)"
+            className="mt-2 w-full rounded border border-(--input-border) bg-(--input-bg) p-2 text-(--text)"
           >
             <option value="professional">Professional</option>
             <option value="friendly">Friendly</option>

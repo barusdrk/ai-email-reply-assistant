@@ -34,7 +34,7 @@ export default function APIKeyForm({ provider, initialValue = "" }: Props) {
         value={apiKey}
         onChange={(event) => setApiKey(event.target.value)}
         placeholder="Paste your API key"
-        className="mt-4 w-full rounded-lg border border-(--border) bg-(--bg) p-3 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent)"
+        className="mt-4 w-full rounded-lg border border-(--border) bg-(--bg) p-3 text-(--text) outline-none"
       />
       <button
         type="button"

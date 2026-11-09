@@ -182,7 +182,7 @@ export default function ReplyCard({
         onChange={(event) => onChange?.(event.target.value)}
         placeholder="Generated reply will appear here..."
         rows={10}
-        className="min-h-48 w-full resize-y rounded-lg border border-(--input-border) bg-(--input-bg) p-4 text-sm text-(--text) outline-none placeholder:text-(--placeholder) focus:ring-2 focus:ring-(--accent)"
+        className="min-h-48 w-full resize-y rounded-lg border border-(--input-border) bg-(--input-bg) p-4 text-sm text-(--text) outline-none placeholder:text-(--placeholder)"
       />
       {!hasReply && (
         <p className="mt-3 text-sm text-(--text-secondary)">

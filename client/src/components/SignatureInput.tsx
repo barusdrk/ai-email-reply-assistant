@@ -23,7 +23,7 @@ export default function SignatureInput({ value, onChange, disabled = false }: Si
         onChange={handleChange}
         disabled={disabled}
         placeholder="Customer Support"
-        className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-2 text-(--text) shadow-sm outline-none transition placeholder:text-(--placeholder) focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60"
+        className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-2 text-(--text) shadow-sm outline-none transition placeholder:text-(--placeholder) disabled:cursor-not-allowed disabled:opacity-60"
       />
       <p className="text-xs text-(--text-secondary)">
         This signature will be appended to every AI-generated email.

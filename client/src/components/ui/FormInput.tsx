@@ -26,7 +26,7 @@ export default function FormInput({
         placeholder={placeholder}
         readOnly={readOnly}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-(--border) bg-(--surface) px-3 py-2 text-(--text) placeholder:text-(--text-secondary) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent)"
+        className="w-full rounded-lg border border-(--border) bg-(--surface) px-3 py-2 text-(--text) placeholder:text-(--text-secondary) outline-none"
       />
     </div>
   );

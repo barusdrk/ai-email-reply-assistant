@@ -155,7 +155,7 @@ export default function Analytics(){
               type="date"
               value={from}
               onChange={(event)=>setFrom(event.target.value)}
-              className="rounded-lg border border-(--input-border) bg-(--input-bg) px-3 py-2 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent)"
+              className="rounded-lg border border-(--input-border) bg-(--input-bg) px-3 py-2 text-(--text) outline-none"
             />
           </label>
           <label className="flex flex-col gap-1 text-sm text-(--text-secondary)">
@@ -164,7 +164,7 @@ export default function Analytics(){
               type="date"
               value={to}
               onChange={(event)=>setTo(event.target.value)}
-              className="rounded-lg border border-(--input-border) bg-(--input-bg) px-3 py-2 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent)"
+              className="rounded-lg border border-(--input-border) bg-(--input-bg) px-3 py-2 text-(--text) outline-none"
             />
           </label>
           <button
