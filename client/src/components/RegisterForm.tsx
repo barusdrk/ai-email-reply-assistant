@@ -17,7 +17,7 @@ export default function RegisterForm({ onSubmit, loading = false, error }: Regis
     await onSubmit(name, email, password, confirmPassword);
   }
 
-  const inputClass = "w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) placeholder:text-(--placeholder) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60";
+  const inputClass = "w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) placeholder:text-(--placeholder) outline-none transition disabled:cursor-not-allowed disabled:opacity-60";
 
   return (
     <div className="mx-auto w-full max-w-md rounded-xl border border-(--border) bg-(--surface) p-8 shadow-lg">

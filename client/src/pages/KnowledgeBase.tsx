@@ -213,7 +213,7 @@ export default function KnowledgeBase(){
               value={form.title}
               onChange={(event) => updateField("title", event.target.value)}
               placeholder="Refund Policy"
-              className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
+              className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition"
             />
           </div>
 
@@ -224,7 +224,7 @@ export default function KnowledgeBase(){
               onChange={(event) => updateField("content", event.target.value)}
               placeholder="Customers can request a refund within 30 days of purchase..."
               rows={7}
-              className="w-full resize-y rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
+              className="w-full resize-y rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition"
             />
           </div>
 
@@ -241,7 +241,7 @@ export default function KnowledgeBase(){
                     event.target.value as KnowledgeBaseCategory,
                   )
                 }
-                className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
+                className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition"
               >
                 {CATEGORIES.map((category) => (
                   <option key={category.value} value={category.value}>
@@ -265,7 +265,7 @@ export default function KnowledgeBase(){
                   )
                 }
                 placeholder="refund, returns, money back"
-                className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
+                className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 outline-none transition"
               />
             </div>
           </div>
@@ -277,7 +277,7 @@ export default function KnowledgeBase(){
               onChange={(event) =>
                 updateField("active", event.target.checked)
               }
-              className="h-4 w-4 rounded border-(--input-border) text-(--accent) focus:ring-(--accent)"
+              className="h-4 w-4 rounded border-(--input-border) text-(--accent)"
             />
             Active article
           </label>
@@ -315,7 +315,7 @@ export default function KnowledgeBase(){
               value={search}
               onChange={(event) => setSearch(event.target.value)}
               placeholder="Search knowledge base..."
-              className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) py-3 pl-10 pr-4 text-sm outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent-light)"
+              className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) py-3 pl-10 pr-4 text-sm outline-none transition"
             />
           </div>
         </div>

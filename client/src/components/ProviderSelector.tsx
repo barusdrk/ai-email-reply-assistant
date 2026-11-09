@@ -17,7 +17,13 @@ export default function ProviderSelector({ value, onChange, label = "AI Provider
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-(--text-h)">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value as AIProvider)} className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-2 text-(--text) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent)">
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value as AIProvider)}
+        className="
+          w-full cursor-pointer rounded-lg border border-(--input-border) bg-(--input-bg) py-2 pl-4 pr-10 text-(--text) transition
+        "
+      >
         {providers.map((provider) => (
           <option key={provider.value} value={provider.value}>{provider.label}</option>
         ))}

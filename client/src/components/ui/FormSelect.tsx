@@ -24,7 +24,9 @@ export default function FormSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-lg border border-(--border) bg-(--surface) px-3 py-2 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent)"
+        className="
+          w-full cursor-pointer rounded-lg border border-(--border) bg-(--surface) py-2 pl-3 pr-10 text-(--text)
+        "
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>

@@ -85,13 +85,36 @@ export default function ProfileCard({ name, email, avatar, onSave }: ProfileCard
         <div>
           <div className="flex flex-wrap items-center gap-3">
             <input ref={fileInputRef} id="avatar-upload" type="file" accept="image/jpeg,image/png,image/gif,image/webp" onChange={handleAvatarChange} className="sr-only" tabIndex={-1} aria-hidden="true" />
-            <button type="button" onClick={() => fileInputRef.current?.click()} className="cursor-pointer rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover) focus:outline-none focus:ring-2 focus:ring-(--accent)">Upload avatar</button>
-            {profileAvatar && <button type="button" onClick={removeAvatar} className="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-(--danger-text) transition hover:bg-(--danger-bg) focus:outline-none focus:ring-2 focus:ring-(--danger-border)">Remove image</button>}
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="
+                cursor-pointer rounded-lg border border-(--border) bg-(--surface) px-4 py-2 text-sm font-medium text-(--text) transition hover:bg-(--surface-hover)
+              "
+            >
+              Upload avatar
+            </button>
+            {profileAvatar && <button
+              type="button"
+              onClick={removeAvatar}
+              className="
+                cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-(--danger-text) transition hover:bg-(--danger-bg)
+              "
+            >
+              Remove image
+            </button>}
           </div>
           <p className="mt-2 text-xs text-(--text-secondary)">JPEG, PNG, GIF, or WebP. Maximum 2 MB.</p>
           {uploadError && <p className="mt-2 text-sm text-(--danger-text)">{uploadError}</p>}
         </div>
-        <button type="button" onClick={handleSave} disabled={saving} className="rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) transition hover:opacity-90 disabled:opacity-60">
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="
+            rounded bg-(--accent) px-4 py-2 text-(--accent-contrast) transition hover:opacity-90 disabled:opacity-60
+          "
+        >
           {saving ? "Saving..." : "Save Profile"}
         </button>
       </div>

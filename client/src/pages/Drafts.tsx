@@ -69,7 +69,7 @@ export default function Drafts() {
       {editingDraft&&<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"><div className="w-full max-w-2xl rounded-xl border border-(--border) bg-(--surface) p-6 shadow-xl">
         <h2 className="text-xl font-bold text-(--text-h)">Edit Draft Reply</h2><p className="mt-2 text-sm text-(--text-secondary)">{editingDraft.subject}</p>
         {editError&&<div role="alert" className="mt-3 rounded-lg border border-(--danger-text) bg-(--danger-bg) p-3 text-sm text-(--danger-text)">{editError}</div>}
-        <textarea value={editedReply} onChange={event=>setEditedReply(event.target.value)} disabled={saving} className="mt-4 min-h-64 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60"/>
+        <textarea value={editedReply} onChange={event=>setEditedReply(event.target.value)} disabled={saving} className="mt-4 min-h-64 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none disabled:cursor-not-allowed disabled:opacity-60"/>
         <div className="mt-6 flex justify-end gap-3"><button type="button" onClick={closeEdit} disabled={saving} className="rounded-lg border border-(--border) px-4 py-2 text-(--text) hover:bg-(--surface-hover) disabled:cursor-not-allowed disabled:opacity-60">Cancel</button><button type="button" onClick={()=>void saveEdit()} disabled={saving||!editedReply.trim()} className="rounded-lg bg-(--accent) px-4 py-2 text-(--accent-contrast) hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">{saving?"Saving...":"Save Changes"}</button></div>
       </div></div>}
     </div>

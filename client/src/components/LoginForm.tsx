@@ -36,7 +36,10 @@ export default function LoginForm({ onSubmit, loading = false, error }: LoginFor
             disabled={loading}
             value={email}
             onChange={(event) => setEmail(event.target.value)}
-            className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:opacity-60"
+            className="
+              w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) outline-none transition
+              disabled:opacity-60
+            "
           />
         </div>
         <div>
@@ -51,7 +54,10 @@ export default function LoginForm({ onSubmit, loading = false, error }: LoginFor
             disabled={loading}
             value={password}
             onChange={(event) => setPassword(event.target.value)}
-            className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) outline-none transition focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:opacity-60"
+            className="
+              w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-3 text-(--text) outline-none transition
+              disabled:opacity-60
+            "
           />
         </div>
         {error && (
@@ -62,7 +68,11 @@ export default function LoginForm({ onSubmit, loading = false, error }: LoginFor
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          className="
+            w-full rounded-lg bg-(--accent) px-4 py-3 font-semibold text-(--accent-contrast) transition
+            disabled:cursor-not-allowed disabled:opacity-60
+            hover:opacity-90
+          "
         >
           {loading ? "Signing In..." : "Sign In"}
         </button>

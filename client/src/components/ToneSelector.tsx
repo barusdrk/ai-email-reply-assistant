@@ -45,7 +45,10 @@ export default function ToneSelector({
         value={value}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value as SelectedTone)}
-        className="w-full rounded-lg border border-(--input-border) bg-(--input-bg) px-4 py-2 text-(--text) focus:border-(--accent) focus:outline-none focus:ring-2 focus:ring-(--accent) disabled:bg-(--bg-secondary)"
+        className="
+          w-full cursor-pointer rounded-lg border border-(--input-border) bg-(--input-bg) py-2 pl-4 pr-10 text-(--text)
+          disabled:bg-(--bg-secondary)
+        "
       >
         {useDefault && (
           <option value="default">

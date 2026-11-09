@@ -187,7 +187,10 @@ export default function Approvals() {
               onChange={(event) => setEditedReply(event.target.value)}
               disabled={saving}
               aria-label="Draft reply"
-              className="mt-4 min-h-64 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none focus:border-(--accent) focus:ring-2 focus:ring-(--accent) disabled:cursor-not-allowed disabled:opacity-60"
+              className="
+                mt-4 min-h-64 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none
+                disabled:cursor-not-allowed disabled:opacity-60
+              "
             />
             <div className="mt-6 flex justify-end gap-3">
               <button
@@ -230,7 +233,10 @@ export default function Approvals() {
               placeholder="Optional rejection reason..."
               disabled={rejecting}
               aria-label="Rejection reason"
-              className="mt-4 min-h-32 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none placeholder:text-(--text-secondary) focus:border-(--danger) focus:ring-2 focus:ring-(--danger) disabled:cursor-not-allowed disabled:opacity-60"
+              className="
+                not-[]:mt-4 min-h-32 w-full rounded-lg border border-(--input-border) bg-(--input-bg) p-3 text-(--text) outline-none placeholder:text-(--text-secondary)
+                disabled:cursor-not-allowed disabled:opacity-60
+              "
             />
             <div className="mt-6 flex justify-end gap-3">
               <button
